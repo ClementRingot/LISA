@@ -26,6 +26,7 @@
  *   4. Chained token verifier: XSUAA → OIDC → API key, all on /mcp.
  */
 
+import crypto from 'node:crypto';
 import { InvalidTokenError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { ProxyOAuthServerProvider } from '@modelcontextprotocol/sdk/server/auth/providers/proxyProvider.js';
 import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
@@ -118,15 +119,29 @@ export function createOidcVerifier(issuer: string, audience?: string): (token: s
 
 // ─── API Key Matching Helper ─────────────────────────────────────────
 
+/**
+ * Constant-time string comparison. Hashes both sides to fixed-length digests so
+ * `timingSafeEqual` (which throws on length mismatch) is safe, and so neither the
+ * length nor the position of the first differing byte of an API key leaks via
+ * timing. Mirrors the `timingSafeEqual` discipline used for HMAC signatures.
+ */
+function constantTimeEquals(a: string, b: string): boolean {
+  const ah = crypto.createHash('sha256').update(a).digest();
+  const bh = crypto.createHash('sha256').update(b).digest();
+  return crypto.timingSafeEqual(ah, bh);
+}
+
 function matchApiKeyFromConfig(config: { apiKeys?: ApiKeyProfile[] }, token: string): { clientId: string } | undefined {
+  let match: { clientId: string } | undefined;
   if (config.apiKeys) {
+    // Scan every entry (no early return) so loop timing doesn't reveal which key matched.
     for (const entry of config.apiKeys) {
-      if (token === entry.key) {
-        return { clientId: `api-key:${entry.profile}` };
+      if (constantTimeEquals(token, entry.key)) {
+        match = { clientId: `api-key:${entry.profile}` };
       }
     }
   }
-  return undefined;
+  return match;
 }
 
 // ─── Chained Token Verifier ──────────────────────────────────────────

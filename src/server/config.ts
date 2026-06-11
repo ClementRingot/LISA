@@ -20,7 +20,7 @@ function parseXsuaaBinding(): XsuaaBinding | undefined {
   if (!vcap) return undefined;
   try {
     const services = JSON.parse(vcap) as Record<string, Array<{ credentials: XsuaaBinding }>>;
-    const xsuaa = services['xsuaa']?.[0]?.credentials;
+    const xsuaa = services.xsuaa?.[0]?.credentials;
     if (!xsuaa?.url || !xsuaa?.clientid) return undefined;
     return xsuaa;
   } catch {

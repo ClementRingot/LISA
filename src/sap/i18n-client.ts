@@ -363,14 +363,12 @@ export class I18nClient {
     return callAction<SetTranslationResult>(conn, this.path, 'set_translation', { ...params });
   }
 
-  async listTexts(
-    params: {
-      target_type: string;
-      object_name: string;
-      language?: string;
-      text_pool_owner_type?: string;
-    },
-  ): Promise<ListTextsResult> {
+  async listTexts(params: {
+    target_type: string;
+    object_name: string;
+    language?: string;
+    text_pool_owner_type?: string;
+  }): Promise<ListTextsResult> {
     const conn = await resolveConnection(this.config, this.userJwt);
     return callAction<ListTextsResult>(conn, this.path, 'list_texts', { ...params });
   }

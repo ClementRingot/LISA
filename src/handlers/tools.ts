@@ -103,7 +103,9 @@ export const SetTranslationSchema = z.object({
 export const ListTextsSchema = z.object({
   target_type: TargetTypeSchema,
   object_name: z.string().min(1).describe('Technical name of the SAP object'),
-  language: LanguageSchema.optional().describe('Optional source language to read texts in (defaults to system language)'),
+  language: LanguageSchema.optional().describe(
+    'Optional source language to read texts in (defaults to system language)',
+  ),
   text_pool_owner_type: SelectorShape.text_pool_owner_type,
 });
 

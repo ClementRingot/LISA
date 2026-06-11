@@ -48,16 +48,16 @@ function isLoopbackHttpRedirect(url: URL): boolean {
 function renderOAuthErrorPage(error: string, errorDescription: string, clientReturnUrl: string): string {
   const hint = 'Retry the sign-in from your MCP client. If it keeps failing, share this error with your administrator.';
   const descBlock = errorDescription ? `<p><code>${escapeHtml(errorDescription)}</code></p>` : '';
-  return (
-    '<!doctype html><html><head><meta charset="utf-8"><title>SAP Translator sign-in failed</title></head>' +
-    '<body style="font-family:sans-serif;max-width:42rem;margin:3rem auto;padding:0 1rem;line-height:1.5">' +
-    '<h1>SAP Translator sign-in failed</h1>' +
-    `<p><strong>Error:</strong> <code>${escapeHtml(error)}</code></p>` +
-    descBlock +
-    `<p>${escapeHtml(hint)}</p>` +
-    `<p><a href="${escapeHtml(clientReturnUrl)}">Return to your application</a></p>` +
-    '</body></html>'
-  );
+  return [
+    '<!doctype html><html><head><meta charset="utf-8"><title>SAP Translator sign-in failed</title></head>',
+    '<body style="font-family:sans-serif;max-width:42rem;margin:3rem auto;padding:0 1rem;line-height:1.5">',
+    '<h1>SAP Translator sign-in failed</h1>',
+    `<p><strong>Error:</strong> <code>${escapeHtml(error)}</code></p>`,
+    descBlock,
+    `<p>${escapeHtml(hint)}</p>`,
+    `<p><a href="${escapeHtml(clientReturnUrl)}">Return to your application</a></p>`,
+    '</body></html>',
+  ].join('');
 }
 
 /**

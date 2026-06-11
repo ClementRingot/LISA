@@ -34,12 +34,12 @@ export class Logger {
 
     if (this.format === 'json') {
       const entry = { ts, level, message, ...(ctx ?? {}), ...(data ? (redact(data) as object) : {}) };
-      process.stderr.write(JSON.stringify(entry) + '\n');
+      process.stderr.write(`${JSON.stringify(entry)}\n`);
     } else {
       const prefix = [ts, level.toUpperCase().padEnd(5), ctx?.requestId ? `[${ctx.requestId}]` : '']
         .filter(Boolean)
         .join(' ');
-      const suffix = data ? ' ' + JSON.stringify(redact(data)) : '';
+      const suffix = data ? ` ${JSON.stringify(redact(data))}` : '';
       process.stderr.write(`${prefix} ${message}${suffix}\n`);
     }
   }
