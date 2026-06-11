@@ -56,6 +56,18 @@ These are XCO **semantic** literals, not DDIC short codes:
 
 ---
 
+## Use it alongside an ADT MCP server
+
+`sap-translator` is focused on the **translation** step — it deliberately does *not* discover objects or manage transports. For an interactive, AI-driven workflow it is designed to be used **next to an ADT MCP server** (e.g. [ARC-1](https://github.com/marianfoo/arc-1)), which provides the surrounding capabilities:
+
+- **object discovery** — find the data element / CDS view / message class to translate;
+- **transport handling** — locate or create the transport request that `TranslateSetTexts` requires;
+- **inspection** — read the object before translating it.
+
+Typical division of labour: the **ADT MCP** finds the object and a transport → **sap-translator** reads, writes and compares its translations. On its own, `sap-translator` still works whenever the object name and transport are already known (e.g. batch or scripted translation).
+
+---
+
 ## Prerequisites
 
 - An SAP system with the **XCO i18n APIs** available (S/4HANA 2022+ / ABAP Platform 2022+ / ABAP Cloud) and the new HTTP handler model (`IF_HTTP_SERVICE_EXTENSION`).
