@@ -1,12 +1,12 @@
-# sap-translator — SAP Translation MCP Server
+# LISA — Localization & Internationalization Service for ABAP
 
 > Let AI assistants read, write and compare **SAP object translations** through a single, secure MCP server.
 
-`sap-translator` is a [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server that lets AI assistants (Claude, Cursor, VS Code, …) manage the translation of SAP repository objects — data elements, domains, CDS views, message classes, class/function-group text pools, and more — without leaving the chat.
+**LISA** (Localization & Internationalization Service for ABAP) is a [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server that lets AI assistants (Claude, Cursor, VS Code, …) manage the translation of SAP repository objects — data elements, domains, CDS views, message classes, class/function-group text pools, and more — without leaving the chat.
 
 It is built the same way as [**ARC-1**](https://github.com/marianfoo/arc-1) (same XSUAA auth proxy, same BTP connectivity model, same Express/MCP-SDK transport), but instead of the full ADT toolset it exposes **3 focused translation tools** backed by a small ABAP HTTP service that wraps SAP's [XCO i18n APIs](https://help.sap.com/docs/abap-cloud/abap-development-tools-user-guide/internationalization-i18n).
 
-> **Deployment target:** `sap-translator` is designed to run on **SAP BTP (Cloud Foundry)** — that is the primary, supported way to use it (XSUAA login + principal propagation to SAP). Running it **locally** is fully supported too, but it is meant for **development and testing**, not production. The two paths are [Part 2 (BTP)](#part-2--deploy-to-sap-btp-recommended) and [Part 3 (local)](#part-3--run-locally-development--testing) below.
+> **Deployment target:** `LISA` is designed to run on **SAP BTP (Cloud Foundry)** — that is the primary, supported way to use it (XSUAA login + principal propagation to SAP). Running it **locally** is fully supported too, but it is meant for **development and testing**, not production. The two paths are [Part 2 (BTP)](#part-2--deploy-to-sap-btp-recommended) and [Part 3 (local)](#part-3--run-locally-development--testing) below.
 
 ---
 
@@ -14,7 +14,7 @@ It is built the same way as [**ARC-1**](https://github.com/marianfoo/arc-1) (sam
 
 ```
 ┌──────────────┐   MCP/HTTP    ┌─────────────────────┐   HTTPS (JSON)   ┌──────────────────────┐
-│  AI assistant │ ────────────▶ │  sap-translator MCP │ ───────────────▶ │  SAP ABAP system     │
+│  AI assistant │ ────────────▶ │  LISA MCP │ ───────────────▶ │  SAP ABAP system     │
 │ (Claude/IDE)  │   3 tools     │  (Node.js, this repo)│  /zi18n_service  │  ZCL_I18N_SERVICE    │
 └──────────────┘ ◀──────────── └─────────────────────┘ ◀─────────────── │  → XCO i18n APIs     │
                                                                           └──────────────────────┘
@@ -56,13 +56,13 @@ These are XCO **semantic** literals, not DDIC short codes:
 
 ## Use it alongside an ADT MCP server
 
-`sap-translator` is focused on the **translation** step — it deliberately does *not* discover objects or manage transports. For an interactive, AI-driven workflow it is designed to be used **next to an ADT MCP server** (e.g. [ARC-1](https://github.com/marianfoo/arc-1)), which provides the surrounding capabilities:
+`LISA` is focused on the **translation** step — it deliberately does *not* discover objects or manage transports. For an interactive, AI-driven workflow it is designed to be used **next to an ADT MCP server** (e.g. [ARC-1](https://github.com/marianfoo/arc-1)), which provides the surrounding capabilities:
 
 - **object discovery** — find the data element / CDS view / message class to translate;
 - **transport handling** — locate or create the transport request that `TranslateSetTexts` requires;
 - **inspection** — read the object before translating it.
 
-Typical division of labour: the **ADT MCP** finds the object and a transport → **sap-translator** reads, writes and compares its translations. On its own, `sap-translator` still works whenever the object name and transport are already known (e.g. batch or scripted translation).
+Typical division of labour: the **ADT MCP** finds the object and a transport → **LISA** reads, writes and compares its translations. On its own, `LISA` still works whenever the object name and transport are already known (e.g. batch or scripted translation).
 
 ---
 
@@ -93,26 +93,26 @@ Import them (abapGit, or via ADT in the order above), create an ABAP **HTTP serv
 
 ## Part 2 — Deploy to SAP BTP (recommended)
 
-This is the **main way to run `sap-translator`**. It deploys to Cloud Foundry as an MTA and uses **XSUAA for authentication only** — there are **no scopes, role templates or role collections**. XSUAA proves the caller's identity; the JWT is propagated to SAP (principal propagation via the Destination + Connectivity services), and **SAP's own authorization objects** decide what each user may read, write or translate. Every authenticated user gets all 3 tools.
+This is the **main way to run `LISA`**. It deploys to Cloud Foundry as an MTA and uses **XSUAA for authentication only** — there are **no scopes, role templates or role collections**. XSUAA proves the caller's identity; the JWT is propagated to SAP (principal propagation via the Destination + Connectivity services), and **SAP's own authorization objects** decide what each user may read, write or translate. Every authenticated user gets all 3 tools.
 
 ```bash
 npm install
 npm run build
-mbt build           # produces mta_archives/sap-translator_0.1.0.mtar
-cf deploy mta_archives/sap-translator_0.1.0.mtar
+mbt build           # produces mta_archives/lisa_0.1.0.mtar
+cf deploy mta_archives/lisa_0.1.0.mtar
 ```
 
 Then set the DCR signing secret (one-off) and point your MCP client at the deployed URL:
 
 ```bash
-cf set-env sap-translator-mcp SAP_TRANSLATOR_DCR_SIGNING_SECRET "$(openssl rand -hex 32)"
-cf restage sap-translator-mcp
+cf set-env lisa-mcp LISA_DCR_SIGNING_SECRET "$(openssl rand -hex 32)"
+cf restage lisa-mcp
 ```
 
 ```json
 {
   "mcpServers": {
-    "sap-translator": { "url": "https://sap-translator-<space>.<domain>/mcp" }
+    "lisa": { "url": "https://lisa-<space>.<domain>/mcp" }
   }
 }
 ```
@@ -121,7 +121,7 @@ The client is redirected through XSUAA login on first use; its identity is then 
 
 👉 Full guide: **[docs: BTP deployment](./docs_page/btp-deployment.md)** · **[docs: authentication](./docs_page/authentication.md)** · the [`mta.yaml`](./mta.yaml) / [`xs-security.json`](./xs-security.json).
 
-> **Why `SAP_TRANSLATOR_DCR_SIGNING_SECRET`?** Without it the OAuth dynamic-client store signs with the XSUAA `clientsecret`, which `cf deploy` rotates — invalidating all cached MCP client registrations on every deploy. It's a secret, so it lives in `cf set-env`, not `mta.yaml`.
+> **Why `LISA_DCR_SIGNING_SECRET`?** Without it the OAuth dynamic-client store signs with the XSUAA `clientsecret`, which `cf deploy` rotates — invalidating all cached MCP client registrations on every deploy. It's a secret, so it lives in `cf set-env`, not `mta.yaml`.
 
 ---
 
@@ -131,7 +131,7 @@ For local development you connect **directly** to SAP (BasicAuth) — no BTP ser
 
 ```bash
 git clone <this-repo>
-cd sap-translator
+cd LISA
 npm install
 cp .env.example .env      # then edit .env
 npm run dev               # tsx src/index.ts  (hot dev)
@@ -158,7 +158,7 @@ By default the server starts an HTTP-streamable MCP endpoint on `http://localhos
 ```json
 {
   "mcpServers": {
-    "sap-translator": { "url": "http://localhost:8080/mcp" }
+    "lisa": { "url": "http://localhost:8080/mcp" }
   }
 }
 ```
@@ -168,9 +168,9 @@ By default the server starts an HTTP-streamable MCP endpoint on `http://localhos
 ```json
 {
   "mcpServers": {
-    "sap-translator": {
+    "lisa": {
       "command": "node",
-      "args": ["/absolute/path/to/sap-translator/dist/index.js"],
+      "args": ["/absolute/path/to/LISA/dist/index.js"],
       "env": { "MCP_TRANSPORT": "stdio", "SAP_URL": "…", "SAP_USERNAME": "…", "SAP_PASSWORD": "…" }
     }
   }
@@ -195,7 +195,7 @@ By default the server starts an HTTP-streamable MCP endpoint on `http://localhos
 | `SAP_API_KEYS` | `key:profile,…` CSV API-key auth (`viewer\|developer\|admin`). |
 | `OIDC_ISSUER` / `OIDC_AUDIENCE` | OIDC/Entra ID token validation. |
 | `VCAP_SERVICES` | Injected by BTP; carries the XSUAA binding. |
-| `SAP_TRANSLATOR_DCR_SIGNING_SECRET` | Stable signing secret for the OAuth DCR store (set via `cf set-env`). |
+| `LISA_DCR_SIGNING_SECRET` | Stable signing secret for the OAuth DCR store (set via `cf set-env`). |
 | `SAP_OAUTH_DCR_TTL_SECONDS` | DCR registration TTL (`0` = never expire). |
 | `MCP_RATE_LIMIT` / `OAUTH_RATE_LIMIT` | Per-minute rate limits (default 600 / 20). |
 | `CORS_ORIGINS` | Comma-separated allowed CORS origins. |
@@ -225,7 +225,7 @@ The [`docs_page/`](./docs_page) folder holds the long-form guides:
 ## Project structure
 
 ```
-sap-translator/
+LISA/
 ├── abap/                 # ⬅ ABAP objects to import into your SAP system
 │   ├── zif_vsp_service.intf.abap
 │   ├── zcl_vsp_utils.clas.abap

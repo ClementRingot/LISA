@@ -1,6 +1,6 @@
-# sap-translator documentation
+# LISA documentation
 
-`sap-translator` is an MCP server that lets AI assistants read, write and compare **SAP object translations**. It has two halves:
+**LISA** (Localization & Internationalization Service for ABAP) is an MCP server that lets AI assistants read, write and compare **SAP object translations**. It has two halves:
 
 - an **ABAP HTTP service** (`ZCL_I18N_SERVICE`) you install in your SAP system, and
 - this **Node.js MCP server**, which authenticates callers and forwards their requests to that service.

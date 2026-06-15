@@ -2,7 +2,7 @@
 
 ## The model: authentication only, no authorization
 
-`sap-translator` deliberately does **authentication only**. It proves *who* is calling; it does **not** decide *what* they may do. That decision belongs to SAP.
+`LISA` deliberately does **authentication only**. It proves *who* is calling; it does **not** decide *what* they may do. That decision belongs to SAP.
 
 - On BTP, the caller logs in via **XSUAA**. The resulting JWT is propagated to SAP through the Destination + Connectivity services (**principal propagation**).
 - SAP then enforces its **own authorization objects** — the same ones that already govern translation in your system — under the backed user's identity.
@@ -28,7 +28,7 @@ The token verifier is **chained**: XSUAA → OIDC → API key. The first one tha
 ## How principal propagation flows (BTP)
 
 ```
-MCP client ──JWT──▶ sap-translator ──(user JWT)──▶ Destination Service
+MCP client ──JWT──▶ LISA ──(user JWT)──▶ Destination Service
                                           │            (PP destination)
                                           ▼
                               Cloud Connector / SAP   ← authenticates as the *user*
@@ -45,7 +45,7 @@ For XSUAA, the server runs an OAuth proxy (ported from [ARC-1](https://github.co
 - a redirect-URI allowlist mirrored from `xs-security.json`,
 - a signed `state` codec that works around XSUAA's literal-`+`-in-state behavior.
 
-All of these sign with `SAP_TRANSLATOR_DCR_SIGNING_SECRET`. **Set it explicitly** (`cf set-env`) so deploys don't rotate the signing key and invalidate cached registrations — see [Configuration reference](./configuration-reference.md#oauth--dcr-btp).
+All of these sign with `LISA_DCR_SIGNING_SECRET`. **Set it explicitly** (`cf set-env`) so deploys don't rotate the signing key and invalidate cached registrations — see [Configuration reference](./configuration-reference.md#oauth--dcr-btp).
 
 ## See also
 

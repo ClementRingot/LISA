@@ -1,6 +1,6 @@
 # MCP tools usage
 
-`sap-translator` exposes **3 tools**. Every authenticated caller sees all three. This page documents each tool's inputs and gives example calls.
+`LISA` exposes **3 tools**. Every authenticated caller sees all three. This page documents each tool's inputs and gives example calls.
 
 > Earlier builds shipped `TranslateListTexts` and `TranslateCompare`. Both are gone — `TranslateGetTexts` is now the whole-object reader, so "list" and "compare" are done by reading (and diffing) its output. See [A typical workflow](#a-typical-workflow).
 

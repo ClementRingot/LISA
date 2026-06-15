@@ -4,7 +4,7 @@
 
 ```
 ┌──────────────┐   MCP/HTTP    ┌──────────────────────────────┐   HTTPS JSON   ┌──────────────────────┐
-│ AI assistant │ ────────────▶ │       sap-translator MCP      │ ─────────────▶ │  SAP ABAP system     │
+│ AI assistant │ ────────────▶ │       LISA MCP      │ ─────────────▶ │  SAP ABAP system     │
 │ (Claude/IDE) │   3 tools     │  ┌────────────────────────┐   │  POST          │  ┌────────────────┐  │
 │              │ ◀──────────── │  │ transport (http/stdio) │   │  {path}/{action}│  │ ZCL_I18N_SERVICE│  │
 └──────────────┘               │  │ auth (XSUAA/OIDC/key)  │   │ ◀───────────── │  │  (HTTP handler) │  │

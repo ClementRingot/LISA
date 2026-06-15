@@ -48,7 +48,7 @@ Add to your MCP client config (Claude Desktop, Cursor, VS Code):
 ```json
 {
   "mcpServers": {
-    "sap-translator": { "url": "http://localhost:8080/mcp" }
+    "lisa": { "url": "http://localhost:8080/mcp" }
   }
 }
 ```

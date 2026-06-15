@@ -5,7 +5,7 @@ import { StatelessDcrClientStore, matchesXsuaaRedirectPattern, validateRedirectU
 // The store emits audit/debug logs via the global logger.
 beforeAll(() => initLogger('text', 'error'));
 
-const XSUAA_ID = 'sb-sap-translator!t123';
+const XSUAA_ID = 'sb-lisa!t123';
 const XSUAA_SECRET = 'xsuaa-client-secret';
 const SIGNING = 'dcr-signing-secret-32-bytes-minimum-xx';
 

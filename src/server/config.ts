@@ -64,7 +64,7 @@ export function resolveConfig(): Config {
     oidcIssuer: env('OIDC_ISSUER'),
     oidcAudience: env('OIDC_AUDIENCE'),
     xsuaaBinding: parseXsuaaBinding(),
-    dcrSigningSecret: env('SAP_TRANSLATOR_DCR_SIGNING_SECRET'),
+    dcrSigningSecret: env('LISA_DCR_SIGNING_SECRET'),
     oauthDcrTtlSeconds: env('SAP_OAUTH_DCR_TTL_SECONDS') ? Number(env('SAP_OAUTH_DCR_TTL_SECONDS')) : undefined,
 
     mcpRateLimitPerMinute: Number(env('MCP_RATE_LIMIT') ?? 600),

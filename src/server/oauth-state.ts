@@ -2,7 +2,7 @@
  * Stateless, signed OAuth `state` codec for the XSUAA callback proxy.
  *
  * Ported verbatim from arc-1 (ClementRingot/arc-1, src/server/oauth-state.ts),
- * adapted only for sap-translator branding.
+ * adapted only for lisa branding.
  *
  * ── Why this exists ───────────────────────────────────────────────────
  * XSUAA echoes a literal `+` (not `%2B`) for any `state` value that
@@ -38,7 +38,7 @@ import crypto from 'node:crypto';
 
 /** Domain-separation label for the HKDF-style key derivation. Bump the
  *  version suffix to invalidate every outstanding state token at once. */
-const KDF_LABEL = 'sap-translator-oauth-state/v1';
+const KDF_LABEL = 'lisa-oauth-state/v1';
 
 /** Truncated HMAC length in bytes. 16 bytes (128 bits) is ample for a
  *  short-lived, single-use CSRF state token — matches StatelessDcrClientStore. */

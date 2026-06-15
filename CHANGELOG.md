@@ -57,6 +57,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - XSUAA OAuth proxy (stateless DCR + signed callback state), OIDC and API-key auth.
 - BTP deployment (MTA), Destination + Connectivity (principal propagation).
 
-[Unreleased]: https://github.com/ClementRingot/sap-translator/compare/v0.2.0...HEAD
-[0.2.0]: https://github.com/ClementRingot/sap-translator/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/ClementRingot/sap-translator/releases/tag/v0.1.0
+[Unreleased]: https://github.com/ClementRingot/LISA/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/ClementRingot/LISA/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/ClementRingot/LISA/releases/tag/v0.1.0

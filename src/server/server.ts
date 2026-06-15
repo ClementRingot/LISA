@@ -10,7 +10,7 @@ export async function createAndStartServer(config: Config): Promise<void> {
   const log = getLogger();
 
   if (config.transport === 'stdio') {
-    const server = new McpServer({ name: 'sap-translator', version: VERSION });
+    const server = new McpServer({ name: 'lisa', version: VERSION });
     registerTranslationTools(server, config);
 
     const transport = new StdioServerTransport();

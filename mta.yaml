@@ -1,10 +1,10 @@
 _schema-version: '3.1'
-ID: sap-translator
-description: MCP Server for SAP object translation
+ID: lisa
+description: LISA — Localization & Internationalization Service for ABAP (MCP server for translating ABAP objects)
 version: 0.1.0
 
 modules:
-  - name: sap-translator-mcp
+  - name: lisa-mcp
     type: nodejs
     path: .
     parameters:
@@ -12,9 +12,9 @@ modules:
       disk-quota: 512M
       health-check-type: http
       health-check-http-endpoint: /health
-      # Dynamic route: sap-translator-<space>.cfapps.<region>.hana.ondemand.com
+      # Dynamic route: lisa-<space>.cfapps.<region>.hana.ondemand.com
       routes:
-        - route: sap-translator-${space}.${default-domain}
+        - route: lisa-${space}.${default-domain}
     properties:
       # ── Transport ──────────────────────────────────────────────────────────
       MCP_TRANSPORT: http-streamable
@@ -31,10 +31,10 @@ modules:
       SAP_BTP_DESTINATION: SAP_SYSTEM_TECH_SBX
       SAP_BTP_PP_DESTINATION: SAP_SYSTEM_SSO_SBX
     requires:
-      - name: sap-translator-xsuaa
-      - name: sap-translator-destination
-      - name: sap-translator-connectivity
-      - name: sap-translator-logs
+      - name: lisa-xsuaa
+      - name: lisa-destination
+      - name: lisa-connectivity
+      - name: lisa-logs
     build-parameters:
       builder: custom
       commands:
@@ -54,26 +54,26 @@ modules:
         - cf
 
 resources:
-  - name: sap-translator-xsuaa
+  - name: lisa-xsuaa
     type: org.cloudfoundry.managed-service
     parameters:
       service: xsuaa
       service-plan: application
       path: ./xs-security.json
 
-  - name: sap-translator-destination
+  - name: lisa-destination
     type: org.cloudfoundry.managed-service
     parameters:
       service: destination
       service-plan: lite
 
-  - name: sap-translator-connectivity
+  - name: lisa-connectivity
     type: org.cloudfoundry.managed-service
     parameters:
       service: connectivity
       service-plan: lite
 
-  - name: sap-translator-logs
+  - name: lisa-logs
     type: org.cloudfoundry.managed-service
     parameters:
       service: application-logs

@@ -309,7 +309,7 @@ export function createHttpServer(config: Config): express.Application {
 
     requestContext.run({ requestId: randomUUID().slice(0, 8), user: sub }, async () => {
       // Per-request server + transport pattern avoids "already connected" errors.
-      const server = new McpServer({ name: 'sap-translator', version: VERSION });
+      const server = new McpServer({ name: 'lisa', version: VERSION });
       // Pass the raw bearer token so the SAP client can use principal propagation
       registerTranslationTools(server, config, token);
 

@@ -1,6 +1,6 @@
 # ABAP service — `zi18n_service`
 
-These are the ABAP objects you import into the **target SAP system** so that `sap-translator` (the MCP server) has something to call. The MCP server never talks to ADT directly for translations — it POSTs JSON to this handler, which does the work via the **XCO i18n** APIs.
+These are the ABAP objects you import into the **target SAP system** so that `LISA` (the MCP server) has something to call. The MCP server never talks to ADT directly for translations — it POSTs JSON to this handler, which does the work via the **XCO i18n** APIs.
 
 ## Objects (import in this order)
 

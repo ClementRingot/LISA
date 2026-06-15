@@ -2,7 +2,7 @@
  * Stateless OAuth Dynamic Client Registration store.
  *
  * Ported from arc-1 (ClementRingot/arc-1, src/server/stateless-client-store.ts),
- * adapted for sap-translator's authentication-only model (no XSUAA scopes).
+ * adapted for lisa's authentication-only model (no XSUAA scopes).
  *
  * MCP clients (Claude Desktop, Cursor, Copilot CLI…) register dynamically
  * via RFC 7591 and cache the returned `client_id` locally. With an in-memory
@@ -41,7 +41,7 @@ const ID_PREFIX = 'sapt-';
  * suffix ("v1" → "v2") invalidates every previously-issued client_id without
  * requiring a service-binding rotation, which is a useful escape hatch.
  */
-const KDF_LABEL = 'sap-translator-dcr/v1';
+const KDF_LABEL = 'lisa-dcr/v1';
 
 /** Schema version of the JSON payload embedded in the signed client_id. */
 const PAYLOAD_VERSION = 1;

@@ -2,7 +2,7 @@
  * XSUAA OAuth proxy for MCP-native clients.
  *
  * Ported from arc-1 (ClementRingot/arc-1, src/server/xsuaa.ts), adapted for
- * sap-translator's authentication-only model (no XSUAA scopes / role collections).
+ * lisa's authentication-only model (no XSUAA scopes / role collections).
  *
  * Enables Claude Desktop, Cursor, VS Code, and MCP Inspector to authenticate
  * via BTP XSUAA using the MCP specification's OAuth discovery (RFC 8414).
@@ -454,7 +454,7 @@ export function createXsuaaOAuthProvider(
   // The signing secret defaults to the XSUAA `clientsecret`. The downside: MTA
   // `cf deploy` rotates the clientsecret — every redeploy invalidates every
   // cached client_id. To opt out, pass a dedicated secret via `dcrSigningSecret`
-  // (e.g. SAP_TRANSLATOR_DCR_SIGNING_SECRET set with `cf set-env`, which survives
+  // (e.g. LISA_DCR_SIGNING_SECRET set with `cf set-env`, which survives
   // `cf deploy`). Empty / whitespace-only input falls back with a warning.
   const trimmedDcrSecret = options.dcrSigningSecret?.trim();
   let dcrSigningSecret: string;
@@ -465,7 +465,7 @@ export function createXsuaaOAuthProvider(
   } else {
     if (options.dcrSigningSecret !== undefined) {
       getLogger().warn(
-        'SAP_TRANSLATOR_DCR_SIGNING_SECRET was set but is empty or whitespace-only — falling back to XSUAA clientsecret. Set a real secret with `openssl rand -base64 48` or unset the env var.',
+        'LISA_DCR_SIGNING_SECRET was set but is empty or whitespace-only — falling back to XSUAA clientsecret. Set a real secret with `openssl rand -base64 48` or unset the env var.',
       );
     }
     dcrSigningSecret = credentials.clientsecret;
@@ -495,7 +495,7 @@ export function createXsuaaOAuthProvider(
   });
   if (dcrSigningSource === 'env') {
     getLogger().info(
-      'DCR signing key uses dedicated SAP_TRANSLATOR_DCR_SIGNING_SECRET — cached client_ids survive cf deploys that rotate the XSUAA clientsecret.',
+      'DCR signing key uses dedicated LISA_DCR_SIGNING_SECRET — cached client_ids survive cf deploys that rotate the XSUAA clientsecret.',
     );
   }
 
