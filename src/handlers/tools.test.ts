@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  CompareTranslationsSchema,
-  GetTranslationSchema,
-  ListLanguagesSchema,
-  SetTranslationSchema,
-  TOOLS,
-  TargetTypeSchema,
-} from './tools.js';
+import { GetTextsSchema, ListLanguagesSchema, SetTranslationSchema, TOOLS, TargetTypeSchema } from './tools.js';
 
 describe('TargetTypeSchema', () => {
   it('accepts the XCO semantic literals', () => {
@@ -31,19 +24,24 @@ describe('TargetTypeSchema', () => {
   });
 });
 
-describe('GetTranslationSchema', () => {
+describe('GetTextsSchema', () => {
   it('accepts a minimal valid payload', () => {
-    const r = GetTranslationSchema.safeParse({ target_type: 'data_element', object_name: 'ZMY', language: 'DE' });
+    const r = GetTextsSchema.safeParse({ target_type: 'data_element', object_name: 'ZMY', language: 'DE' });
+    expect(r.success).toBe(true);
+  });
+
+  it('accepts an omitted language (read in original language)', () => {
+    const r = GetTextsSchema.safeParse({ target_type: 'metadata_extension', object_name: 'ZC_ANOMALIESHU' });
     expect(r.success).toBe(true);
   });
 
   it('rejects a language longer than 2 chars', () => {
-    const r = GetTranslationSchema.safeParse({ target_type: 'data_element', object_name: 'ZMY', language: 'GER' });
+    const r = GetTextsSchema.safeParse({ target_type: 'data_element', object_name: 'ZMY', language: 'GER' });
     expect(r.success).toBe(false);
   });
 
   it('rejects an empty object_name', () => {
-    const r = GetTranslationSchema.safeParse({ target_type: 'data_element', object_name: '', language: 'DE' });
+    const r = GetTextsSchema.safeParse({ target_type: 'data_element', object_name: '', language: 'DE' });
     expect(r.success).toBe(false);
   });
 });
@@ -93,37 +91,16 @@ describe('SetTranslationSchema', () => {
   });
 });
 
-describe('ListLanguagesSchema / CompareTranslationsSchema', () => {
+describe('ListLanguagesSchema', () => {
   it('ListLanguages takes no args', () => {
     expect(ListLanguagesSchema.safeParse({}).success).toBe(true);
-  });
-
-  it('Compare requires both languages', () => {
-    expect(
-      CompareTranslationsSchema.safeParse({ target_type: 'data_element', object_name: 'ZMY', source_language: 'EN' })
-        .success,
-    ).toBe(false);
-    expect(
-      CompareTranslationsSchema.safeParse({
-        target_type: 'data_element',
-        object_name: 'ZMY',
-        source_language: 'EN',
-        target_language: 'DE',
-      }).success,
-    ).toBe(true);
   });
 });
 
 describe('TOOLS registry', () => {
-  it('exposes exactly the five translation tools', () => {
+  it('exposes exactly the three translation tools', () => {
     expect(Object.keys(TOOLS).sort()).toEqual(
-      [
-        'TranslateCompare',
-        'TranslateGetTexts',
-        'TranslateListLanguages',
-        'TranslateListTexts',
-        'TranslateSetTexts',
-      ].sort(),
+      ['TranslateGetTexts', 'TranslateListLanguages', 'TranslateSetTexts'].sort(),
     );
   });
 });

@@ -5,7 +5,7 @@
 ```
 ┌──────────────┐   MCP/HTTP    ┌──────────────────────────────┐   HTTPS JSON   ┌──────────────────────┐
 │ AI assistant │ ────────────▶ │       sap-translator MCP      │ ─────────────▶ │  SAP ABAP system     │
-│ (Claude/IDE) │   5 tools     │  ┌────────────────────────┐   │  POST          │  ┌────────────────┐  │
+│ (Claude/IDE) │   3 tools     │  ┌────────────────────────┐   │  POST          │  ┌────────────────┐  │
 │              │ ◀──────────── │  │ transport (http/stdio) │   │  {path}/{action}│  │ ZCL_I18N_SERVICE│  │
 └──────────────┘               │  │ auth (XSUAA/OIDC/key)  │   │ ◀───────────── │  │  (HTTP handler) │  │
                                │  │ I18nClient (wire)      │   │  {success,data} │  └───────┬────────┘  │
@@ -23,7 +23,7 @@ Two independently deployable halves:
 
 1. **MCP client → server.** The client calls `/mcp` with a tool invocation and a bearer token.
 2. **Authentication.** The chained verifier validates the token (XSUAA → OIDC → API key). On failure → 401. (See [Authentication](./authentication.md).)
-3. **Tool dispatch.** `intent.ts` routes the call to one of the 5 tools; Zod (`tools.ts`) validates the arguments.
+3. **Tool dispatch.** `intent.ts` routes the call to one of the 3 tools; Zod (`tools.ts`) validates the arguments.
 4. **Connection resolution.** `i18n-client.ts` builds a connection:
    - user JWT + `SAP_BTP_PP_DESTINATION` → per-user **principal propagation** destination;
    - else → BasicAuth technical destination (`SAP_BTP_DESTINATION`);

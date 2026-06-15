@@ -61,7 +61,7 @@ Ask your assistant:
 > "Show the translatable texts of data element `ZMY_AMOUNT`."
 > "Translate data element `ZMY_AMOUNT` to German on transport `K900123`."
 
-Behind the scenes those map to `TranslateListLanguages`, `TranslateListTexts`, and `TranslateSetTexts`. See **[MCP tools usage](./mcp-usage.md)** for the full surface.
+Behind the scenes those map to `TranslateListLanguages`, `TranslateGetTexts`, and `TranslateSetTexts`. See **[MCP tools usage](./mcp-usage.md)** for the full surface.
 
 ## Next
 

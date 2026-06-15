@@ -9,7 +9,7 @@
 
 1. **[Quickstart](./quickstart.md)** — the fastest path to a working setup.
 2. **[ABAP service setup](./abap-service-setup.md)** — import the class and publish/enable the HTTP service.
-3. **[MCP tools usage](./mcp-usage.md)** — the 5 tools, with examples.
+3. **[MCP tools usage](./mcp-usage.md)** — the 3 tools, with examples.
 
 ## Reference
 
@@ -26,7 +26,7 @@
 
 | | |
 |--|--|
-| **Tools** | `TranslateListLanguages`, `TranslateListTexts`, `TranslateGetTexts`, `TranslateSetTexts`, `TranslateCompare` |
+| **Tools** | `TranslateListLanguages`, `TranslateGetTexts`, `TranslateSetTexts` |
 | **Object types** | data elements, domains, CDS views, CDS metadata extensions, message classes, class/FG text pools, application log objects, business configuration objects |
 | **Transports** | `http-streamable` (default) and `stdio` |
 | **Auth** | none (stdio/local), API key, OIDC/JWT, XSUAA (BTP) |

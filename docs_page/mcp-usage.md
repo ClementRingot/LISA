@@ -1,6 +1,8 @@
 # MCP tools usage
 
-`sap-translator` exposes **5 tools**. Every authenticated caller sees all five. This page documents each tool's inputs and gives example calls.
+`sap-translator` exposes **3 tools**. Every authenticated caller sees all three. This page documents each tool's inputs and gives example calls.
+
+> Earlier builds shipped `TranslateListTexts` and `TranslateCompare`. Both are gone — `TranslateGetTexts` is now the whole-object reader, so "list" and "compare" are done by reading (and diffing) its output. See [A typical workflow](#a-typical-workflow).
 
 ## Common concepts
 
@@ -50,45 +52,32 @@ Returns `[{ sap_code, iso_code, name }, …]`.
 
 ---
 
-## `TranslateListTexts`
+## `TranslateGetTexts`
 
-List the translatable text attributes of an object. **Run this first** to discover what `attribute`s exist before reading/writing.
+Read **all** translatable texts of an object — this is the whole-object reader. Use it to discover slots, to read values, and (by calling it per language) to compare.
 
 | Arg | Required | Notes |
 |-----|----------|-------|
 | `target_type` | ✅ | |
 | `object_name` | ✅ | Technical name, e.g. `ZMY_DATA_ELEMENT`. |
-| `language` | ➖ | Source language to read values in (defaults to system language). |
+| `language` | ➖ | Language to read in. **Omit** to read in the object's original language; the effective language is returned in the response. |
+| `field_name` | ➖ | Client-side filter — keep only slots of this CDS field (`data_definition` / `metadata_extension`). |
+| `position` | ➖ | Client-side filter — keep only slots at this position. |
 | `text_pool_owner_type` | ➖ | `class` (default) or `function_group` for `text_pool`. |
 
 ```json
 {
-  "name": "TranslateListTexts",
-  "arguments": { "target_type": "data_element", "object_name": "ZMY_AMOUNT" }
-}
-```
-
-Returns `texts: [{ level, field_name, attribute, value }]`.
-
----
-
-## `TranslateGetTexts`
-
-Read the translations of an object in one language.
-
-| Arg | Required |
-|-----|----------|
-| `target_type`, `object_name`, `language` | ✅ |
-| selectors | ➖ |
-
-```json
-{
   "name": "TranslateGetTexts",
-  "arguments": { "target_type": "data_element", "object_name": "ZMY_AMOUNT", "language": "DE" }
+  "arguments": { "target_type": "metadata_extension", "object_name": "ZC_ANOMALIESHU", "language": "FR" }
 }
 ```
 
-Returns `texts: [{ attribute, value }]`.
+Returns `{ target_type, object_name, language, texts: [{ level, field_name, position?, attribute, value, populated }] }`, where:
+
+- `populated` is `true` when the slot is filled in this language, `false` when it exists but is empty (**still to translate**).
+- `position` is present only for repeatable annotations; the `attribute` is the **base** name (e.g. `ui_facet_label`), so `(field_name, position, attribute)` feeds `TranslateSetTexts` unchanged.
+
+To **list only filled** texts, keep entries with `populated === true`. To **compare** two languages, call once per language and diff on `(field_name, position, attribute, populated, value)`.
 
 ---
 
@@ -125,7 +114,7 @@ Common `attribute` values by `target_type`:
 | `target_type` | attributes |
 |---------------|-----------|
 | `data_element` | `short_field_label`, `medium_field_label`, `long_field_label`, `heading_field_label` |
-| `data_definition` / `metadata_extension` | `endusertext_label` |
+| `data_definition` / `metadata_extension` | `endusertext_label`; for positional UI labels pass the **base** attribute (e.g. `ui_facet_label`) + the top-level `position` from `TranslateGetTexts`. |
 | `message_class` | `message_short_text` (with `message_number` selector) |
 | `domain` | `fixed_value_description` (with `fixed_value` selector) |
 
@@ -133,38 +122,10 @@ Returns `{ …, transport, success }`.
 
 ---
 
-## `TranslateCompare`
-
-Compare a source vs. target language for an object and flag differences.
-
-| Arg | Required | Notes |
-|-----|----------|-------|
-| `target_type` | ✅ | Supported: `data_element`, `data_definition`, `metadata_extension`, `domain`, `message_class`. |
-| `object_name` | ✅ | |
-| `source_language` | ✅ | Reference language (already translated), typically `EN`. |
-| `target_language` | ✅ | Language to check (may be incomplete). |
-| `position` | ➖ | For repeatable `metadata_extension` annotations. |
-
-```json
-{
-  "name": "TranslateCompare",
-  "arguments": {
-    "target_type": "data_element",
-    "object_name": "ZMY_AMOUNT",
-    "source_language": "EN",
-    "target_language": "DE"
-  }
-}
-```
-
-Returns `items: [{ field_or_key, source_texts, target_texts, has_difference }]`. There are no aggregate total/translated/missing counts — iterate `has_difference` to find gaps.
-
----
-
 ## A typical workflow
 
 1. `TranslateListLanguages` — confirm the target language is installed.
-2. `TranslateListTexts` — discover the attributes of the object.
-3. `TranslateGetTexts` (source language) — read the source values to translate from.
-4. `TranslateSetTexts` (target language, with a transport) — write the translations.
-5. `TranslateCompare` — verify nothing is left untranslated.
+2. `TranslateGetTexts` (no `language`) — read the object in its original language; every slot comes back with its full key and `populated: true`.
+3. `TranslateGetTexts` (target language) — the same slots come back, with `populated: false` (and `value: ""`) for whatever is still missing.
+4. `TranslateSetTexts` (target language, with a transport) — write the translations, reusing `(field_name, position, attribute)` straight from step 2/3.
+5. `TranslateGetTexts` (target language) again — verify nothing is left with `populated: false`.

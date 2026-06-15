@@ -43,7 +43,7 @@ If this works but the MCP tool doesn't, the problem is in the server config (pat
 src/
 ├── index.ts                 # entry point: resolveConfig → initLogger → start server
 ├── handlers/
-│   ├── tools.ts             # Zod schemas + tool metadata (the 5 tools)
+│   ├── tools.ts             # Zod schemas + tool metadata (the 3 tools)
 │   └── intent.ts            # registers tools on the MCP server
 ├── sap/
 │   ├── i18n-client.ts       # HTTP client for ZCL_I18N_SERVICE (the wire contract)

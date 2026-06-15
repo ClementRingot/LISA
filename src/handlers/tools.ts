@@ -69,10 +69,13 @@ const SelectorShape = {
 
 export const ListLanguagesSchema = z.object({});
 
-export const GetTranslationSchema = z.object({
+export const GetTextsSchema = z.object({
   target_type: TargetTypeSchema,
   object_name: z.string().min(1).describe('Technical name of the SAP object, e.g. ZCL_MY_CLASS'),
-  language: LanguageSchema,
+  language: LanguageSchema.optional().describe(
+    'Language to read in (EN, DE, FR…). Optional — when omitted, the object is read in its ' +
+      'original language and the effective language is returned in the response.',
+  ),
   ...SelectorShape,
 });
 
@@ -100,26 +103,6 @@ export const SetTranslationSchema = z.object({
   ...SelectorShape,
 });
 
-export const ListTextsSchema = z.object({
-  target_type: TargetTypeSchema,
-  object_name: z.string().min(1).describe('Technical name of the SAP object'),
-  language: LanguageSchema.optional().describe(
-    'Optional source language to read texts in (defaults to system language)',
-  ),
-  text_pool_owner_type: SelectorShape.text_pool_owner_type,
-});
-
-export const CompareTranslationsSchema = z.object({
-  target_type: TargetTypeSchema.describe(
-    'Target type to compare. Supported by compare_translations: data_element, data_definition, ' +
-      'metadata_extension, domain, message_class.',
-  ),
-  object_name: z.string().min(1).describe('Technical name of the SAP object'),
-  source_language: LanguageSchema.describe('Reference language (already translated), typically EN'),
-  target_language: LanguageSchema.describe('Language to compare against (may be incomplete)'),
-  position: SelectorShape.position,
-});
-
 // ─── Tool metadata ────────────────────────────────────────────────────────────
 
 export const TOOLS = {
@@ -129,27 +112,20 @@ export const TOOLS = {
   },
   TranslateGetTexts: {
     description:
-      'Retrieve the translations of an SAP object in a given language. ' +
-      'Returns all text attributes with their translated values.',
-    inputSchema: GetTranslationSchema,
+      "Read all translatable texts of an SAP object in a given language, or in the object's " +
+      'original language when none is specified. Returns every text slot with its full key ' +
+      '(level, field_name, position, attribute), its value, and a `populated` flag ' +
+      '(false = the slot exists but is empty in this language, i.e. still to translate). ' +
+      'To list only filled texts, keep entries with populated=true; to compare two languages, ' +
+      'call it once per language and diff on (key, populated, value).',
+    inputSchema: GetTextsSchema,
   },
   TranslateSetTexts: {
     description:
-      'Write or update translations for an SAP object. ' +
-      'Provide the transport request and an array of { attribute, value } entries.',
+      'Write or update translations for an SAP object. Provide the transport request and an array ' +
+      'of { attribute, value } entries. For positional metadata-extension attributes, pass the base ' +
+      'attribute (e.g. ui_facet_label) plus the top-level `position` from TranslateGetTexts.',
     inputSchema: SetTranslationSchema,
-  },
-  TranslateListTexts: {
-    description:
-      'List all translatable text attributes of an SAP object (level, field, attribute, source value). ' +
-      'Use this before TranslateGetTexts to discover which attributes exist.',
-    inputSchema: ListTextsSchema,
-  },
-  TranslateCompare: {
-    description:
-      'Compare translations between a source and a target language for an SAP object. ' +
-      'Returns per-field items with source_texts, target_texts and a has_difference flag.',
-    inputSchema: CompareTranslationsSchema,
   },
 } as const;
 

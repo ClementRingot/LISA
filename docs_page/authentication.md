@@ -6,7 +6,7 @@
 
 - On BTP, the caller logs in via **XSUAA**. The resulting JWT is propagated to SAP through the Destination + Connectivity services (**principal propagation**).
 - SAP then enforces its **own authorization objects** — the same ones that already govern translation in your system — under the backed user's identity.
-- Therefore there are **no XSUAA scopes, role templates or role collections**. Users need **no BTP role** to use the server; every authenticated principal sees all 5 tools. What they can actually read/write/translate is whatever SAP allows them.
+- Therefore there are **no XSUAA scopes, role templates or role collections**. Users need **no BTP role** to use the server; every authenticated principal sees all 3 tools. What they can actually read/write/translate is whatever SAP allows them.
 
 `xs-security.json` reflects this: it has only `xsappname` and `oauth2-configuration` (redirect URIs) — no `scopes`, no `role-templates`.
 

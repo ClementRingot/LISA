@@ -2,14 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { I18nClient } from '../sap/i18n-client.js';
 import { getLogger } from '../server/logger.js';
 import type { Config } from '../server/types.js';
-import {
-  CompareTranslationsSchema,
-  GetTranslationSchema,
-  ListLanguagesSchema,
-  ListTextsSchema,
-  SetTranslationSchema,
-  TOOLS,
-} from './tools.js';
+import { GetTextsSchema, ListLanguagesSchema, SetTranslationSchema, TOOLS } from './tools.js';
 
 function formatError(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e);
@@ -44,57 +37,31 @@ export function registerTranslationTools(server: McpServer, config: Config, user
     },
   );
 
-  // ── TranslateListTexts ────────────────────────────────────────────────────
-  server.tool('TranslateListTexts', TOOLS.TranslateListTexts.description, ListTextsSchema.shape, async (args) => {
-    try {
-      const texts = await client.listTexts({
-        target_type: args.target_type,
-        object_name: args.object_name,
-        language: args.language,
-        text_pool_owner_type: args.text_pool_owner_type,
-      });
-      return { content: [{ type: 'text', text: json(texts) }] };
-    } catch (e) {
-      log.error('TranslateListTexts failed', { err: (e as Error).message });
-      return { content: [{ type: 'text', text: formatError(e) }], isError: true };
-    }
-  });
-
   // ── TranslateGetTexts ─────────────────────────────────────────────────────
-  server.tool('TranslateGetTexts', TOOLS.TranslateGetTexts.description, GetTranslationSchema.shape, async (args) => {
+  // Whole-object reader (list_texts). The optional scope params (field_name, position) are
+  // applied as client-side filters: the ABAP list_texts enumerates every field/position, so we
+  // narrow the result here rather than asking the server to.
+  server.tool('TranslateGetTexts', TOOLS.TranslateGetTexts.description, GetTextsSchema.shape, async (args) => {
     try {
-      const result = await client.getTranslation({
+      const result = await client.getTexts({
         target_type: args.target_type,
         object_name: args.object_name,
         language: args.language,
-        field_name: args.field_name,
-        fixed_value: args.fixed_value,
-        message_number: args.message_number,
-        text_symbol_id: args.text_symbol_id,
         text_pool_owner_type: args.text_pool_owner_type,
-        subobject_name: args.subobject_name,
-        position: args.position,
       });
-      return { content: [{ type: 'text', text: json(result) }] };
+
+      let texts = result.texts;
+      if (args.field_name) {
+        const fieldName = args.field_name.toUpperCase();
+        texts = texts.filter((t) => t.field_name.toUpperCase() === fieldName);
+      }
+      if (args.position) {
+        texts = texts.filter((t) => t.position === args.position);
+      }
+
+      return { content: [{ type: 'text', text: json({ ...result, texts }) }] };
     } catch (e) {
       log.error('TranslateGetTexts failed', { err: (e as Error).message });
-      return { content: [{ type: 'text', text: formatError(e) }], isError: true };
-    }
-  });
-
-  // ── TranslateCompare ──────────────────────────────────────────────────────
-  server.tool('TranslateCompare', TOOLS.TranslateCompare.description, CompareTranslationsSchema.shape, async (args) => {
-    try {
-      const result = await client.compareTranslations({
-        target_type: args.target_type,
-        object_name: args.object_name,
-        source_language: args.source_language,
-        target_language: args.target_language,
-        position: args.position,
-      });
-      return { content: [{ type: 'text', text: json(result) }] };
-    } catch (e) {
-      log.error('TranslateCompare failed', { err: (e as Error).message });
       return { content: [{ type: 'text', text: formatError(e) }], isError: true };
     }
   });

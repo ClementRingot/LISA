@@ -8,8 +8,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `TranslateGetTexts` now surfaces the `populated` flag the ABAP emits per text slot
+  (`false` = the slot exists but is empty in the requested language, i.e. still to
+  translate), and decomposes positional metadata-extension attributes (`ui_facet_label[1]`)
+  into a base `attribute` + a `position`, so `(field_name, position, attribute)` round-trips
+  into `TranslateSetTexts`.
 - `LICENSE` (MIT) with the project copyright and preserved upstream attribution
   for the ARC-1-derived modules; `license` field in `package.json`.
+
+### Changed
+- **Tool surface reduced from 5 to 3** (`TranslateListLanguages`, `TranslateGetTexts`,
+  `TranslateSetTexts`). `TranslateGetTexts` is now the whole-object reader (backed by the
+  `list_texts` action) with an **optional** `language` — when omitted, the object is read in
+  its original language and the effective language is returned.
+
+### Removed
+- `TranslateListTexts` and `TranslateCompare`. Listing is `TranslateGetTexts` filtered on
+  `populated`; comparing is two `TranslateGetTexts` calls diffed on `(key, populated, value)`.
 
 ## [0.2.0] — 2026-06-11
 

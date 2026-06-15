@@ -4,7 +4,7 @@
 
 `sap-translator` is a [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server that lets AI assistants (Claude, Cursor, VS Code, …) manage the translation of SAP repository objects — data elements, domains, CDS views, message classes, class/function-group text pools, and more — without leaving the chat.
 
-It is built the same way as [**ARC-1**](https://github.com/marianfoo/arc-1) (same XSUAA auth proxy, same BTP connectivity model, same Express/MCP-SDK transport), but instead of the full ADT toolset it exposes **5 focused translation tools** backed by a small ABAP HTTP service that wraps SAP's [XCO i18n APIs](https://help.sap.com/docs/abap-cloud/abap-development-tools-user-guide/internationalization-i18n).
+It is built the same way as [**ARC-1**](https://github.com/marianfoo/arc-1) (same XSUAA auth proxy, same BTP connectivity model, same Express/MCP-SDK transport), but instead of the full ADT toolset it exposes **3 focused translation tools** backed by a small ABAP HTTP service that wraps SAP's [XCO i18n APIs](https://help.sap.com/docs/abap-cloud/abap-development-tools-user-guide/internationalization-i18n).
 
 > **Deployment target:** `sap-translator` is designed to run on **SAP BTP (Cloud Foundry)** — that is the primary, supported way to use it (XSUAA login + principal propagation to SAP). Running it **locally** is fully supported too, but it is meant for **development and testing**, not production. The two paths are [Part 2 (BTP)](#part-2--deploy-to-sap-btp-recommended) and [Part 3 (local)](#part-3--run-locally-development--testing) below.
 
@@ -15,7 +15,7 @@ It is built the same way as [**ARC-1**](https://github.com/marianfoo/arc-1) (sam
 ```
 ┌──────────────┐   MCP/HTTP    ┌─────────────────────┐   HTTPS (JSON)   ┌──────────────────────┐
 │  AI assistant │ ────────────▶ │  sap-translator MCP │ ───────────────▶ │  SAP ABAP system     │
-│ (Claude/IDE)  │   5 tools     │  (Node.js, this repo)│  /zi18n_service  │  ZCL_I18N_SERVICE    │
+│ (Claude/IDE)  │   3 tools     │  (Node.js, this repo)│  /zi18n_service  │  ZCL_I18N_SERVICE    │
 └──────────────┘ ◀──────────── └─────────────────────┘ ◀─────────────── │  → XCO i18n APIs     │
                                                                           └──────────────────────┘
 ```
@@ -27,15 +27,15 @@ There are **two halves** to a working setup:
 
 ---
 
-## The 5 tools
+## The 3 tools
 
 | Tool | What it does |
 |------|--------------|
 | `TranslateListLanguages` | List all languages installed on the SAP system. |
-| `TranslateListTexts` | List the translatable text attributes of an object (level, field, attribute, source value). Use this first to discover what can be translated. |
-| `TranslateGetTexts` | Read the translations of an object in a given language. |
+| `TranslateGetTexts` | Read all translatable texts of an object in a given language (or its original language when none is given). Each slot comes back with its full key (`level`, `field_name`, `position`, `attribute`), its `value`, and a `populated` flag (`false` = empty in this language = still to translate). |
 | `TranslateSetTexts` | Write/update translations (requires a transport request). |
-| `TranslateCompare` | Compare a source vs. target language for an object and flag differences. |
+
+> **Discover / list / compare** all collapse into `TranslateGetTexts`: read with no `language` to see the original-language slots, keep `populated === true` to list only filled texts, and call it once per language and diff on `(key, populated, value)` to compare.
 
 ### Supported object types (`target_type`)
 
@@ -51,8 +51,6 @@ These are XCO **semantic** literals, not DDIC short codes:
 | `metadata_extension` | CDS metadata extension (DDLX) UI labels | `endusertext_label` |
 | `application_log_object` | Application log object (APLO) | object / sub-object texts |
 | `business_configuration_object` | Business configuration object (SMBC) | description texts |
-
-> `TranslateCompare` currently supports `data_element`, `data_definition`, `metadata_extension`, `domain`, `message_class`.
 
 ---
 
@@ -95,7 +93,7 @@ Import them (abapGit, or via ADT in the order above), create an ABAP **HTTP serv
 
 ## Part 2 — Deploy to SAP BTP (recommended)
 
-This is the **main way to run `sap-translator`**. It deploys to Cloud Foundry as an MTA and uses **XSUAA for authentication only** — there are **no scopes, role templates or role collections**. XSUAA proves the caller's identity; the JWT is propagated to SAP (principal propagation via the Destination + Connectivity services), and **SAP's own authorization objects** decide what each user may read, write or translate. Every authenticated user gets all 5 tools.
+This is the **main way to run `sap-translator`**. It deploys to Cloud Foundry as an MTA and uses **XSUAA for authentication only** — there are **no scopes, role templates or role collections**. XSUAA proves the caller's identity; the JWT is propagated to SAP (principal propagation via the Destination + Connectivity services), and **SAP's own authorization objects** decide what each user may read, write or translate. Every authenticated user gets all 3 tools.
 
 ```bash
 npm install

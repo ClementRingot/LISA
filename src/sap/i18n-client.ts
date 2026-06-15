@@ -7,21 +7,19 @@
  *
  * Wire contract — mirrors ZCL_I18N_SERVICE exactly:
  *   - The ACTION is the last segment of the URL path (handler reads `~path_info`),
- *     lowercase: list_languages | get_translation | set_translation | list_texts |
- *     compare_translations.
+ *     lowercase. The wrapper drives three actions: list_languages | list_texts | set_translation.
+ *     (The handler also exposes get_translation and compare_translations, but the MCP surface no
+ *     longer uses them — list_texts is the whole-object reader and the client diffs locally.)
  *   - ALL parameters are sent in the JSON request BODY (handler reads `request->get_text()`
  *     and string-matches "name":"value"). We therefore POST every action with a JSON body.
  *   - Object kinds are the XCO semantic `target_type` literals (data_element, domain, …).
  *   - Every response is wrapped: { "success": true, "data": {…} } on success, or
  *     { "success": false, "error": { "code", "message" } } with HTTP 400 on failure.
  *
- *   POST {path}/list_languages       body: {}
- *   POST {path}/get_translation      body: { target_type, object_name, language, … }
- *   POST {path}/set_translation      body: { target_type, object_name, language, transport,
- *                                            texts: [{ attribute, value }, …], … }
- *   POST {path}/list_texts           body: { target_type, object_name, language? }
- *   POST {path}/compare_translations body: { target_type, object_name, source_language,
- *                                            target_language }
+ *   POST {path}/list_languages   body: {}
+ *   POST {path}/list_texts       body: { target_type, object_name, language?, text_pool_owner_type? }
+ *   POST {path}/set_translation  body: { target_type, object_name, language, transport,
+ *                                        texts: [{ attribute, value }, …], …selectors }
  */
 
 import { Client, type Dispatcher, fetch as undiciFetch } from 'undici';
@@ -56,23 +54,26 @@ export interface TextEntry {
   value: string;
 }
 
-/** list_texts entries carry extra level/field context (build_text_json_entry). */
+/**
+ * list_texts entries carry extra level/field context (build_text_json_entry).
+ *
+ * `populated` is the canonical "this text is filled in the requested language" signal the ABAP
+ * emits as `xsdbool( iv_value IS NOT INITIAL )` — false means "to translate". `position` is
+ * decomposed by the wrapper from the ABAP `attribute` when it is encoded `name[n]` (e.g.
+ * `ui_facet_label[1]` → attribute `ui_facet_label`, position `"1"`), so the
+ * (field_name, position, attribute) triple round-trips straight into set_translation.
+ */
 export interface ListTextEntry extends TextEntry {
-  level: string; // 'entity' | 'field' | …
+  level: string; // 'entity' | 'field' | 'fixed_value' | 'message' | 'text_symbol'
   field_name: string; // empty for entity-level texts
-}
-
-export interface TranslationResult {
-  target_type: string;
-  object_name: string;
-  language: string;
-  texts: TextEntry[];
+  position?: string; // 1-based position for repeatable annotations; absent when not positional
+  populated: boolean; // true when the value is non-empty in the requested language
 }
 
 export interface ListTextsResult {
   target_type: string;
   object_name: string;
-  language: string;
+  language: string; // effective language the ABAP read in (original language when none was sent)
   texts: ListTextEntry[];
 }
 
@@ -82,22 +83,6 @@ export interface SetTranslationResult {
   language: string;
   transport: string;
   success: boolean;
-}
-
-/** One comparison row: a field/key with its source and target texts. */
-export interface ComparisonItem {
-  field_or_key: string;
-  source_texts: TextEntry[];
-  target_texts: TextEntry[];
-  has_difference: boolean;
-}
-
-export interface ComparisonResult {
-  target_type: string;
-  object_name: string;
-  source_language: string;
-  target_language: string;
-  items: ComparisonItem[];
 }
 
 /** Optional selectors the handler reads to disambiguate sub-objects within a target. */
@@ -321,6 +306,33 @@ async function callAction<T>(
   return envelope.data;
 }
 
+// ─── list_texts entry normalization ───────────────────────────────────────────
+
+/** Trailing 1-based position encoded by the ABAP as `name[n]` (e.g. ui_facet_label[1]). */
+const POSITION_SUFFIX = /\[(\d+)\]$/;
+
+/**
+ * Normalize one raw list_texts entry:
+ *   - decompose `attribute` "name[n]" → base attribute + `position` "n" so the
+ *     (field_name, position, attribute) key feeds set_translation unchanged;
+ *   - guarantee `populated` is present — older ABAP builds omit it, so fall back to
+ *     "value is non-empty" without inventing anything the server didn't say.
+ */
+export function normalizeListTextEntry(entry: ListTextEntry): ListTextEntry {
+  const populated = typeof entry.populated === 'boolean' ? entry.populated : entry.value !== '' && entry.value != null;
+
+  const match = POSITION_SUFFIX.exec(entry.attribute);
+  if (match) {
+    return {
+      ...entry,
+      attribute: entry.attribute.slice(0, match.index),
+      position: match[1],
+      populated,
+    };
+  }
+  return { ...entry, populated };
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export class I18nClient {
@@ -339,15 +351,20 @@ export class I18nClient {
     return data.languages;
   }
 
-  async getTranslation(
-    params: {
-      target_type: string;
-      object_name: string;
-      language: string;
-    } & I18nSelectors,
-  ): Promise<TranslationResult> {
+  /**
+   * Whole-object reader (list_texts). `language` is optional: when omitted, nothing is sent and
+   * the ABAP reads in the object's original language, echoing the effective `language` back.
+   * Every entry is normalized (decomposed position + guaranteed `populated`).
+   */
+  async getTexts(params: {
+    target_type: string;
+    object_name: string;
+    language?: string;
+    text_pool_owner_type?: string;
+  }): Promise<ListTextsResult> {
     const conn = await resolveConnection(this.config, this.userJwt);
-    return callAction<TranslationResult>(conn, this.path, 'get_translation', { ...params });
+    const data = await callAction<ListTextsResult>(conn, this.path, 'list_texts', { ...params });
+    return { ...data, texts: (data.texts ?? []).map(normalizeListTextEntry) };
   }
 
   async setTranslation(
@@ -361,26 +378,5 @@ export class I18nClient {
   ): Promise<SetTranslationResult> {
     const conn = await resolveConnection(this.config, this.userJwt);
     return callAction<SetTranslationResult>(conn, this.path, 'set_translation', { ...params });
-  }
-
-  async listTexts(params: {
-    target_type: string;
-    object_name: string;
-    language?: string;
-    text_pool_owner_type?: string;
-  }): Promise<ListTextsResult> {
-    const conn = await resolveConnection(this.config, this.userJwt);
-    return callAction<ListTextsResult>(conn, this.path, 'list_texts', { ...params });
-  }
-
-  async compareTranslations(params: {
-    target_type: string;
-    object_name: string;
-    source_language: string;
-    target_language: string;
-    position?: string;
-  }): Promise<ComparisonResult> {
-    const conn = await resolveConnection(this.config, this.userJwt);
-    return callAction<ComparisonResult>(conn, this.path, 'compare_translations', { ...params });
   }
 }
