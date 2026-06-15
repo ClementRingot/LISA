@@ -4,3 +4,6 @@ dist/
 *.local
 *.log
 .DS_Store
+
+# MTA build artifacts
+mta_archives/
