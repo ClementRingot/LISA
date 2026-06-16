@@ -13,29 +13,30 @@ The MCP server cannot translate anything on its own — it forwards requests to 
 - Developer authorization (create class/interface and an HTTP service) plus rights for transaction **`UCON_HTTP_SERVICES`** to enable the service.
 - A target package (any Z/local package works).
 
-## Objects to import
+## Pick the class for your stack
 
-Import in dependency order:
+There are **two variants of the handler**, and you import exactly **one**. Each class is **fully self-contained** — the JSON/parameter helpers are inlined — so there is no shared interface or utility class to import alongside it.
 
-| # | Object | File | Why |
-|---|--------|------|-----|
-| 1 | `ZIF_VSP_SERVICE` (interface) | `abap/zif_vsp_service.intf.abap` | Defines `ty_response` used by the utils class. |
-| 2 | `ZCL_VSP_UTILS` (class) | `abap/zcl_vsp_utils.clas.abap` | JSON helpers + `extract_param`. |
-| 3 | `ZCL_I18N_SERVICE` (class) | `abap/zcl_i18n_service.clas.abap` | The HTTP handler. |
+| File | Object | Use when |
+|------|--------|----------|
+| `abap/zcl_i18n_service.clas.abap` | `ZCL_I18N_SERVICE` | **On-premise / private cloud** — classic ABAP stack (S/4HANA 2022+ / ABAP Platform 2022+). |
+| `abap/zcl_i18n_service_cloud.clas.abap` | `ZCL_I18N_SERVICE_CLOUD` | **SAP BTP ABAP Environment / public cloud** (Steampunk) — Cloud-API-compliant variant. |
+
+Both implement `IF_HTTP_SERVICE_EXTENSION`, route on the URL path, and expose the **same wire contract** (see [How routing works](#how-routing-works)). They differ only in that the public-cloud variant restricts itself to **released / Cloud-development-compliant** APIs (e.g. `I_Language` instead of unreleased DDIC reads). On the wrong stack the other variant simply won't activate — so just paste the one that matches.
+
+> The rest of this page uses **`ZCL_I18N_SERVICE`** as the example name. If you are on ABAP Environment, read it as **`ZCL_I18N_SERVICE_CLOUD`** and import `zcl_i18n_service_cloud.clas.abap` instead — the steps are identical.
 
 ### abapGit (recommended)
 
-The files use abapGit source-format names (`*.intf.abap`, `*.clas.abap`). Link a package to a repo containing the `abap/` folder and pull, or use "import file" object-by-object.
+The files use abapGit source-format names (`*.clas.abap`). Link a package to a repo containing the `abap/` folder and pull, or use "import file" — just the one class for your stack.
 
 ### Manual (ADT)
 
-1. Create interface `ZIF_VSP_SERVICE` → paste source → activate.
-2. Create class `ZCL_VSP_UTILS` → paste source → activate.
-3. Create the handler class `ZCL_I18N_SERVICE` **via the HTTP service wizard** (next section), then paste the source from `abap/zcl_i18n_service.clas.abap` into it → activate.
+Create the handler class **via the HTTP service wizard** (next section), then paste the source from the file for your stack (`zcl_i18n_service.clas.abap` or `zcl_i18n_service_cloud.clas.abap`) into it → activate. That's it — nothing else to import.
 
-Assign all three to a transportable package if you intend to move them to QA/Prod.
+Assign it to a transportable package if you intend to move it to QA/Prod.
 
-> **Why create the handler class through the HTTP service wizard?** For HTTP services the handler class is owned by the service object: the wizard generates it if missing, and renaming/creating it outside the wizard is not supported (it produces an invalid handler). So create `ZIF_VSP_SERVICE` and `ZCL_VSP_UTILS` normally, but let the HTTP service wizard create `ZCL_I18N_SERVICE` and only then paste in the implementation.
+> **Why create the handler class through the HTTP service wizard?** For HTTP services the handler class is owned by the service object: the wizard generates it if missing, and renaming/creating it outside the wizard is not supported (it produces an invalid handler). So let the HTTP service wizard create the class and only then paste in the implementation.
 
 ## Create and enable the HTTP service
 
@@ -102,5 +103,5 @@ A **403** means the HTTP service exists but is not enabled — enable it in `UCO
 | 401 Unauthorized | Supplied credentials rejected / logon procedure mismatch. |
 | `UNKNOWN_ACTION` | Path segment misspelled, or a trailing slash dropped the action. |
 | `I18N_GET_ERROR` / `I18N_SET_ERROR` | XCO i18n call failed — object doesn't exist, language not installed, or no translation authorization for the user. |
-| Activation error on `ZCL_VSP_UTILS` | `ZIF_VSP_SERVICE` not imported/activated first. |
-| Invalid handler class | `ZCL_I18N_SERVICE` was created/renamed outside the HTTP service wizard — recreate it through the wizard. |
+| Class won't activate (e.g. unreleased API / DDIC read not allowed) | Wrong variant for the stack — use `ZCL_I18N_SERVICE_CLOUD` on ABAP Environment / public cloud, `ZCL_I18N_SERVICE` on-premise / private cloud. |
+| Invalid handler class | The handler class was created/renamed outside the HTTP service wizard — recreate it through the wizard. |

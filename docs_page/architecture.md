@@ -16,7 +16,7 @@
 
 Two independently deployable halves:
 
-- **ABAP side** — `ZCL_I18N_SERVICE` + `ZCL_VSP_UTILS` + `ZIF_VSP_SERVICE`, exposed as an ABAP HTTP service (`IF_HTTP_SERVICE_EXTENSION`, enabled in `UCON_HTTP_SERVICES`). Does the real translation work through the XCO i18n generation APIs.
+- **ABAP side** — a single, self-contained handler class exposed as an ABAP HTTP service (`IF_HTTP_SERVICE_EXTENSION`, enabled in `UCON_HTTP_SERVICES` on-premise / a communication scenario on ABAP Environment). Does the real translation work through the XCO i18n generation APIs. Two interchangeable variants share the same wire contract: **`ZCL_I18N_SERVICE`** (on-premise / private cloud) and **`ZCL_I18N_SERVICE_CLOUD`** (BTP ABAP Environment / public cloud, restricted to released/Cloud-compliant APIs).
 - **Node side** — this repo. Authenticates the caller, propagates identity, and maps MCP tool calls to HTTP calls.
 
 ## Request lifecycle (BTP, http-streamable)
@@ -29,7 +29,7 @@ Two independently deployable halves:
    - else → BasicAuth technical destination (`SAP_BTP_DESTINATION`);
    - on-premise targets go through the **Connectivity proxy** (standard HTTP forward-proxy, not CONNECT).
 5. **HTTP call to SAP.** POST to `{SAP_I18N_SERVICE_PATH}/{action}` with the params as a JSON body.
-6. **ABAP handling.** `ZCL_I18N_SERVICE` reads the action from the last path segment, parses the body via `ZCL_VSP_UTILS=>extract_param`, runs the XCO i18n call under the propagated user, and wraps the result in `{success,data}` / `{success,error}`.
+6. **ABAP handling.** The handler class reads the action from the last path segment, parses the body via its inlined `extract_param` helper, runs the XCO i18n call under the propagated user, and wraps the result in `{success,data}` / `{success,error}`.
 7. **Unwrap & return.** The client unwraps the envelope and returns the `data` to the assistant.
 
 ## Why a thin ABAP HTTP service (vs. ADT/OData)?
@@ -64,6 +64,5 @@ The XCO i18n APIs are ABAP-side generation APIs with no general REST surface. A 
 | XSUAA proxy + verifier | `src/server/xsuaa.ts` |
 | DCR store | `src/server/stateless-client-store.ts` |
 | OAuth state codec | `src/server/oauth-state.ts` |
-| ABAP handler | `abap/zcl_i18n_service.clas.abap` |
-| ABAP JSON utils | `abap/zcl_vsp_utils.clas.abap` |
-| ABAP shared types | `abap/zif_vsp_service.intf.abap` |
+| ABAP handler (on-premise / private cloud) | `abap/zcl_i18n_service.clas.abap` |
+| ABAP handler (BTP ABAP Environment / public cloud) | `abap/zcl_i18n_service_cloud.clas.abap` |

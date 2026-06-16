@@ -77,15 +77,14 @@ Typical division of labour: the **ADT MCP** finds the object and a transport →
 
 ## Part 1 — Install the ABAP service
 
-The ABAP objects to copy into your **target SAP system** live in [`abap/`](./abap):
+The ABAP handler to copy into your **target SAP system** lives in [`abap/`](./abap). There are **two variants — pick the one class that matches your stack**. Each is **fully self-contained** (the JSON/parameter helpers are inlined), so you import exactly **one** file, with no shared interface or utility class to import alongside it.
 
-| File | Object | Purpose |
-|------|--------|---------|
-| [`abap/zif_vsp_service.intf.abap`](./abap/zif_vsp_service.intf.abap) | `ZIF_VSP_SERVICE` | Shared response/message types. |
-| [`abap/zcl_vsp_utils.clas.abap`](./abap/zcl_vsp_utils.clas.abap) | `ZCL_VSP_UTILS` | JSON helpers + parameter extraction. |
-| [`abap/zcl_i18n_service.clas.abap`](./abap/zcl_i18n_service.clas.abap) | `ZCL_I18N_SERVICE` | The HTTP handler (`IF_HTTP_SERVICE_EXTENSION`). |
+| File | Object | Use when |
+|------|--------|----------|
+| [`abap/zcl_i18n_service.clas.abap`](./abap/zcl_i18n_service.clas.abap) | `ZCL_I18N_SERVICE` | **On-premise / private cloud** — classic ABAP stack (S/4HANA 2022+ / ABAP Platform 2022+). |
+| [`abap/zcl_i18n_service_cloud.clas.abap`](./abap/zcl_i18n_service_cloud.clas.abap) | `ZCL_I18N_SERVICE_CLOUD` | **SAP BTP ABAP Environment / public cloud** (Steampunk) — Cloud-API-compliant variant. |
 
-Import them (abapGit, or via ADT in the order above), create an ABAP **HTTP service** whose handler class is `ZCL_I18N_SERVICE`, and **enable** it in `UCON_HTTP_SERVICES` (S/4HANA 2022+). Point the MCP at its URL (default `/sap/bc/http/sap/zi18n_service`).
+Both implement `IF_HTTP_SERVICE_EXTENSION`, route actions from the URL path, and speak the **same wire contract** — they only differ in the released/Cloud-compliant APIs the public-cloud stack allows. Import the one file for your stack (abapGit, or paste via ADT), create an ABAP **HTTP service** whose handler class is that class, and **enable** it (`UCON_HTTP_SERVICES` on-premise; a communication scenario on ABAP Environment). Point the MCP at its URL (default `/sap/bc/http/sap/zi18n_service`).
 
 👉 Full step-by-step instructions: **[docs: ABAP service setup](./docs_page/abap-service-setup.md)**.
 
@@ -226,10 +225,9 @@ The [`docs_page/`](./docs_page) folder holds the long-form guides:
 
 ```
 LISA/
-├── abap/                 # ⬅ ABAP objects to import into your SAP system
-│   ├── zif_vsp_service.intf.abap
-│   ├── zcl_vsp_utils.clas.abap
-│   └── zcl_i18n_service.clas.abap
+├── abap/                 # ⬅ ABAP handler to import (pick one self-contained class)
+│   ├── zcl_i18n_service.clas.abap        # on-premise / private cloud
+│   └── zcl_i18n_service_cloud.clas.abap  # BTP ABAP Environment / public cloud
 ├── docs_page/            # long-form documentation
 ├── src/
 │   ├── index.ts          # entry point
