@@ -13,11 +13,11 @@ It is built the same way as [**ARC-1**](https://github.com/marianfoo/arc-1) (sam
 ## How it works
 
 ```
-┌──────────────┐   MCP/HTTP    ┌─────────────────────┐   HTTPS (JSON)    ┌──────────────────────────────┐
-│  AI assistant│ ────────────> │  LISA MCP           │ ───────────────>  │  SAP ABAP system             │
-│ (Claude/IDE) │   3 tools     │(Node.js, this repo) │  /zi18n_service   │  ZCL_I18N_SERVICE(_CLOUD)    │
-└──────────────┘ <──────────── └─────────────────────┘ <───────────────  │  → XCO i18n APIs             │
-                                                                         └──────────────────────────────┘
+┌──────────────┐   MCP/HTTP    ┌────────────────────┐   HTTPS (JSON)    ┌──────────────────────────┐
+│  AI assistant│ ────────────> │  LISA MCP          │ ───────────────>  │  SAP ABAP system         │
+│ (Claude/IDE) │   3 tools     │(Node.js, this repo)│  /zi18n_service   │  ZCL_I18N_SERVICE(_CLOUD)│
+└──────────────┘ <──────────── └────────────────────┘ <───────────────  │  → XCO i18n APIs         │
+                                                                        └──────────────────────────┘
 ```
 
 There are **two halves** to a working setup:
