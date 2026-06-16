@@ -7,3 +7,6 @@ dist/
 
 # MTA build artifacts
 mta_archives/
+
+# MTA extension descriptor — real landscape file (template is tracked)
+mta-overrides.mtaext

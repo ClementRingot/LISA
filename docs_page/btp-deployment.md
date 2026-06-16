@@ -23,8 +23,20 @@ Set the two property values in `mta.yaml` to the destination **names** you creat
 
 ## 2. Review `mta.yaml` and `xs-security.json`
 
-- [`mta.yaml`](../mta.yaml) defines the Node.js module, the dynamic route `lisa-<space>.<domain>`, the four required services, and the build commands (`npm ci && npm run build && npm prune --omit=dev`).
+- [`mta.yaml`](../mta.yaml) defines the Node.js module, the four required services, and the build commands (`npm ci && npm run build && npm prune --omit=dev`). It sets **no `host:`** — the deploy service assigns a globally-unique `${default-host}` so routes never collide across subaccounts on the shared `cfapps.<region>` domain. Pin a short URL via an extension descriptor (see below).
 - [`xs-security.json`](../xs-security.json) configures XSUAA. It contains **only** `xsappname` and `oauth2-configuration` (redirect URIs) — no scopes or roles, by design (see [Authentication](./authentication.md)). Add your MCP client's callback URL to `redirect-uris` if it isn't covered by the existing wildcards.
+
+### Pin a public URL with an extension descriptor (`.mtaext`)
+
+The base `mta.yaml` deliberately ships without a fixed route. To deploy under a short, stable URL your MCP clients can connect to, copy the tracked template and pin a `host:`:
+
+```bash
+cp mta-overrides.mtaext.example mta-overrides.mtaext
+# edit mta-overrides.mtaext — it keeps the lisa-<space> convention by default,
+# so the dev space resolves to https://lisa-dev.cfapps.<region>.../mcp
+```
+
+The real `mta-overrides.mtaext` is gitignored; the `.example` template is tracked. Override per-landscape destinations and other properties in the same file. The host must be lowercase letters/digits/hyphens and free on the shared region domain (first-come-first-served across **all** subaccounts) — pin a landscape-specific name if `lisa-<space>` ever clashes.
 
 ## 3. Build
 
@@ -37,8 +49,10 @@ mbt build            # → mta_archives/lisa_0.1.0.mtar
 
 ```bash
 cf login              # target the right org/space
-cf deploy mta_archives/lisa_0.1.0.mtar
+cf deploy mta_archives/lisa_0.1.0.mtar -e mta-overrides.mtaext
 ```
+
+Or in one step from npm: `npm run btp:build-deploy-ext` (builds the `.mtar` and deploys it with the extension applied). Omit `-e mta-overrides.mtaext` / use `npm run btp:build-deploy` to deploy on the auto-assigned default host.
 
 This creates the XSUAA, Destination, Connectivity and App-Logs service instances (if missing) and pushes the app.
 
