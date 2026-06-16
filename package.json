@@ -17,7 +17,12 @@
     "test:watch": "vitest",
     "lint": "biome check src/",
     "format": "biome format --write src/",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "btp:build": "mbt build",
+    "btp:deploy": "cf deploy mta_archives/lisa_$npm_package_version.mtar",
+    "btp:deploy-ext": "cf deploy mta_archives/lisa_$npm_package_version.mtar -e mta-overrides.mtaext",
+    "btp:build-deploy": "npm run btp:build && npm run btp:deploy",
+    "btp:build-deploy-ext": "npm run btp:build && npm run btp:deploy-ext"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
