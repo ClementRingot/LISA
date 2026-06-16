@@ -1113,8 +1113,6 @@ CLASS zcl_i18n_service IMPLEMENTATION.
     ENDWHILE.
   ENDMETHOD.
 
-  " ── JSON / param helpers (inlined, formerly zcl_vsp_utils) ────────────
-
   METHOD escape_json.
     rv_escaped = iv_string.
     REPLACE ALL OCCURRENCES OF '\' IN rv_escaped WITH '\\'.
