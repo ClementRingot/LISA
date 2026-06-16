@@ -22,7 +22,7 @@ It is built the same way as [**ARC-1**](https://github.com/marianfoo/arc-1) (sam
 
 There are **two halves** to a working setup:
 
-1. **The ABAP service** — a handler class (`ZCL_I18N_SERVICE`) that you import into your SAP system and expose as an ABAP **HTTP service**. It does the actual translation work using the XCO i18n APIs. → see [`abap/`](./abap) and [docs: ABAP service setup](./docs_page/abap-service-setup.md).
+1. **The ABAP service** — a handler class (`ZCL_I18N_SERVICE(_CLOUD)`) that you import into your SAP system and expose as an ABAP **HTTP service**. It does the actual translation work using the XCO i18n APIs. → see [`abap/`](./abap) and [docs: ABAP service setup](./docs_page/abap-service-setup.md).
 2. **The MCP server** — this Node.js project. It authenticates the caller, propagates their identity to SAP, and translates MCP tool calls into HTTP calls to the ABAP service.
 
 ---
