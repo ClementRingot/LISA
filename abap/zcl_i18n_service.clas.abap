@@ -71,6 +71,28 @@ CLASS zcl_i18n_service DEFINITION PUBLIC FINAL CREATE PUBLIC.
                 iv_field_name TYPE string
                 iv_anno_name  TYPE string
       RETURNING VALUE(rv_count) TYPE i.
+    " ── JSON / param helpers (inlined, formerly zcl_vsp_utils) ──────────
+    CLASS-METHODS escape_json
+      IMPORTING iv_string         TYPE string
+      RETURNING VALUE(rv_escaped) TYPE string.
+    CLASS-METHODS extract_param
+      IMPORTING iv_params       TYPE string
+                iv_name         TYPE string
+      RETURNING VALUE(rv_value) TYPE string.
+    CLASS-METHODS json_obj
+      IMPORTING iv_content     TYPE string
+      RETURNING VALUE(rv_json) TYPE string.
+    CLASS-METHODS json_str
+      IMPORTING iv_key         TYPE string
+                iv_value       TYPE string
+      RETURNING VALUE(rv_json) TYPE string.
+    CLASS-METHODS json_bool
+      IMPORTING iv_key         TYPE string
+                iv_value       TYPE abap_bool
+      RETURNING VALUE(rv_json) TYPE string.
+    CLASS-METHODS json_join
+      IMPORTING it_parts       TYPE string_table
+      RETURNING VALUE(rv_json) TYPE string.
 ENDCLASS.
 
 CLASS zcl_i18n_service IMPLEMENTATION.
@@ -109,11 +131,11 @@ CLASS zcl_i18n_service IMPLEMENTATION.
   METHOD build_error.
 
     rs_response-status = 400.
-    rs_response-json = zcl_vsp_utils=>json_obj( zcl_vsp_utils=>json_join( VALUE #(
-      ( zcl_vsp_utils=>json_bool( iv_key = 'success' iv_value = abap_false ) )
-      ( |"error":{ zcl_vsp_utils=>json_obj( zcl_vsp_utils=>json_join( VALUE #(
-          ( zcl_vsp_utils=>json_str( iv_key = 'code'    iv_value = iv_code ) )
-          ( zcl_vsp_utils=>json_str( iv_key = 'message' iv_value = iv_message ) )
+    rs_response-json = json_obj( json_join( VALUE #(
+      ( json_bool( iv_key = 'success' iv_value = abap_false ) )
+      ( |"error":{ json_obj( json_join( VALUE #(
+          ( json_str( iv_key = 'code'    iv_value = iv_code ) )
+          ( json_str( iv_key = 'message' iv_value = iv_message ) )
         ) ) ) }| )
     ) ) ).
 
@@ -121,23 +143,23 @@ CLASS zcl_i18n_service IMPLEMENTATION.
 
   METHOD build_success.
     rs_response-status = 200.
-    rs_response-json = zcl_vsp_utils=>json_obj( zcl_vsp_utils=>json_join( VALUE #(
-      ( zcl_vsp_utils=>json_bool( iv_key = 'success' iv_value = abap_true ) )
+    rs_response-json = json_obj( json_join( VALUE #(
+      ( json_bool( iv_key = 'success' iv_value = abap_true ) )
       ( |"data":{ iv_data }| )
     ) ) ).
   ENDMETHOD.
 
   METHOD handle_get_translation.
-    DATA(lv_target_type) = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'target_type' ).
-    DATA(lv_object_name) = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'object_name' ).
-    DATA(lv_language)    = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'language' ).
-    DATA(lv_field_name)  = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'field_name' ).
-    DATA(lv_fixed_value) = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'fixed_value' ).
-    DATA(lv_msg_number)  = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'message_number' ).
-    DATA(lv_text_sym_id) = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'text_symbol_id' ).
-    DATA(lv_pool_type)   = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'text_pool_owner_type' ).
-    DATA(lv_subobj_name) = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'subobject_name' ).
-    DATA(lv_position_s)  = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'position' ).
+    DATA(lv_target_type) = extract_param( iv_params = iv_params iv_name = 'target_type' ).
+    DATA(lv_object_name) = extract_param( iv_params = iv_params iv_name = 'object_name' ).
+    DATA(lv_language)    = extract_param( iv_params = iv_params iv_name = 'language' ).
+    DATA(lv_field_name)  = extract_param( iv_params = iv_params iv_name = 'field_name' ).
+    DATA(lv_fixed_value) = extract_param( iv_params = iv_params iv_name = 'fixed_value' ).
+    DATA(lv_msg_number)  = extract_param( iv_params = iv_params iv_name = 'message_number' ).
+    DATA(lv_text_sym_id) = extract_param( iv_params = iv_params iv_name = 'text_symbol_id' ).
+    DATA(lv_pool_type)   = extract_param( iv_params = iv_params iv_name = 'text_pool_owner_type' ).
+    DATA(lv_subobj_name) = extract_param( iv_params = iv_params iv_name = 'subobject_name' ).
+    DATA(lv_position_s)  = extract_param( iv_params = iv_params iv_name = 'position' ).
     IF lv_target_type IS INITIAL OR lv_object_name IS INITIAL OR lv_language IS INITIAL.
       rs_response = build_error( iv_code = 'MISSING_PARAM' iv_message = 'target_type, object_name, and language are required' ). RETURN.
     ENDIF.
@@ -263,10 +285,10 @@ CLASS zcl_i18n_service IMPLEMENTATION.
           WHEN OTHERS.
             rs_response = build_error( iv_code = 'UNSUPPORTED_TARGET' iv_message = |get_translation: target_type '{ lv_target_type }' is not supported| ). RETURN.
         ENDCASE.
-        DATA(lv_data) = zcl_vsp_utils=>json_obj( zcl_vsp_utils=>json_join( VALUE #(
-          ( zcl_vsp_utils=>json_str( iv_key = 'target_type' iv_value = lv_target_type ) )
-          ( zcl_vsp_utils=>json_str( iv_key = 'object_name' iv_value = lv_object_name ) )
-          ( zcl_vsp_utils=>json_str( iv_key = 'language' iv_value = lv_language ) )
+        DATA(lv_data) = json_obj( json_join( VALUE #(
+          ( json_str( iv_key = 'target_type' iv_value = lv_target_type ) )
+          ( json_str( iv_key = 'object_name' iv_value = lv_object_name ) )
+          ( json_str( iv_key = 'language' iv_value = lv_language ) )
           ( |"texts":[{ lv_json }]| )
         ) ) ).
         rs_response = build_success( iv_data = lv_data ).
@@ -276,17 +298,17 @@ CLASS zcl_i18n_service IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD handle_set_translation.
-    DATA(lv_target_type) = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'target_type' ).
-    DATA(lv_object_name) = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'object_name' ).
-    DATA(lv_language)    = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'language' ).
-    DATA(lv_transport)   = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'transport' ).
-    DATA(lv_field_name)  = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'field_name' ).
-    DATA(lv_fixed_value) = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'fixed_value' ).
-    DATA(lv_msg_number)  = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'message_number' ).
-    DATA(lv_text_sym_id) = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'text_symbol_id' ).
-    DATA(lv_pool_type)   = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'text_pool_owner_type' ).
-    DATA(lv_subobj_name) = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'subobject_name' ).
-    DATA(lv_position_s)  = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'position' ).
+    DATA(lv_target_type) = extract_param( iv_params = iv_params iv_name = 'target_type' ).
+    DATA(lv_object_name) = extract_param( iv_params = iv_params iv_name = 'object_name' ).
+    DATA(lv_language)    = extract_param( iv_params = iv_params iv_name = 'language' ).
+    DATA(lv_transport)   = extract_param( iv_params = iv_params iv_name = 'transport' ).
+    DATA(lv_field_name)  = extract_param( iv_params = iv_params iv_name = 'field_name' ).
+    DATA(lv_fixed_value) = extract_param( iv_params = iv_params iv_name = 'fixed_value' ).
+    DATA(lv_msg_number)  = extract_param( iv_params = iv_params iv_name = 'message_number' ).
+    DATA(lv_text_sym_id) = extract_param( iv_params = iv_params iv_name = 'text_symbol_id' ).
+    DATA(lv_pool_type)   = extract_param( iv_params = iv_params iv_name = 'text_pool_owner_type' ).
+    DATA(lv_subobj_name) = extract_param( iv_params = iv_params iv_name = 'subobject_name' ).
+    DATA(lv_position_s)  = extract_param( iv_params = iv_params iv_name = 'position' ).
     IF lv_target_type IS INITIAL OR lv_object_name IS INITIAL OR lv_language IS INITIAL OR lv_transport IS INITIAL.
       rs_response = build_error( iv_code = 'MISSING_PARAM' iv_message = 'target_type, object_name, language, and transport are required' ). RETURN.
     ENDIF.
@@ -298,8 +320,8 @@ CLASS zcl_i18n_service IMPLEMENTATION.
     FIND ALL OCCURRENCES OF PCRE '\{[^}]+\}' IN lv_texts_str RESULTS DATA(lt_obj_matches).
     LOOP AT lt_obj_matches INTO DATA(ls_obj_match).
       DATA(lv_obj_json) = lv_texts_str+ls_obj_match-offset(ls_obj_match-length).
-      APPEND zcl_vsp_utils=>extract_param( iv_params = lv_obj_json iv_name = 'attribute' ) TO lt_attrs.
-      APPEND zcl_vsp_utils=>extract_param( iv_params = lv_obj_json iv_name = 'value' ) TO lt_vals.
+      APPEND extract_param( iv_params = lv_obj_json iv_name = 'attribute' ) TO lt_attrs.
+      APPEND extract_param( iv_params = lv_obj_json iv_name = 'value' ) TO lt_vals.
     ENDLOOP.
     IF lt_attrs IS INITIAL. rs_response = build_error( iv_code = 'MISSING_PARAM' iv_message = 'texts array is empty or could not be parsed' ). RETURN. ENDIF.
     DATA lv_attr TYPE string. DATA lv_val TYPE string.
@@ -405,12 +427,12 @@ CLASS zcl_i18n_service IMPLEMENTATION.
           WHEN OTHERS.
             rs_response = build_error( iv_code = 'UNSUPPORTED_TARGET' iv_message = |set_translation: target_type '{ lv_target_type }' is not supported| ). RETURN.
         ENDCASE.
-        DATA(lv_data) = zcl_vsp_utils=>json_obj( zcl_vsp_utils=>json_join( VALUE #(
-          ( zcl_vsp_utils=>json_str( iv_key = 'target_type' iv_value = lv_target_type ) )
-          ( zcl_vsp_utils=>json_str( iv_key = 'object_name' iv_value = lv_object_name ) )
-          ( zcl_vsp_utils=>json_str( iv_key = 'language' iv_value = lv_language ) )
-          ( zcl_vsp_utils=>json_str( iv_key = 'transport' iv_value = lv_transport ) )
-          ( zcl_vsp_utils=>json_bool( iv_key = 'success' iv_value = abap_true ) )
+        DATA(lv_data) = json_obj( json_join( VALUE #(
+          ( json_str( iv_key = 'target_type' iv_value = lv_target_type ) )
+          ( json_str( iv_key = 'object_name' iv_value = lv_object_name ) )
+          ( json_str( iv_key = 'language' iv_value = lv_language ) )
+          ( json_str( iv_key = 'transport' iv_value = lv_transport ) )
+          ( json_bool( iv_key = 'success' iv_value = abap_true ) )
         ) ) ).
         rs_response = build_success( iv_data = lv_data ).
       CATCH cx_root INTO DATA(lx_error).
@@ -425,13 +447,13 @@ CLASS zcl_i18n_service IMPLEMENTATION.
         LOOP AT lt_langs INTO DATA(ls_lang).
           DATA(lv_name) = xco_cp=>language( ls_lang-Language )->get_name( ).
           IF lv_langs_json IS NOT INITIAL. lv_langs_json = lv_langs_json && |,|. ENDIF.
-          lv_langs_json = lv_langs_json && zcl_vsp_utils=>json_obj( zcl_vsp_utils=>json_join( VALUE #(
-            ( zcl_vsp_utils=>json_str( iv_key = 'sap_code' iv_value = CONV string( ls_lang-Language ) ) )
-            ( zcl_vsp_utils=>json_str( iv_key = 'iso_code' iv_value = CONV string( ls_lang-LanguageISOCode ) ) )
-            ( zcl_vsp_utils=>json_str( iv_key = 'name'     iv_value = CONV string( lv_name ) ) )
+          lv_langs_json = lv_langs_json && json_obj( json_join( VALUE #(
+            ( json_str( iv_key = 'sap_code' iv_value = CONV string( ls_lang-Language ) ) )
+            ( json_str( iv_key = 'iso_code' iv_value = CONV string( ls_lang-LanguageISOCode ) ) )
+            ( json_str( iv_key = 'name'     iv_value = CONV string( lv_name ) ) )
           ) ) ).
         ENDLOOP.
-        DATA(lv_data) = zcl_vsp_utils=>json_obj( |"languages":[{ lv_langs_json }]| ).
+        DATA(lv_data) = json_obj( |"languages":[{ lv_langs_json }]| ).
         rs_response = build_success( iv_data = lv_data ).
       CATCH cx_root INTO DATA(lx_error).
         rs_response = build_error( iv_code = 'LANG_ERROR' iv_message = lx_error->get_text( ) ).
@@ -439,11 +461,11 @@ CLASS zcl_i18n_service IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD handle_compare_translations.
-    DATA(lv_target_type) = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'target_type' ).
-    DATA(lv_object_name) = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'object_name' ).
-    DATA(lv_source_lang) = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'source_language' ).
-    DATA(lv_target_lang) = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'target_language' ).
-    DATA(lv_position_s)  = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'position' ).
+    DATA(lv_target_type) = extract_param( iv_params = iv_params iv_name = 'target_type' ).
+    DATA(lv_object_name) = extract_param( iv_params = iv_params iv_name = 'object_name' ).
+    DATA(lv_source_lang) = extract_param( iv_params = iv_params iv_name = 'source_language' ).
+    DATA(lv_target_lang) = extract_param( iv_params = iv_params iv_name = 'target_language' ).
+    DATA(lv_position_s)  = extract_param( iv_params = iv_params iv_name = 'position' ).
     DATA lt_fields TYPE string_table. DATA lv_items_json TYPE string.
     IF lv_target_type IS INITIAL OR lv_object_name IS INITIAL OR lv_source_lang IS INITIAL OR lv_target_lang IS INITIAL.
       rs_response = build_error( iv_code = 'MISSING_PARAM' iv_message = 'target_type, object_name, source_language, and target_language are required' ). RETURN.
@@ -468,10 +490,10 @@ CLASS zcl_i18n_service IMPLEMENTATION.
               DATA(lv_ent_diff) = xsdbool( lv_ent_src <> lv_ent_tgt OR lv_ent_tgt IS INITIAL ).
               DATA(lv_ent_src_j) = append_text_entry( iv_json = '' iv_attribute = 'endusertext_label' iv_value = lv_ent_src ).
               DATA(lv_ent_tgt_j) = append_text_entry( iv_json = '' iv_attribute = 'endusertext_label' iv_value = lv_ent_tgt ).
-              lv_items_json = zcl_vsp_utils=>json_obj( zcl_vsp_utils=>json_join( VALUE #(
-                ( zcl_vsp_utils=>json_str( iv_key = 'field_or_key' iv_value = '_entity_' ) )
+              lv_items_json = json_obj( json_join( VALUE #(
+                ( json_str( iv_key = 'field_or_key' iv_value = '_entity_' ) )
                 ( |"source_texts":[{ lv_ent_src_j }]| ) ( |"target_texts":[{ lv_ent_tgt_j }]| )
-                ( zcl_vsp_utils=>json_bool( iv_key = 'has_difference' iv_value = lv_ent_diff ) ) ) ) ).
+                ( json_bool( iv_key = 'has_difference' iv_value = lv_ent_diff ) ) ) ) ).
             ENDIF.
             IF lt_fields IS INITIAL. lt_fields = get_cds_field_names( lv_object_name ). ENDIF.
             DATA lt_cmp_fld_ta TYPE sxco_t_ddef_fld_text_attributs. APPEND xco_cp_data_definition=>text_attribute->field->endusertext_label TO lt_cmp_fld_ta.
@@ -488,10 +510,10 @@ CLASS zcl_i18n_service IMPLEMENTATION.
               DATA(lv_src_json) = append_text_entry( iv_json = '' iv_attribute = 'endusertext_label' iv_value = lv_src_lbl ).
               DATA(lv_tgt_json) = append_text_entry( iv_json = '' iv_attribute = 'endusertext_label' iv_value = lv_tgt_lbl ).
               IF lv_items_json IS NOT INITIAL. lv_items_json = lv_items_json && |,|. ENDIF.
-              lv_items_json = lv_items_json && zcl_vsp_utils=>json_obj( zcl_vsp_utils=>json_join( VALUE #(
-                ( zcl_vsp_utils=>json_str( iv_key = 'field_or_key' iv_value = lv_field ) )
+              lv_items_json = lv_items_json && json_obj( json_join( VALUE #(
+                ( json_str( iv_key = 'field_or_key' iv_value = lv_field ) )
                 ( |"source_texts":[{ lv_src_json }]| ) ( |"target_texts":[{ lv_tgt_json }]| )
-                ( zcl_vsp_utils=>json_bool( iv_key = 'has_difference' iv_value = lv_has_diff ) ) ) ) ).
+                ( json_bool( iv_key = 'has_difference' iv_value = lv_has_diff ) ) ) ) ).
             ENDLOOP.
           WHEN 'data_element'.
             DATA(lo_cmp_de) = xco_i18n=>target->data_element->object( CONV sxco_ad_object_name( lv_object_name ) ).
@@ -513,10 +535,10 @@ CLASS zcl_i18n_service IMPLEMENTATION.
               lv_src_texts_json = append_text_entry( iv_json = lv_src_texts_json iv_attribute = lv_cmp_attr iv_value = lv_src_t ).
               lv_tgt_texts_json = append_text_entry( iv_json = lv_tgt_texts_json iv_attribute = lv_cmp_attr iv_value = lv_tgt_t ).
             ENDLOOP.
-            lv_items_json = zcl_vsp_utils=>json_obj( zcl_vsp_utils=>json_join( VALUE #(
-              ( zcl_vsp_utils=>json_str( iv_key = 'field_or_key' iv_value = lv_object_name ) )
+            lv_items_json = json_obj( json_join( VALUE #(
+              ( json_str( iv_key = 'field_or_key' iv_value = lv_object_name ) )
               ( |"source_texts":[{ lv_src_texts_json }]| ) ( |"target_texts":[{ lv_tgt_texts_json }]| )
-              ( zcl_vsp_utils=>json_bool( iv_key = 'has_difference' iv_value = lv_any_diff ) ) ) ) ).
+              ( json_bool( iv_key = 'has_difference' iv_value = lv_any_diff ) ) ) ) ).
           WHEN 'metadata_extension'.
             IF lt_fields IS INITIAL. lt_fields = get_cds_field_names( lv_object_name ). ENDIF.
             DATA lt_cmp_me_attr_names TYPE string_table.
@@ -542,10 +564,10 @@ CLASS zcl_i18n_service IMPLEMENTATION.
                 lv_me_tgt_json = append_text_entry( iv_json = lv_me_tgt_json iv_attribute = lv_cmp_me_attr iv_value = lv_cmp_me_tgt ).
               ENDLOOP.
               IF lv_items_json IS NOT INITIAL. lv_items_json = lv_items_json && |,|. ENDIF.
-              lv_items_json = lv_items_json && zcl_vsp_utils=>json_obj( zcl_vsp_utils=>json_join( VALUE #(
-                ( zcl_vsp_utils=>json_str( iv_key = 'field_or_key' iv_value = lv_me_field ) )
+              lv_items_json = lv_items_json && json_obj( json_join( VALUE #(
+                ( json_str( iv_key = 'field_or_key' iv_value = lv_me_field ) )
                 ( |"source_texts":[{ lv_me_src_json }]| ) ( |"target_texts":[{ lv_me_tgt_json }]| )
-                ( zcl_vsp_utils=>json_bool( iv_key = 'has_difference' iv_value = lv_me_any_diff ) ) ) ) ).
+                ( json_bool( iv_key = 'has_difference' iv_value = lv_me_any_diff ) ) ) ) ).
             ENDLOOP.
           WHEN 'domain'.
             SELECT domvalue_l FROM dd07l WHERE domname = @lv_object_name AND as4local = 'A' ORDER BY valpos INTO TABLE @DATA(lt_cmp_dom_fvs).
@@ -561,10 +583,10 @@ CLASS zcl_i18n_service IMPLEMENTATION.
               DATA(lv_dom_src_j) = append_text_entry( iv_json = '' iv_attribute = 'fixed_value_description' iv_value = lv_dom_src ).
               DATA(lv_dom_tgt_j) = append_text_entry( iv_json = '' iv_attribute = 'fixed_value_description' iv_value = lv_dom_tgt ).
               IF lv_items_json IS NOT INITIAL. lv_items_json = lv_items_json && |,|. ENDIF.
-              lv_items_json = lv_items_json && zcl_vsp_utils=>json_obj( zcl_vsp_utils=>json_join( VALUE #(
-                ( zcl_vsp_utils=>json_str( iv_key = 'field_or_key' iv_value = CONV string( ls_cmp_dom_fv-domvalue_l ) ) )
+              lv_items_json = lv_items_json && json_obj( json_join( VALUE #(
+                ( json_str( iv_key = 'field_or_key' iv_value = CONV string( ls_cmp_dom_fv-domvalue_l ) ) )
                 ( |"source_texts":[{ lv_dom_src_j }]| ) ( |"target_texts":[{ lv_dom_tgt_j }]| )
-                ( zcl_vsp_utils=>json_bool( iv_key = 'has_difference' iv_value = lv_dom_diff ) ) ) ) ).
+                ( json_bool( iv_key = 'has_difference' iv_value = lv_dom_diff ) ) ) ) ).
             ENDLOOP.
           WHEN 'message_class'.
             SELECT DISTINCT msgnr FROM t100 WHERE arbgb = @lv_object_name ORDER BY msgnr INTO TABLE @DATA(lt_cmp_mc_nums).
@@ -580,19 +602,19 @@ CLASS zcl_i18n_service IMPLEMENTATION.
               DATA(lv_mc_src_j) = append_text_entry( iv_json = '' iv_attribute = 'message_short_text' iv_value = lv_mc_src ).
               DATA(lv_mc_tgt_j) = append_text_entry( iv_json = '' iv_attribute = 'message_short_text' iv_value = lv_mc_tgt ).
               IF lv_items_json IS NOT INITIAL. lv_items_json = lv_items_json && |,|. ENDIF.
-              lv_items_json = lv_items_json && zcl_vsp_utils=>json_obj( zcl_vsp_utils=>json_join( VALUE #(
-                ( zcl_vsp_utils=>json_str( iv_key = 'field_or_key' iv_value = CONV string( ls_cmp_mc_num-msgnr ) ) )
+              lv_items_json = lv_items_json && json_obj( json_join( VALUE #(
+                ( json_str( iv_key = 'field_or_key' iv_value = CONV string( ls_cmp_mc_num-msgnr ) ) )
                 ( |"source_texts":[{ lv_mc_src_j }]| ) ( |"target_texts":[{ lv_mc_tgt_j }]| )
-                ( zcl_vsp_utils=>json_bool( iv_key = 'has_difference' iv_value = lv_mc_diff ) ) ) ) ).
+                ( json_bool( iv_key = 'has_difference' iv_value = lv_mc_diff ) ) ) ) ).
             ENDLOOP.
           WHEN OTHERS.
             rs_response = build_error( iv_code = 'UNSUPPORTED_TARGET' iv_message = |compare_translations: target_type '{ lv_target_type }' not supported. Use: data_element, data_definition, metadata_extension, domain, message_class| ). RETURN.
         ENDCASE.
-        DATA(lv_data) = zcl_vsp_utils=>json_obj( zcl_vsp_utils=>json_join( VALUE #(
-          ( zcl_vsp_utils=>json_str( iv_key = 'target_type' iv_value = lv_target_type ) )
-          ( zcl_vsp_utils=>json_str( iv_key = 'object_name' iv_value = lv_object_name ) )
-          ( zcl_vsp_utils=>json_str( iv_key = 'source_language' iv_value = lv_source_lang ) )
-          ( zcl_vsp_utils=>json_str( iv_key = 'target_language' iv_value = lv_target_lang ) )
+        DATA(lv_data) = json_obj( json_join( VALUE #(
+          ( json_str( iv_key = 'target_type' iv_value = lv_target_type ) )
+          ( json_str( iv_key = 'object_name' iv_value = lv_object_name ) )
+          ( json_str( iv_key = 'source_language' iv_value = lv_source_lang ) )
+          ( json_str( iv_key = 'target_language' iv_value = lv_target_lang ) )
           ( |"items":[{ lv_items_json }]| )
         ) ) ).
         rs_response = build_success( iv_data = lv_data ).
@@ -602,10 +624,10 @@ CLASS zcl_i18n_service IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD handle_list_texts.
-    DATA(lv_target_type) = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'target_type' ).
-    DATA(lv_object_name) = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'object_name' ).
-    DATA(lv_language)    = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'language' ).
-    DATA(lv_pool_type)   = zcl_vsp_utils=>extract_param( iv_params = iv_params iv_name = 'text_pool_owner_type' ).
+    DATA(lv_target_type) = extract_param( iv_params = iv_params iv_name = 'target_type' ).
+    DATA(lv_object_name) = extract_param( iv_params = iv_params iv_name = 'object_name' ).
+    DATA(lv_language)    = extract_param( iv_params = iv_params iv_name = 'language' ).
+    DATA(lv_pool_type)   = extract_param( iv_params = iv_params iv_name = 'text_pool_owner_type' ).
     IF lv_target_type IS INITIAL OR lv_object_name IS INITIAL.
       rs_response = build_error( iv_code = 'MISSING_PARAM' iv_message = 'target_type and object_name are required' ). RETURN.
     ENDIF.
@@ -633,11 +655,11 @@ CLASS zcl_i18n_service IMPLEMENTATION.
             LOOP AT lo_lt_de_r->texts INTO DATA(lo_lt_de_t).
               lv_lt_de_idx = lv_lt_de_idx + 1. READ TABLE lt_lt_de_names INDEX lv_lt_de_idx INTO DATA(lv_lt_de_an).
               IF lv_texts_json IS NOT INITIAL. lv_texts_json = lv_texts_json && |,|. ENDIF.
-              lv_texts_json = lv_texts_json && zcl_vsp_utils=>json_obj( zcl_vsp_utils=>json_join( VALUE #(
-                ( zcl_vsp_utils=>json_str( iv_key = 'level' iv_value = 'entity' ) )
-                ( zcl_vsp_utils=>json_str( iv_key = 'field_name' iv_value = '' ) )
-                ( zcl_vsp_utils=>json_str( iv_key = 'attribute' iv_value = lv_lt_de_an ) )
-                ( zcl_vsp_utils=>json_str( iv_key = 'value' iv_value = lo_lt_de_t->get_string_value( ) ) ) ) ) ).
+              lv_texts_json = lv_texts_json && json_obj( json_join( VALUE #(
+                ( json_str( iv_key = 'level' iv_value = 'entity' ) )
+                ( json_str( iv_key = 'field_name' iv_value = '' ) )
+                ( json_str( iv_key = 'attribute' iv_value = lv_lt_de_an ) )
+                ( json_str( iv_key = 'value' iv_value = lo_lt_de_t->get_string_value( ) ) ) ) ) ).
             ENDLOOP.
           WHEN 'domain'.
             SELECT domvalue_l FROM dd07l WHERE domname = @lv_object_name AND as4local = 'A' ORDER BY valpos INTO TABLE @DATA(lt_lt_dom_fvs).
@@ -647,11 +669,11 @@ CLASS zcl_i18n_service IMPLEMENTATION.
               DATA(lo_lt_dom_r) = lo_lt_dom->get_translation( io_language = lo_language it_text_attributes = lt_lt_dom_a ).
               DATA(lv_fv_val) = ||. IF lo_lt_dom_r->texts IS NOT INITIAL. lv_fv_val = lo_lt_dom_r->texts[ 1 ]->get_string_value( ). ENDIF.
               IF lv_texts_json IS NOT INITIAL. lv_texts_json = lv_texts_json && |,|. ENDIF.
-              lv_texts_json = lv_texts_json && zcl_vsp_utils=>json_obj( zcl_vsp_utils=>json_join( VALUE #(
-                ( zcl_vsp_utils=>json_str( iv_key = 'level' iv_value = 'fixed_value' ) )
-                ( zcl_vsp_utils=>json_str( iv_key = 'field_name' iv_value = CONV string( ls_lt_dom_fv-domvalue_l ) ) )
-                ( zcl_vsp_utils=>json_str( iv_key = 'attribute' iv_value = 'fixed_value_description' ) )
-                ( zcl_vsp_utils=>json_str( iv_key = 'value' iv_value = lv_fv_val ) ) ) ) ).
+              lv_texts_json = lv_texts_json && json_obj( json_join( VALUE #(
+                ( json_str( iv_key = 'level' iv_value = 'fixed_value' ) )
+                ( json_str( iv_key = 'field_name' iv_value = CONV string( ls_lt_dom_fv-domvalue_l ) ) )
+                ( json_str( iv_key = 'attribute' iv_value = 'fixed_value_description' ) )
+                ( json_str( iv_key = 'value' iv_value = lv_fv_val ) ) ) ) ).
             ENDLOOP.
           WHEN 'data_definition'.
             DATA(lv_entity_desc) = ||.
@@ -680,11 +702,11 @@ CLASS zcl_i18n_service IMPLEMENTATION.
                         IF lo_lt_fr2->texts IS NOT INITIAL. lv_lt_fv = lo_lt_fr2->texts[ 1 ]->get_string_value( ). ENDIF. CATCH cx_root. CLEAR lv_lt_fv. ENDTRY.
                   ELSE. lv_lt_fv = lv_lt_ov. ENDIF.
                   IF lv_texts_json IS NOT INITIAL. lv_texts_json = lv_texts_json && |,|. ENDIF.
-                  lv_texts_json = lv_texts_json && zcl_vsp_utils=>json_obj( zcl_vsp_utils=>json_join( VALUE #(
-                    ( zcl_vsp_utils=>json_str( iv_key = 'level' iv_value = 'field' ) )
-                    ( zcl_vsp_utils=>json_str( iv_key = 'field_name' iv_value = lv_lt_fn ) )
-                    ( zcl_vsp_utils=>json_str( iv_key = 'attribute' iv_value = lv_lt_fan ) )
-                    ( zcl_vsp_utils=>json_str( iv_key = 'value' iv_value = lv_lt_fv ) ) ) ) ).
+                  lv_texts_json = lv_texts_json && json_obj( json_join( VALUE #(
+                    ( json_str( iv_key = 'level' iv_value = 'field' ) )
+                    ( json_str( iv_key = 'field_name' iv_value = lv_lt_fn ) )
+                    ( json_str( iv_key = 'attribute' iv_value = lv_lt_fan ) )
+                    ( json_str( iv_key = 'value' iv_value = lv_lt_fv ) ) ) ) ).
                 ENDIF.
               ENDLOOP.
             ENDLOOP.
@@ -711,9 +733,9 @@ CLASS zcl_i18n_service IMPLEMENTATION.
                         IF lo_lt_dd_mr2->texts IS NOT INITIAL. lv_lt_dd_mv = lo_lt_dd_mr2->texts[ 1 ]->get_string_value( ). ENDIF. CATCH cx_root. CLEAR lv_lt_dd_mv. ENDTRY.
                   ELSE. lv_lt_dd_mv = lv_lt_dd_ov. ENDIF.
                   IF lv_texts_json IS NOT INITIAL. lv_texts_json = lv_texts_json && |,|. ENDIF.
-                  lv_texts_json = lv_texts_json && zcl_vsp_utils=>json_obj( zcl_vsp_utils=>json_join( VALUE #(
-                    ( zcl_vsp_utils=>json_str( iv_key = 'level' iv_value = 'field' ) ) ( zcl_vsp_utils=>json_str( iv_key = 'field_name' iv_value = lv_lt_dd_mfn ) )
-                    ( zcl_vsp_utils=>json_str( iv_key = 'attribute' iv_value = lv_lt_dd_man ) ) ( zcl_vsp_utils=>json_str( iv_key = 'value' iv_value = lv_lt_dd_mv ) ) ) ) ).
+                  lv_texts_json = lv_texts_json && json_obj( json_join( VALUE #(
+                    ( json_str( iv_key = 'level' iv_value = 'field' ) ) ( json_str( iv_key = 'field_name' iv_value = lv_lt_dd_mfn ) )
+                    ( json_str( iv_key = 'attribute' iv_value = lv_lt_dd_man ) ) ( json_str( iv_key = 'value' iv_value = lv_lt_dd_mv ) ) ) ) ).
                 ENDIF.
               ENDLOOP.
               LOOP AT lt_lt_dd_me_pos_attrs INTO DATA(lv_lt_dd_pan).
@@ -734,9 +756,9 @@ CLASS zcl_i18n_service IMPLEMENTATION.
                     ELSE. lv_lt_dd_pv = lv_lt_dd_pov. ENDIF.
                     DATA(lv_lt_dd_pan_pos) = |{ lv_lt_dd_pan }[{ lv_lt_dd_pos }]|.
                     IF lv_texts_json IS NOT INITIAL. lv_texts_json = lv_texts_json && |,|. ENDIF.
-                    lv_texts_json = lv_texts_json && zcl_vsp_utils=>json_obj( zcl_vsp_utils=>json_join( VALUE #(
-                      ( zcl_vsp_utils=>json_str( iv_key = 'level' iv_value = 'field' ) ) ( zcl_vsp_utils=>json_str( iv_key = 'field_name' iv_value = lv_lt_dd_mfn ) )
-                      ( zcl_vsp_utils=>json_str( iv_key = 'attribute' iv_value = lv_lt_dd_pan_pos ) ) ( zcl_vsp_utils=>json_str( iv_key = 'value' iv_value = lv_lt_dd_pv ) ) ) ) ).
+                    lv_texts_json = lv_texts_json && json_obj( json_join( VALUE #(
+                      ( json_str( iv_key = 'level' iv_value = 'field' ) ) ( json_str( iv_key = 'field_name' iv_value = lv_lt_dd_mfn ) )
+                      ( json_str( iv_key = 'attribute' iv_value = lv_lt_dd_pan_pos ) ) ( json_str( iv_key = 'value' iv_value = lv_lt_dd_pv ) ) ) ) ).
                   ENDIF.
                   lv_lt_dd_pos = lv_lt_dd_pos + 1.
                 ENDWHILE.
@@ -766,9 +788,9 @@ CLASS zcl_i18n_service IMPLEMENTATION.
                         IF lo_lt_mr2->texts IS NOT INITIAL. lv_lt_mv = lo_lt_mr2->texts[ 1 ]->get_string_value( ). ENDIF. CATCH cx_root. CLEAR lv_lt_mv. ENDTRY.
                   ELSE. lv_lt_mv = lv_lt_mov. ENDIF.
                   IF lv_texts_json IS NOT INITIAL. lv_texts_json = lv_texts_json && |,|. ENDIF.
-                  lv_texts_json = lv_texts_json && zcl_vsp_utils=>json_obj( zcl_vsp_utils=>json_join( VALUE #(
-                    ( zcl_vsp_utils=>json_str( iv_key = 'level' iv_value = 'field' ) ) ( zcl_vsp_utils=>json_str( iv_key = 'field_name' iv_value = lv_lt_mfn ) )
-                    ( zcl_vsp_utils=>json_str( iv_key = 'attribute' iv_value = lv_lt_man ) ) ( zcl_vsp_utils=>json_str( iv_key = 'value' iv_value = lv_lt_mv ) ) ) ) ).
+                  lv_texts_json = lv_texts_json && json_obj( json_join( VALUE #(
+                    ( json_str( iv_key = 'level' iv_value = 'field' ) ) ( json_str( iv_key = 'field_name' iv_value = lv_lt_mfn ) )
+                    ( json_str( iv_key = 'attribute' iv_value = lv_lt_man ) ) ( json_str( iv_key = 'value' iv_value = lv_lt_mv ) ) ) ) ).
                 ENDIF.
               ENDLOOP.
               LOOP AT lt_lt_me_pos_attrs INTO DATA(lv_lt_pan).
@@ -789,9 +811,9 @@ CLASS zcl_i18n_service IMPLEMENTATION.
                     ELSE. lv_lt_pv = lv_lt_pov. ENDIF.
                     DATA(lv_lt_pan_pos) = |{ lv_lt_pan }[{ lv_lt_pos }]|.
                     IF lv_texts_json IS NOT INITIAL. lv_texts_json = lv_texts_json && |,|. ENDIF.
-                    lv_texts_json = lv_texts_json && zcl_vsp_utils=>json_obj( zcl_vsp_utils=>json_join( VALUE #(
-                      ( zcl_vsp_utils=>json_str( iv_key = 'level' iv_value = 'field' ) ) ( zcl_vsp_utils=>json_str( iv_key = 'field_name' iv_value = lv_lt_mfn ) )
-                      ( zcl_vsp_utils=>json_str( iv_key = 'attribute' iv_value = lv_lt_pan_pos ) ) ( zcl_vsp_utils=>json_str( iv_key = 'value' iv_value = lv_lt_pv ) ) ) ) ).
+                    lv_texts_json = lv_texts_json && json_obj( json_join( VALUE #(
+                      ( json_str( iv_key = 'level' iv_value = 'field' ) ) ( json_str( iv_key = 'field_name' iv_value = lv_lt_mfn ) )
+                      ( json_str( iv_key = 'attribute' iv_value = lv_lt_pan_pos ) ) ( json_str( iv_key = 'value' iv_value = lv_lt_pv ) ) ) ) ).
                   ENDIF.
                   lv_lt_pos = lv_lt_pos + 1.
                 ENDWHILE.
@@ -805,9 +827,9 @@ CLASS zcl_i18n_service IMPLEMENTATION.
               DATA(lo_lt_mc_r) = lo_lt_mc_tgt->get_translation( io_language = lo_language it_text_attributes = lt_lt_mc_a ).
               DATA(lv_lt_mc_v) = ||. IF lo_lt_mc_r->texts IS NOT INITIAL. lv_lt_mc_v = lo_lt_mc_r->texts[ 1 ]->get_string_value( ). ENDIF.
               IF lv_texts_json IS NOT INITIAL. lv_texts_json = lv_texts_json && |,|. ENDIF.
-              lv_texts_json = lv_texts_json && zcl_vsp_utils=>json_obj( zcl_vsp_utils=>json_join( VALUE #(
-                ( zcl_vsp_utils=>json_str( iv_key = 'level' iv_value = 'message' ) ) ( zcl_vsp_utils=>json_str( iv_key = 'field_name' iv_value = CONV string( ls_lt_mc_num-msgnr ) ) )
-                ( zcl_vsp_utils=>json_str( iv_key = 'attribute' iv_value = 'message_short_text' ) ) ( zcl_vsp_utils=>json_str( iv_key = 'value' iv_value = lv_lt_mc_v ) ) ) ) ).
+              lv_texts_json = lv_texts_json && json_obj( json_join( VALUE #(
+                ( json_str( iv_key = 'level' iv_value = 'message' ) ) ( json_str( iv_key = 'field_name' iv_value = CONV string( ls_lt_mc_num-msgnr ) ) )
+                ( json_str( iv_key = 'attribute' iv_value = 'message_short_text' ) ) ( json_str( iv_key = 'value' iv_value = lv_lt_mc_v ) ) ) ) ).
             ENDLOOP.
           WHEN 'text_pool'.
             IF lv_pool_type = 'function_group'.
@@ -821,9 +843,9 @@ CLASS zcl_i18n_service IMPLEMENTATION.
                 DATA(lo_lt_fg_r) = lo_lt_fg_tgt->get_translation( io_language = lo_language it_text_attributes = lt_lt_tp_a ).
                 DATA(lv_lt_fg_v) = ||. IF lo_lt_fg_r->texts IS NOT INITIAL. lv_lt_fg_v = lo_lt_fg_r->texts[ 1 ]->get_string_value( ). ENDIF.
                 IF lv_texts_json IS NOT INITIAL. lv_texts_json = lv_texts_json && |,|. ENDIF.
-                lv_texts_json = lv_texts_json && zcl_vsp_utils=>json_obj( zcl_vsp_utils=>json_join( VALUE #(
-                  ( zcl_vsp_utils=>json_str( iv_key = 'level' iv_value = 'text_symbol' ) ) ( zcl_vsp_utils=>json_str( iv_key = 'field_name' iv_value = CONV string( lv_lt_fg_key ) ) )
-                  ( zcl_vsp_utils=>json_str( iv_key = 'attribute' iv_value = 'text_element_text' ) ) ( zcl_vsp_utils=>json_str( iv_key = 'value' iv_value = lv_lt_fg_v ) ) ) ) ).
+                lv_texts_json = lv_texts_json && json_obj( json_join( VALUE #(
+                  ( json_str( iv_key = 'level' iv_value = 'text_symbol' ) ) ( json_str( iv_key = 'field_name' iv_value = CONV string( lv_lt_fg_key ) ) )
+                  ( json_str( iv_key = 'attribute' iv_value = 'text_element_text' ) ) ( json_str( iv_key = 'value' iv_value = lv_lt_fg_v ) ) ) ) ).
               ENDLOOP.
             ELSE.
               DATA lv_lt_cls_prog TYPE syrepid. lv_lt_cls_prog = |{ lv_object_name }======================CP|.
@@ -836,9 +858,9 @@ CLASS zcl_i18n_service IMPLEMENTATION.
                 DATA(lo_lt_cls_r) = lo_lt_cls_tgt->get_translation( io_language = lo_language it_text_attributes = lt_lt_tp_a ).
                 DATA(lv_lt_cls_v) = ||. IF lo_lt_cls_r->texts IS NOT INITIAL. lv_lt_cls_v = lo_lt_cls_r->texts[ 1 ]->get_string_value( ). ENDIF.
                 IF lv_texts_json IS NOT INITIAL. lv_texts_json = lv_texts_json && |,|. ENDIF.
-                lv_texts_json = lv_texts_json && zcl_vsp_utils=>json_obj( zcl_vsp_utils=>json_join( VALUE #(
-                  ( zcl_vsp_utils=>json_str( iv_key = 'level' iv_value = 'text_symbol' ) ) ( zcl_vsp_utils=>json_str( iv_key = 'field_name' iv_value = CONV string( lv_lt_cls_key ) ) )
-                  ( zcl_vsp_utils=>json_str( iv_key = 'attribute' iv_value = 'text_element_text' ) ) ( zcl_vsp_utils=>json_str( iv_key = 'value' iv_value = lv_lt_cls_v ) ) ) ) ).
+                lv_texts_json = lv_texts_json && json_obj( json_join( VALUE #(
+                  ( json_str( iv_key = 'level' iv_value = 'text_symbol' ) ) ( json_str( iv_key = 'field_name' iv_value = CONV string( lv_lt_cls_key ) ) )
+                  ( json_str( iv_key = 'attribute' iv_value = 'text_element_text' ) ) ( json_str( iv_key = 'value' iv_value = lv_lt_cls_v ) ) ) ) ).
               ENDLOOP.
             ENDIF.
           WHEN 'application_log_object'.
@@ -858,10 +880,10 @@ CLASS zcl_i18n_service IMPLEMENTATION.
           WHEN OTHERS.
             rs_response = build_error( iv_code = 'UNSUPPORTED_TARGET' iv_message = |list_texts: target_type '{ lv_target_type }' is not supported| ). RETURN.
         ENDCASE.
-        DATA(lv_data) = zcl_vsp_utils=>json_obj( zcl_vsp_utils=>json_join( VALUE #(
-          ( zcl_vsp_utils=>json_str( iv_key = 'target_type' iv_value = lv_target_type ) )
-          ( zcl_vsp_utils=>json_str( iv_key = 'object_name' iv_value = lv_object_name ) )
-          ( zcl_vsp_utils=>json_str( iv_key = 'language' iv_value = lv_language ) )
+        DATA(lv_data) = json_obj( json_join( VALUE #(
+          ( json_str( iv_key = 'target_type' iv_value = lv_target_type ) )
+          ( json_str( iv_key = 'object_name' iv_value = lv_object_name ) )
+          ( json_str( iv_key = 'language' iv_value = lv_language ) )
           ( |"texts":[{ lv_texts_json }]| )
         ) ) ).
         rs_response = build_success( iv_data = lv_data ).
@@ -884,9 +906,9 @@ CLASS zcl_i18n_service IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD append_text_entry.
-    DATA(lv_entry) = zcl_vsp_utils=>json_obj( zcl_vsp_utils=>json_join( VALUE #(
-      ( zcl_vsp_utils=>json_str( iv_key = 'attribute' iv_value = iv_attribute ) )
-      ( zcl_vsp_utils=>json_str( iv_key = 'value'     iv_value = iv_value     ) )
+    DATA(lv_entry) = json_obj( json_join( VALUE #(
+      ( json_str( iv_key = 'attribute' iv_value = iv_attribute ) )
+      ( json_str( iv_key = 'value'     iv_value = iv_value     ) )
     ) ) ).
     IF iv_json IS NOT INITIAL.
       rv_json = iv_json && ',' && lv_entry.
@@ -1009,12 +1031,12 @@ CLASS zcl_i18n_service IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD build_text_json_entry.
-    rv_json = zcl_vsp_utils=>json_obj( zcl_vsp_utils=>json_join( VALUE #(
-      ( zcl_vsp_utils=>json_str( iv_key = 'level'      iv_value = iv_level ) )
-      ( zcl_vsp_utils=>json_str( iv_key = 'field_name' iv_value = iv_field_name ) )
-      ( zcl_vsp_utils=>json_str( iv_key = 'attribute'  iv_value = iv_attribute ) )
-      ( zcl_vsp_utils=>json_str( iv_key = 'value'      iv_value = iv_value ) )
-      ( zcl_vsp_utils=>json_bool( iv_key = 'populated' iv_value = xsdbool( iv_value IS NOT INITIAL ) ) )
+    rv_json = json_obj( json_join( VALUE #(
+      ( json_str( iv_key = 'level'      iv_value = iv_level ) )
+      ( json_str( iv_key = 'field_name' iv_value = iv_field_name ) )
+      ( json_str( iv_key = 'attribute'  iv_value = iv_attribute ) )
+      ( json_str( iv_key = 'value'      iv_value = iv_value ) )
+      ( json_bool( iv_key = 'populated' iv_value = xsdbool( iv_value IS NOT INITIAL ) ) )
     ) ) ).
   ENDMETHOD.
 
@@ -1068,6 +1090,59 @@ CLASS zcl_i18n_service IMPLEMENTATION.
       ENDCASE.
       lv_idx = lv_idx + 1.
     ENDWHILE.
+  ENDMETHOD.
+
+  " ── JSON / param helpers (inlined, formerly zcl_vsp_utils) ────────────
+
+  METHOD escape_json.
+    rv_escaped = iv_string.
+    REPLACE ALL OCCURRENCES OF '\' IN rv_escaped WITH '\\'.
+    REPLACE ALL OCCURRENCES OF '"' IN rv_escaped WITH '\"'.
+    REPLACE ALL OCCURRENCES OF cl_abap_char_utilities=>cr_lf IN rv_escaped WITH '\n'.
+    REPLACE ALL OCCURRENCES OF cl_abap_char_utilities=>newline IN rv_escaped WITH '\n'.
+    REPLACE ALL OCCURRENCES OF cl_abap_char_utilities=>horizontal_tab IN rv_escaped WITH '\t'.
+  ENDMETHOD.
+
+  METHOD extract_param.
+    DATA lv_name TYPE string.
+    lv_name = iv_name.
+    CONDENSE lv_name.
+    DATA(lv_search) = |"{ lv_name }":|.
+    DATA lv_pos TYPE i.
+    FIND lv_search IN iv_params MATCH OFFSET lv_pos.
+    IF sy-subrc = 0.
+      DATA(lv_rest) = iv_params+lv_pos.
+      FIND PCRE ':\s*"([^"]*)"' IN lv_rest SUBMATCHES rv_value.
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD json_obj.
+    DATA(lv_open) = '{'.
+    DATA(lv_close) = '}'.
+    rv_json = |{ lv_open }{ iv_content }{ lv_close }|.
+  ENDMETHOD.
+
+  METHOD json_str.
+    rv_json = |"{ iv_key }":"{ escape_json( iv_value ) }"|.
+  ENDMETHOD.
+
+  METHOD json_bool.
+    DATA(lv_val) = COND string( WHEN iv_value = abap_true THEN 'true' ELSE 'false' ).
+    rv_json = |"{ iv_key }":{ lv_val }|.
+  ENDMETHOD.
+
+  METHOD json_join.
+    DATA lv_first TYPE abap_bool VALUE abap_true.
+    LOOP AT it_parts INTO DATA(lv_part).
+      IF lv_part IS INITIAL.
+        CONTINUE.
+      ENDIF.
+      IF lv_first = abap_false.
+        rv_json = |{ rv_json },|.
+      ENDIF.
+      rv_json = |{ rv_json }{ lv_part }|.
+      lv_first = abap_false.
+    ENDLOOP.
   ENDMETHOD.
 
 ENDCLASS.
