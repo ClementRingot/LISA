@@ -57,6 +57,9 @@ CLASS zcl_i18n_service DEFINITION PUBLIC FINAL CREATE PUBLIC.
                 iv_object_name TYPE string
                 iv_pool_type   TYPE string OPTIONAL
       RETURNING VALUE(rv_spras) TYPE spras.
+    METHODS iso_from_sap
+      IMPORTING iv_spras      TYPE spras
+      RETURNING VALUE(rv_iso) TYPE string.
     METHODS build_text_json_entry
       IMPORTING iv_level      TYPE string
                 iv_field_name TYPE string
@@ -634,6 +637,7 @@ CLASS zcl_i18n_service IMPLEMENTATION.
     TRANSLATE lv_object_name TO UPPER CASE.
     " No language supplied -> read in the object's ORIGINAL language (not sy-langu),
     " so GetTexts without a language returns the source texts regardless of logon language.
+    DATA(lv_lang_omitted) = xsdbool( lv_language IS INITIAL ).
     IF lv_language IS INITIAL. lv_language = resolve_original_language( iv_target_type = lv_target_type iv_object_name = lv_object_name iv_pool_type = lv_pool_type ). ENDIF. TRANSLATE lv_language TO UPPER CASE.
     TRY.
         DATA(lo_language) = xco_cp=>language( CONV spras( lv_language ) ).
@@ -880,10 +884,15 @@ CLASS zcl_i18n_service IMPLEMENTATION.
           WHEN OTHERS.
             rs_response = build_error( iv_code = 'UNSUPPORTED_TARGET' iv_message = |list_texts: target_type '{ lv_target_type }' is not supported| ). RETURN.
         ENDCASE.
+        " When the caller omitted the language, report the resolved original language
+        " as an ISO code (like list_languages), not the internal SAP single-char code.
+        DATA(lv_out_language) = COND string( WHEN lv_lang_omitted = abap_true
+                                             THEN iso_from_sap( CONV spras( lv_language ) )
+                                             ELSE lv_language ).
         DATA(lv_data) = json_obj( json_join( VALUE #(
           ( json_str( iv_key = 'target_type' iv_value = lv_target_type ) )
           ( json_str( iv_key = 'object_name' iv_value = lv_object_name ) )
-          ( json_str( iv_key = 'language' iv_value = lv_language ) )
+          ( json_str( iv_key = 'language' iv_value = lv_out_language ) )
           ( |"texts":[{ lv_texts_json }]| )
         ) ) ).
         rs_response = build_success( iv_data = lv_data ).
@@ -1028,6 +1037,18 @@ CLASS zcl_i18n_service IMPLEMENTATION.
       WHERE pgmid = 'R3TR' AND object = @lv_obj_type AND obj_name = @iv_object_name
       INTO @rv_spras.
     IF sy-subrc <> 0. rv_spras = sy-langu. ENDIF.
+  ENDMETHOD.
+
+  METHOD iso_from_sap.
+    " Map a SAP single-char language code to its 2-letter ISO 639-1 code so an
+    " omitted (original) language is reported in the same form as list_languages.
+    SELECT SINGLE LanguageISOCode FROM I_Language
+      WHERE Language = @iv_spras INTO @DATA(lv_iso).
+    IF sy-subrc = 0 AND lv_iso IS NOT INITIAL.
+      rv_iso = lv_iso.
+    ELSE.
+      rv_iso = iv_spras.   " no ISO mapping -> fall back to the SAP code
+    ENDIF.
   ENDMETHOD.
 
   METHOD build_text_json_entry.
