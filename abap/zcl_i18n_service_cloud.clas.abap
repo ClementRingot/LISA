@@ -434,7 +434,7 @@ CLASS zcl_i18n_service_cloud IMPLEMENTATION.
 
   METHOD handle_list_languages.
     TRY.
-        SELECT Language, LanguageISOCode FROM I_Language INTO TABLE @DATA(lt_langs) ORDER BY Language.
+        SELECT Language, LanguageISOCode FROM I_Language ORDER BY Language INTO TABLE @DATA(lt_langs).
         DATA lv_langs_json TYPE string.
         LOOP AT lt_langs INTO DATA(ls_lang).
           DATA(lv_name) = xco_cp=>language( ls_lang-Language )->get_name( ).
@@ -1029,8 +1029,6 @@ CLASS zcl_i18n_service_cloud IMPLEMENTATION.
       ( json_bool( iv_key = 'populated' iv_value = xsdbool( iv_value IS NOT INITIAL ) ) )
     ) ) ).
   ENDMETHOD.
-
-  " ── JSON / param helpers (inlined, formerly zcl_vsp_utils) ────────────
 
   METHOD escape_json.
     rv_escaped = iv_string.
