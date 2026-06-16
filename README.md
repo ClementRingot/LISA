@@ -33,7 +33,7 @@ There are **two halves** to a working setup:
 |------|--------------|
 | `TranslateListLanguages` | List all languages installed on the SAP system. |
 | `TranslateGetTexts` | Read all translatable texts of an object in a given language (or its original language when none is given). Each slot comes back with its full key (`level`, `field_name`, `position`, `attribute`), its `value`, and a `populated` flag (`false` = empty in this language = still to translate). |
-| `TranslateSetTexts` | Write/update translations (requires a transport request). |
+| `TranslateSetTexts` | Write/update translations (requires a transport request). Each text entry may carry its own `field_name`/`position`, so all fields of one CDS view (e.g. every `ui_lineitem_label`) are written in a single call — locking the object only once. |
 
 > **Discover / list / compare** all collapse into `TranslateGetTexts`: read with no `language` to see the original-language slots, keep `populated === true` to list only filled texts, and call it once per language and diff on `(key, populated, value)` to compare.
 

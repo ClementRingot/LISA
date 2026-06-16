@@ -58,6 +58,20 @@ describe('SetTranslationSchema', () => {
     expect(r.success).toBe(true);
   });
 
+  it('accepts per-entry field_name/position so multiple fields write in one call', () => {
+    const r = SetTranslationSchema.safeParse({
+      target_type: 'data_definition',
+      object_name: 'ZC_MYVIEW',
+      language: 'DE',
+      transport: 'K900123',
+      texts: [
+        { attribute: 'ui_lineitem_label', value: 'Menge', field_name: 'Quantity', position: '1' },
+        { attribute: 'ui_lineitem_label', value: 'Betrag', field_name: 'Amount', position: '1' },
+      ],
+    });
+    expect(r.success).toBe(true);
+  });
+
   it('rejects an empty texts array', () => {
     const r = SetTranslationSchema.safeParse({
       target_type: 'data_element',

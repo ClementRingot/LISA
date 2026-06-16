@@ -99,10 +99,29 @@ export const SetTranslationSchema = z.object({
               'message_short_text (message_class), fixed_value_description (domain)',
           ),
         value: z.string().describe('Translated text value'),
+        field_name: z
+          .string()
+          .optional()
+          .describe(
+            'Per-entry CDS field name (data_definition / metadata_extension). When set it overrides the ' +
+              'top-level field_name for THIS entry, letting one call address several fields of the same ' +
+              'object. Omit (or leave the top-level field_name empty) for entity-level texts.',
+          ),
+        position: z
+          .string()
+          .optional()
+          .describe(
+            'Per-entry 1-based position for repeatable UI annotations (e.g. ui_lineitem_label). Overrides ' +
+              'the top-level position for THIS entry. Sent as a string.',
+          ),
       }),
     )
     .min(1)
-    .describe('Array of text entries to write'),
+    .describe(
+      'Array of text entries to write. Each entry may carry its own field_name/position so that ' +
+        'translations for MULTIPLE fields of one object (e.g. several ui_lineitem_label labels of a CDS ' +
+        'view) are written in a single call — the object is then locked only once.',
+    ),
   ...SelectorShape,
 });
 
@@ -129,8 +148,11 @@ export const TOOLS = {
   TranslateSetTexts: {
     description:
       'Write or update translations for an SAP object. Provide the transport request and an array ' +
-      'of { attribute, value } entries. For positional metadata-extension attributes, pass the base ' +
-      'attribute (e.g. ui_facet_label) plus the top-level `position` from TranslateGetTexts.',
+      'of { attribute, value } entries. Each entry may also carry its own field_name (and position) ' +
+      'to target a specific CDS field — so all fields of one data_definition / metadata_extension ' +
+      '(e.g. every ui_lineitem_label) can be written in a SINGLE call, locking the object only once. ' +
+      'Entries without their own field_name/position fall back to the top-level field_name and ' +
+      '`position` from TranslateGetTexts.',
     inputSchema: SetTranslationSchema,
   },
 } as const;

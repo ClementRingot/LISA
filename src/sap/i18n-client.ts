@@ -19,7 +19,8 @@
  *   POST {path}/list_languages   body: {}
  *   POST {path}/list_texts       body: { target_type, object_name, language?, text_pool_owner_type? }
  *   POST {path}/set_translation  body: { target_type, object_name, language, transport,
- *                                        texts: [{ attribute, value }, …], …selectors }
+ *                                        texts: [{ attribute, value, field_name?, position? }, …],
+ *                                        …selectors }
  */
 
 import { Client, type Dispatcher, fetch as undiciFetch } from 'undici';
@@ -52,6 +53,18 @@ export interface SapLanguage {
 export interface TextEntry {
   attribute: string;
   value: string;
+}
+
+/**
+ * A text entry for set_translation. Beyond { attribute, value } it may carry its own
+ * `field_name`/`position` selectors: when present they override the top-level selectors for
+ * THIS entry only, so one set_translation call can address several CDS fields of the same
+ * object (the ABAP groups entries by field and writes each within a single change scenario,
+ * locking the object once). Both are sent as strings to match the handler's parser.
+ */
+export interface SetTextEntry extends TextEntry {
+  field_name?: string;
+  position?: string;
 }
 
 /**
@@ -373,7 +386,7 @@ export class I18nClient {
       object_name: string;
       language: string;
       transport: string;
-      texts: TextEntry[];
+      texts: SetTextEntry[];
     } & I18nSelectors,
   ): Promise<SetTranslationResult> {
     const conn = await resolveConnection(this.config, this.userJwt);

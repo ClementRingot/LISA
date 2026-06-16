@@ -7,7 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-06-16
+
 ### Added
+- `TranslateSetTexts` accepts **per-entry selectors**: each `texts` item may carry its own
+  `field_name`/`position` (overriding the top-level ones). All fields of one
+  `data_definition`/`metadata_extension` (e.g. every `ui_lineitem_label` across fields) can
+  now be written in a **single call**; the ABAP handler groups entries by field and writes
+  each under one transport change scenario, so the object is enqueued/locked only once
+  instead of once per field — avoiding the lock collisions seen when writing field-by-field.
 - `TranslateGetTexts` now surfaces the `populated` flag the ABAP emits per text slot
   (`false` = the slot exists but is empty in the requested language, i.e. still to
   translate), and decomposes positional metadata-extension attributes (`ui_facet_label[1]`)
@@ -57,6 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - XSUAA OAuth proxy (stateless DCR + signed callback state), OIDC and API-key auth.
 - BTP deployment (MTA), Destination + Connectivity (principal propagation).
 
-[Unreleased]: https://github.com/ClementRingot/LISA/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/ClementRingot/LISA/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/ClementRingot/LISA/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/ClementRingot/LISA/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ClementRingot/LISA/releases/tag/v0.1.0

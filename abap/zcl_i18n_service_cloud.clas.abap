@@ -313,12 +313,23 @@ CLASS zcl_i18n_service_cloud IMPLEMENTATION.
     DATA(lv_position) = 1. IF lv_position_s IS NOT INITIAL. lv_position = CONV i( lv_position_s ). ENDIF.
     FIND PCRE '"texts"\s*:\s*(\[[^\]]*\])' IN iv_params SUBMATCHES DATA(lv_texts_str).
     IF sy-subrc <> 0 OR lv_texts_str IS INITIAL. rs_response = build_error( iv_code = 'MISSING_PARAM' iv_message = 'texts array is required' ). RETURN. ENDIF.
+    " Parse each { … } object of the texts array. Beyond attribute/value, an entry may carry its
+    " own field_name/position; when omitted they fall back to the top-level selectors. This lets one
+    " call write several fields of the same object so it is locked only once (no per-field lock races).
+    TYPES: BEGIN OF ty_set_entry, attribute TYPE string, value TYPE string, field_name TYPE string, position TYPE i, END OF ty_set_entry.
+    DATA lt_entries TYPE STANDARD TABLE OF ty_set_entry WITH EMPTY KEY.
     DATA lt_attrs TYPE string_table. DATA lt_vals TYPE string_table.
     FIND ALL OCCURRENCES OF PCRE '\{[^}]+\}' IN lv_texts_str RESULTS DATA(lt_obj_matches).
     LOOP AT lt_obj_matches INTO DATA(ls_obj_match).
       DATA(lv_obj_json) = lv_texts_str+ls_obj_match-offset(ls_obj_match-length).
-      APPEND extract_param( iv_params = lv_obj_json iv_name = 'attribute' ) TO lt_attrs.
-      APPEND extract_param( iv_params = lv_obj_json iv_name = 'value' ) TO lt_vals.
+      DATA(lv_e_attr) = extract_param( iv_params = lv_obj_json iv_name = 'attribute' ).
+      DATA(lv_e_val)  = extract_param( iv_params = lv_obj_json iv_name = 'value' ).
+      DATA(lv_e_fn)   = extract_param( iv_params = lv_obj_json iv_name = 'field_name' ).
+      DATA(lv_e_pos)  = extract_param( iv_params = lv_obj_json iv_name = 'position' ).
+      IF lv_e_fn IS INITIAL. lv_e_fn = lv_field_name. ENDIF.
+      DATA(lv_e_pos_i) = lv_position. IF lv_e_pos IS NOT INITIAL. lv_e_pos_i = CONV i( lv_e_pos ). ENDIF.
+      APPEND VALUE #( attribute = lv_e_attr value = lv_e_val field_name = lv_e_fn position = lv_e_pos_i ) TO lt_entries.
+      APPEND lv_e_attr TO lt_attrs. APPEND lv_e_val TO lt_vals.
     ENDLOOP.
     IF lt_attrs IS INITIAL. rs_response = build_error( iv_code = 'MISSING_PARAM' iv_message = 'texts array is empty or could not be parsed' ). RETURN. ENDIF.
     DATA lv_attr TYPE string. DATA lv_val TYPE string.
@@ -345,28 +356,44 @@ CLASS zcl_i18n_service_cloud IMPLEMENTATION.
             ENDDO.
             lo_dom_set->set_translation( it_texts = lt_dom_texts io_language = lo_language io_change_scenario = lo_change_scenario ).
           WHEN 'data_definition'.
-            IF lv_field_name IS INITIAL.
-              DATA(lo_ent_set) = xco_cp_i18n=>target->data_definition->entity( CONV sxco_cds_object_name( lv_object_name ) ).
-              DATA lt_ent_texts TYPE sxco_t_ddef_ent_texts. DATA lo_ent_ta_w TYPE REF TO cl_xco_ddef_ent_text_attribute.
-              DO lines( lt_attrs ) TIMES. DATA(lv_idx_ent) = sy-index.
-                READ TABLE lt_attrs INDEX lv_idx_ent INTO lv_attr. READ TABLE lt_vals INDEX lv_idx_ent INTO lv_val.
-                lo_ent_ta_w = get_dd_entity_attr( lv_attr ).
-                IF lo_ent_ta_w IS BOUND. DATA(lo_ent_tv) = CAST if_xco_i18n_text_attribute( lo_ent_ta_w )->get_text_for_string( lv_val ). APPEND lo_ent_ta_w->create_text( io_value = lo_ent_tv ) TO lt_ent_texts. ENDIF.
-              ENDDO.
-              IF lt_ent_texts IS INITIAL. rs_response = build_error( iv_code = 'INVALID_ATTRS' iv_message = |No valid entity text attributes found for target_type '{ lv_target_type }'| ). RETURN. ENDIF.
-              lo_ent_set->set_translation( io_language = lo_language it_texts = lt_ent_texts io_change_scenario = lo_change_scenario ).
-            ELSE.
-              TRANSLATE lv_field_name TO LOWER CASE.
-              DATA(lo_ddls_set) = xco_cp_i18n=>target->data_definition->field( iv_entity_name = CONV sxco_cds_object_name( lv_object_name ) iv_field_name = CONV sxco_cds_field_name( lv_field_name ) ).
-              DATA lt_ddls_texts TYPE sxco_t_ddef_fld_texts. DATA lo_fld_ta_w TYPE REF TO cl_xco_ddef_fld_text_attribute.
-              DO lines( lt_attrs ) TIMES. DATA(lv_idx_fld) = sy-index.
-                READ TABLE lt_attrs INDEX lv_idx_fld INTO lv_attr. READ TABLE lt_vals INDEX lv_idx_fld INTO lv_val.
-                lo_fld_ta_w = get_ddls_field_attr( iv_name = lv_attr iv_position = lv_position ).
-                IF lo_fld_ta_w IS BOUND. DATA(lo_fld_tv) = CAST if_xco_i18n_text_attribute( lo_fld_ta_w )->get_text_for_string( lv_val ). APPEND lo_fld_ta_w->create_text( io_value = lo_fld_tv ) TO lt_ddls_texts. ENDIF.
-              ENDDO.
-              IF lt_ddls_texts IS INITIAL. rs_response = build_error( iv_code = 'INVALID_ATTRS' iv_message = |No valid text attributes found for target_type '{ lv_target_type }'| ). RETURN. ENDIF.
-              lo_ddls_set->set_translation( io_language = lo_language it_texts = lt_ddls_texts io_change_scenario = lo_change_scenario ).
-            ENDIF.
+            " Group entries by field: entity-level (empty field_name) and one group per field.
+            " Each group is written with one set_translation, all sharing lo_change_scenario, so the
+            " object is enqueued once for the whole request instead of once per field.
+            DATA lt_dd_groups TYPE string_table.
+            LOOP AT lt_entries INTO DATA(ls_dd_scan).
+              DATA(lv_dd_grp_key) = ls_dd_scan-field_name.
+              IF lv_dd_grp_key IS NOT INITIAL. TRANSLATE lv_dd_grp_key TO LOWER CASE. ENDIF.
+              READ TABLE lt_dd_groups TRANSPORTING NO FIELDS WITH KEY table_line = lv_dd_grp_key.
+              IF sy-subrc <> 0. APPEND lv_dd_grp_key TO lt_dd_groups. ENDIF.
+            ENDLOOP.
+            DATA(lv_dd_written) = abap_false.
+            LOOP AT lt_dd_groups INTO DATA(lv_dd_grp).
+              IF lv_dd_grp IS INITIAL.
+                DATA(lo_ent_set) = xco_cp_i18n=>target->data_definition->entity( CONV sxco_cds_object_name( lv_object_name ) ).
+                DATA lt_ent_texts TYPE sxco_t_ddef_ent_texts. CLEAR lt_ent_texts.
+                DATA lo_ent_ta_w TYPE REF TO cl_xco_ddef_ent_text_attribute.
+                LOOP AT lt_entries INTO DATA(ls_ent_e).
+                  IF ls_ent_e-field_name IS NOT INITIAL. CONTINUE. ENDIF.
+                  lo_ent_ta_w = get_dd_entity_attr( ls_ent_e-attribute ).
+                  IF lo_ent_ta_w IS BOUND. DATA(lo_ent_tv) = CAST if_xco_i18n_text_attribute( lo_ent_ta_w )->get_text_for_string( ls_ent_e-value ). APPEND lo_ent_ta_w->create_text( io_value = lo_ent_tv ) TO lt_ent_texts. ENDIF.
+                ENDLOOP.
+                IF lt_ent_texts IS NOT INITIAL. lo_ent_set->set_translation( io_language = lo_language it_texts = lt_ent_texts io_change_scenario = lo_change_scenario ). lv_dd_written = abap_true. ENDIF.
+              ELSE.
+                DATA(lo_ddls_set) = xco_cp_i18n=>target->data_definition->field( iv_entity_name = CONV sxco_cds_object_name( lv_object_name ) iv_field_name = CONV sxco_cds_field_name( lv_dd_grp ) ).
+                DATA lt_ddls_texts TYPE sxco_t_ddef_fld_texts. CLEAR lt_ddls_texts.
+                DATA lo_fld_ta_w TYPE REF TO cl_xco_ddef_fld_text_attribute.
+                LOOP AT lt_entries INTO DATA(ls_fld_e).
+                  DATA(lv_fld_e_fn) = ls_fld_e-field_name.
+                  IF lv_fld_e_fn IS INITIAL. CONTINUE. ENDIF.
+                  TRANSLATE lv_fld_e_fn TO LOWER CASE.
+                  IF lv_fld_e_fn <> lv_dd_grp. CONTINUE. ENDIF.
+                  lo_fld_ta_w = get_ddls_field_attr( iv_name = ls_fld_e-attribute iv_position = ls_fld_e-position ).
+                  IF lo_fld_ta_w IS BOUND. DATA(lo_fld_tv) = CAST if_xco_i18n_text_attribute( lo_fld_ta_w )->get_text_for_string( ls_fld_e-value ). APPEND lo_fld_ta_w->create_text( io_value = lo_fld_tv ) TO lt_ddls_texts. ENDIF.
+                ENDLOOP.
+                IF lt_ddls_texts IS NOT INITIAL. lo_ddls_set->set_translation( io_language = lo_language it_texts = lt_ddls_texts io_change_scenario = lo_change_scenario ). lv_dd_written = abap_true. ENDIF.
+              ENDIF.
+            ENDLOOP.
+            IF lv_dd_written = abap_false. rs_response = build_error( iv_code = 'INVALID_ATTRS' iv_message = |No valid text attributes found for target_type '{ lv_target_type }'| ). RETURN. ENDIF.
           WHEN 'message_class'.
             DATA(lo_mc_set) = xco_cp_i18n=>target->message_class->message( iv_message_class_name = CONV sxco_mc_object_name( lv_object_name ) iv_message_number = CONV if_xco_mc_message=>tv_number( lv_msg_number ) ).
             DATA lt_mc_texts TYPE sxco_t_mc_texts. DATA(lo_mc_ta_w) = xco_cp_message_class=>text_attribute->message_short_text.
@@ -387,16 +414,27 @@ CLASS zcl_i18n_service_cloud IMPLEMENTATION.
               lo_cls_set->set_translation( it_texts = lt_tp_texts io_language = lo_language io_change_scenario = lo_change_scenario ).
             ENDIF.
           WHEN 'metadata_extension'.
-            IF lv_field_name IS INITIAL. rs_response = build_error( iv_code = 'MISSING_PARAM' iv_message = 'field_name is required for metadata_extension set_translation' ). RETURN. ENDIF.
-            DATA(lo_me_set) = xco_cp_i18n=>target->metadata_extension->field( iv_metadata_extension_name = CONV sxco_cds_object_name( lv_object_name ) iv_field_name = CONV sxco_cds_field_name( lv_field_name ) ).
-            DATA lt_me_texts TYPE sxco_t_me_fld_texts. DATA lo_me_ta_w TYPE REF TO cl_xco_me_fld_text_attribute.
-            DO lines( lt_attrs ) TIMES. DATA(lv_idx_me) = sy-index.
-              READ TABLE lt_attrs INDEX lv_idx_me INTO lv_attr. READ TABLE lt_vals INDEX lv_idx_me INTO lv_val.
-              lo_me_ta_w = get_me_field_attr( iv_name = lv_attr iv_position = lv_position ).
-              IF lo_me_ta_w IS BOUND. DATA(lo_me_tv) = CAST if_xco_i18n_text_attribute( lo_me_ta_w )->get_text_for_string( lv_val ). APPEND lo_me_ta_w->create_text( io_value = lo_me_tv ) TO lt_me_texts. ENDIF.
-            ENDDO.
-            IF lt_me_texts IS INITIAL. rs_response = build_error( iv_code = 'INVALID_ATTRS' iv_message = |No valid text attributes found for target_type '{ lv_target_type }'| ). RETURN. ENDIF.
-            lo_me_set->set_translation( it_texts = lt_me_texts io_language = lo_language io_change_scenario = lo_change_scenario ).
+            " One group per field; each written with a single set_translation under one change
+            " scenario so the metadata extension is locked once for the whole request.
+            DATA lt_me_groups TYPE string_table.
+            LOOP AT lt_entries INTO DATA(ls_me_scan).
+              IF ls_me_scan-field_name IS INITIAL. rs_response = build_error( iv_code = 'MISSING_PARAM' iv_message = 'field_name is required for metadata_extension set_translation' ). RETURN. ENDIF.
+              READ TABLE lt_me_groups TRANSPORTING NO FIELDS WITH KEY table_line = ls_me_scan-field_name.
+              IF sy-subrc <> 0. APPEND ls_me_scan-field_name TO lt_me_groups. ENDIF.
+            ENDLOOP.
+            DATA(lv_me_written) = abap_false.
+            LOOP AT lt_me_groups INTO DATA(lv_me_grp).
+              DATA(lo_me_set) = xco_cp_i18n=>target->metadata_extension->field( iv_metadata_extension_name = CONV sxco_cds_object_name( lv_object_name ) iv_field_name = CONV sxco_cds_field_name( lv_me_grp ) ).
+              DATA lt_me_texts TYPE sxco_t_me_fld_texts. CLEAR lt_me_texts.
+              DATA lo_me_ta_w TYPE REF TO cl_xco_me_fld_text_attribute.
+              LOOP AT lt_entries INTO DATA(ls_me_e).
+                IF ls_me_e-field_name <> lv_me_grp. CONTINUE. ENDIF.
+                lo_me_ta_w = get_me_field_attr( iv_name = ls_me_e-attribute iv_position = ls_me_e-position ).
+                IF lo_me_ta_w IS BOUND. DATA(lo_me_tv) = CAST if_xco_i18n_text_attribute( lo_me_ta_w )->get_text_for_string( ls_me_e-value ). APPEND lo_me_ta_w->create_text( io_value = lo_me_tv ) TO lt_me_texts. ENDIF.
+              ENDLOOP.
+              IF lt_me_texts IS NOT INITIAL. lo_me_set->set_translation( it_texts = lt_me_texts io_language = lo_language io_change_scenario = lo_change_scenario ). lv_me_written = abap_true. ENDIF.
+            ENDLOOP.
+            IF lv_me_written = abap_false. rs_response = build_error( iv_code = 'INVALID_ATTRS' iv_message = |No valid text attributes found for target_type '{ lv_target_type }'| ). RETURN. ENDIF.
           WHEN 'application_log_object'.
             IF lv_subobj_name IS NOT INITIAL.
               TRANSLATE lv_subobj_name TO UPPER CASE.

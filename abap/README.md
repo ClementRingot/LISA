@@ -60,10 +60,12 @@ Every action is a **POST** to `{path}/{action}` with a JSON body. Responses are 
 | `list_languages` | `{}` | `{ languages: [{ sap_code, iso_code, name }] }` |
 | `list_texts` | `{ target_type, object_name, language? }` | `{ …, texts: [{ level, field_name, attribute, value, populated }] }` (positional UI labels encode the slot as `attribute: "name[n]"`; `populated = value non-empty`) |
 | `get_translation` | `{ target_type, object_name, language, …selectors }` | `{ …, texts: [{ attribute, value }] }` |
-| `set_translation` | `{ …, transport, texts: [{ attribute, value }], …selectors }` | `{ …, transport, success }` |
+| `set_translation` | `{ …, transport, texts: [{ attribute, value, field_name?, position? }], …selectors }` | `{ …, transport, success }` |
 | `compare_translations` | `{ target_type, object_name, source_language, target_language }` | `{ …, items: [{ field_or_key, source_texts, target_texts, has_difference }] }` |
 
 Optional selectors (only the ones relevant to a `target_type` are read): `field_name`, `fixed_value` (domain), `message_number` (message_class), `text_symbol_id` + `text_pool_owner_type` (text_pool), `subobject_name`, `position` (metadata_extension).
+
+For `set_translation`, each `texts` entry may additionally carry its own `field_name`/`position`, overriding the top-level selectors for that entry. This lets one call write several fields of the same `data_definition`/`metadata_extension` (e.g. every `ui_lineitem_label`): the handler groups entries by field and writes each under a single transport change scenario, so the object is locked only once.
 
 ### Quick smoke test
 
