@@ -35,7 +35,7 @@ export const TargetTypeSchema = z
       'text_pool (class/function-group text symbols), metadata_extension (DDLX UI labels), ' +
       'application_log_object (APLO), business_configuration_object (SMBC). ' +
       'NOTE: a CDS view (data_definition) often has its UI labels defined/overridden in a separate ' +
-      'metadata extension (DDLX). To translate ALL of a view\'s texts, also query the corresponding ' +
+      "metadata extension (DDLX). To translate ALL of a view's texts, also query the corresponding " +
       'metadata_extension object (its own DDLX name, not the view name).',
   );
 
