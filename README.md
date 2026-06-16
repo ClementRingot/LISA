@@ -52,6 +52,8 @@ These are XCO **semantic** literals, not DDIC short codes:
 | `application_log_object` | Application log object (APLO) | object / sub-object texts |
 | `business_configuration_object` | Business configuration object (SMBC) | description texts |
 
+> **CDS views & metadata extensions:** a CDS view's UI labels are frequently defined (or overridden) in a separate **metadata extension** (DDLX). To translate *all* of a view's texts, read both `data_definition` (the view) **and** the matching `metadata_extension` object (its own DDLX name) — the tool descriptions surface this reminder to the assistant.
+
 ---
 
 ## Use it alongside an ADT MCP server

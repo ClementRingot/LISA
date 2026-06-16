@@ -33,7 +33,10 @@ export const TargetTypeSchema = z
     'XCO translation target type: data_element (DTEL), domain (DOMA fixed-value texts), ' +
       'data_definition (CDS DDLS entity/field labels), message_class (MSAG), ' +
       'text_pool (class/function-group text symbols), metadata_extension (DDLX UI labels), ' +
-      'application_log_object (APLO), business_configuration_object (SMBC).',
+      'application_log_object (APLO), business_configuration_object (SMBC). ' +
+      'NOTE: a CDS view (data_definition) often has its UI labels defined/overridden in a separate ' +
+      'metadata extension (DDLX). To translate ALL of a view\'s texts, also query the corresponding ' +
+      'metadata_extension object (its own DDLX name, not the view name).',
   );
 
 export const LanguageSchema = z
@@ -117,7 +120,10 @@ export const TOOLS = {
       '(level, field_name, position, attribute), its value, and a `populated` flag ' +
       '(false = the slot exists but is empty in this language, i.e. still to translate). ' +
       'To list only filled texts, keep entries with populated=true; to compare two languages, ' +
-      'call it once per language and diff on (key, populated, value).',
+      'call it once per language and diff on (key, populated, value). ' +
+      'When reading a CDS view (target_type=data_definition), remember its UI labels may live in a ' +
+      'separate metadata extension (DDLX): query the matching metadata_extension object as well to ' +
+      'cover every translatable text.',
     inputSchema: GetTextsSchema,
   },
   TranslateSetTexts: {
