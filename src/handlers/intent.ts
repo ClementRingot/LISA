@@ -2,7 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { I18nClient } from '../sap/i18n-client.js';
 import { getLogger } from '../server/logger.js';
 import type { Config } from '../server/types.js';
-import { GetTextsSchema, ListLanguagesSchema, SetTranslationSchema, TOOLS } from './tools.js';
+import { GetTextsSchema, ListLanguagesSchema, SetTranslationSchema, TOOLS, supportedTargetTypesNote } from './tools.js';
 
 function formatError(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e);
@@ -13,13 +13,20 @@ function json(data: unknown): string {
   return JSON.stringify(data, null, 2);
 }
 
-export function registerTranslationTools(server: McpServer, config: Config, userJwt?: string): void {
+export async function registerTranslationTools(server: McpServer, config: Config, userJwt?: string): Promise<void> {
   const log = getLogger();
   const client = new I18nClient(config, userJwt);
 
   // No MCP-level authorization: every authenticated principal gets all tools.
   // The user's JWT is propagated to SAP, whose own authorization objects decide
   // what may actually be read / written / translated.
+
+  // Probe the backend's per-action allow-list once (process-cached) so the read/write tool
+  // descriptions advertise the object types THIS system actually supports. Degrades to generic
+  // stack-differences wording when the probe is unavailable (older handler / SAP unreachable).
+  const caps = await client.getCapabilities();
+  const getTextsDescription = `${TOOLS.TranslateGetTexts.description} ${supportedTargetTypesNote('list_texts', caps)}`;
+  const setTextsDescription = `${TOOLS.TranslateSetTexts.description} ${supportedTargetTypesNote('set_translation', caps)}`;
 
   // ── TranslateListLanguages ────────────────────────────────────────────────
   server.tool(
@@ -41,7 +48,7 @@ export function registerTranslationTools(server: McpServer, config: Config, user
   // Whole-object reader (list_texts). The optional scope params (field_name, position) are
   // applied as client-side filters: the ABAP list_texts enumerates every field/position, so we
   // narrow the result here rather than asking the server to.
-  server.tool('TranslateGetTexts', TOOLS.TranslateGetTexts.description, GetTextsSchema.shape, async (args) => {
+  server.tool('TranslateGetTexts', getTextsDescription, GetTextsSchema.shape, async (args) => {
     try {
       const result = await client.getTexts({
         target_type: args.target_type,
@@ -67,7 +74,7 @@ export function registerTranslationTools(server: McpServer, config: Config, user
   });
 
   // ── TranslateSetTexts ─────────────────────────────────────────────────────
-  server.tool('TranslateSetTexts', TOOLS.TranslateSetTexts.description, SetTranslationSchema.shape, async (args) => {
+  server.tool('TranslateSetTexts', setTextsDescription, SetTranslationSchema.shape, async (args) => {
     try {
       const result = await client.setTranslation({
         target_type: args.target_type,
