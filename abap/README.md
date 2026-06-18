@@ -15,9 +15,9 @@ Both implement `IF_HTTP_SERVICE_EXTENSION`, route actions from the URL path, and
 
 ## Requirements
 
-- **XCO i18n APIs** present — S/4HANA 2022+ / ABAP Platform 2022+ / ABAP Cloud.
+- **XCO i18n APIs** present — S/4HANA - Public cloud / BTP ABAP Environment / S/4HANA 2022+ - ABAP Platform.
 - New HTTP handler model (`IF_HTTP_SERVICE_EXTENSION`).
-- A package to hold the objects (the originals live in `ZBC_TOOLS` / `$ZADT_VSP`; any Z/local package works).
+- A package to hold the objects.
 
 ## Install
 
