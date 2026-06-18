@@ -49,7 +49,7 @@ The XCO i18n APIs are ABAP-side generation APIs with no general REST surface. A 
 | **Semantic `target_type` literals** | XCO's own object vocabulary (`data_element`, …) rather than DDIC codes — fewer translations between layers. |
 | **Wrapped `{success,data}` envelope** | Uniform success/error handling; HTTP 400 on logical errors. |
 | **Stateless DCR + signed state** | Lets standard MCP OAuth clients use XSUAA without server-side session storage. |
-| **Modeled on ARC-1** | Reuses a production-proven auth/transport/connectivity stack. |
+| **Auth/BTP via `@arc-mcp/xsuaa-auth`** | Depends on ARC-1's extracted, production-proven XSUAA/OAuth + BTP package instead of vendoring that stack. |
 
 ## File map
 
@@ -58,11 +58,10 @@ The XCO i18n APIs are ABAP-side generation APIs with no general REST surface. A 
 | Tool schemas | `src/handlers/tools.ts` |
 | Tool registration | `src/handlers/intent.ts` |
 | SAP wire contract | `src/sap/i18n-client.ts` |
-| BTP destinations / proxy | `src/sap/btp.ts` |
+| BTP destinations / proxy | `@arc-mcp/xsuaa-auth/btp` (consumed in `src/sap/i18n-client.ts`) |
 | Config | `src/server/config.ts` |
-| Transport / OAuth router | `src/server/http.ts` |
-| XSUAA proxy + verifier | `src/server/xsuaa.ts` |
-| DCR store | `src/server/stateless-client-store.ts` |
-| OAuth state codec | `src/server/oauth-state.ts` |
+| Transport / OAuth router / callback proxy | `src/server/http.ts` |
+| XSUAA proxy + verifier, DCR store, OAuth state codec | `@arc-mcp/xsuaa-auth` (wired in `src/server/http.ts`) |
+| Logger → package adapter | `src/server/logger.ts` (`toPackageLogger`) |
 | ABAP handler (on-premise / private cloud) | `abap/zcl_i18n_service.clas.abap` |
 | ABAP handler (BTP ABAP Environment / public cloud) | `abap/zcl_i18n_service_cloud.clas.abap` |

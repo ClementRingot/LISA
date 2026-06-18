@@ -46,18 +46,18 @@ src/
 │   ├── tools.ts             # Zod schemas + tool metadata (the 3 tools)
 │   └── intent.ts            # registers tools on the MCP server
 ├── sap/
-│   ├── i18n-client.ts       # HTTP client for ZCL_I18N_SERVICE (the wire contract)
-│   └── btp.ts               # destination lookup + connectivity proxy
+│   └── i18n-client.ts       # HTTP client for ZCL_I18N_SERVICE (wire contract); BTP via @arc-mcp/xsuaa-auth/btp
 └── server/
     ├── config.ts            # env → Config
     ├── server.ts            # builds & starts the MCP server
-    ├── http.ts              # Express transport, mcpAuthRouter, OAuth callback
-    ├── xsuaa.ts             # XSUAA OAuth proxy + chained token verifier
-    ├── stateless-client-store.ts  # DCR client store
-    ├── oauth-state.ts       # signed OAuth state codec
-    ├── logger.ts            # logging + audit events
+    ├── http.ts              # Express transport, mcpAuthRouter, OAuth callback; wires @arc-mcp/xsuaa-auth
+    ├── logger.ts            # logging + audit events; toPackageLogger() adapter for @arc-mcp/xsuaa-auth
     └── types.ts             # shared types
 ```
+
+> The XSUAA OAuth proxy, DCR client store, OAuth state codec, chained verifier and
+> BTP connectivity now live in the **[`@arc-mcp/xsuaa-auth`](https://www.npmjs.com/package/@arc-mcp/xsuaa-auth)**
+> dependency (consumed in `http.ts` and `i18n-client.ts`), not in this repo.
 
 ## Conventions
 
@@ -66,4 +66,4 @@ src/
 
 ## When in doubt
 
-This project intentionally mirrors **[ARC-1](https://github.com/marianfoo/arc-1)** for auth, HTTP transport, BTP connectivity and rate limiting. If a pattern is unclear, the corresponding file in ARC-1 is the reference implementation.
+This project depends on **[`@arc-mcp/xsuaa-auth`](https://www.npmjs.com/package/@arc-mcp/xsuaa-auth)** for auth + BTP connectivity, and follows **[ARC-1](https://github.com/marianfoo/arc-1)**'s patterns for HTTP transport and rate limiting. If an auth/BTP behaviour is unclear, the package (and ARC-1, from which it was extracted) is the reference implementation.

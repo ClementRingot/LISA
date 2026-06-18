@@ -2,9 +2,14 @@ MIT License
 
 Copyright (c) 2026 Clément Ringot
 
-Portions of this software (the XSUAA OAuth proxy, the stateless DCR client store,
-the OAuth state codec, and the BTP connectivity layer) are derived from ARC-1
-(https://github.com/marianfoo/arc-1) and are used under the MIT License:
+This software depends on @arc-mcp/xsuaa-auth
+(https://github.com/arc-mcp/xsuaa-auth), an MIT-licensed package authored by the
+ARC-1 maintainers, for its XSUAA OAuth proxy, stateless DCR client store, OAuth
+state codec, and BTP connectivity layer. That dependency carries its own license.
+
+A portion still vendored in this repository — the OAuth callback-proxy request
+handler — is derived from ARC-1 (https://github.com/marianfoo/arc-1) and is used
+under the MIT License:
 
     Copyright (c) 2025-2026 Alice Vinogradova and contributors
     Copyright (c) 2026 Marian Zeis

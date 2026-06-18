@@ -4,7 +4,7 @@
 
 **LISA** (Localization & Internationalization Service for ABAP) is a [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server that lets AI assistants (Claude, Cursor, VS Code, …) manage the translation of SAP repository objects — data elements, domains, CDS views, message classes, class/function-group text pools, and more — without leaving the chat.
 
-It is built the same way as [**ARC-1**](https://github.com/marianfoo/arc-1) (same XSUAA auth proxy, same BTP connectivity model, same Express/MCP-SDK transport), but instead of the full ADT toolset it exposes **3 focused translation tools** backed by a small ABAP HTTP service that wraps SAP's [XCO i18n APIs](https://help.sap.com/docs/abap-cloud/abap-development-tools-user-guide/internationalization-i18n).
+For authentication and SAP BTP connectivity it builds on the **same stack as [ARC-1](https://github.com/marianfoo/arc-1)** — in fact it **depends on** the published [`@arc-mcp/xsuaa-auth`](https://www.npmjs.com/package/@arc-mcp/xsuaa-auth) package (the XSUAA OAuth proxy + BTP principal-propagation layer extracted from ARC-1) rather than re-implementing it, on the same Express / MCP-SDK transport. On top of that, instead of the full ADT toolset, it exposes **3 focused translation tools** backed by a small ABAP HTTP service that wraps SAP's [XCO i18n APIs](https://help.sap.com/docs/abap-cloud/abap-development-tools-user-guide/internationalization-i18n).
 
 > **Deployment target:** `LISA` is designed to run on **SAP BTP (Cloud Foundry)** — that is the primary, supported way to use it (XSUAA login + principal propagation to SAP). Running it **locally** is fully supported too, but it is meant for **development and testing**, not production. The two paths are [Part 2 (BTP)](#part-2--deploy-to-sap-btp-recommended) and [Part 3 (local)](#part-3--run-locally-development--testing) below.
 
@@ -225,13 +225,12 @@ The [`docs_page/`](./docs_page) folder holds the long-form guides:
 
 ## Roadmap
 
-Forward-looking work — **planned, not implemented** — lives in [`roadmap/`](./roadmap/README.md).
-Two independent tracks:
+Larger structural work lives in [`roadmap/`](./roadmap/README.md). Two tracks:
 
 | Track | Doc | In one line |
 |-------|-----|-------------|
-| Distribute LISA as an ARC-1 extension | [`roadmap/arc1-extension.md`](./roadmap/arc1-extension.md) | When ARC-1's extension framework reaches **v2**, repackage LISA's 3 tools as in-process `Custom_*` tools. |
-| Share the auth layer (standalone) | [`roadmap/shared-auth-module.md`](./roadmap/shared-auth-module.md) | Replace LISA's in-tree XSUAA/BTP auth with a dependency on [`@arc-mcp/xsuaa-auth`](https://www.npmjs.com/package/@arc-mcp/xsuaa-auth). |
+| Distribute LISA as an ARC-1 extension | [`roadmap/arc1-extension.md`](./roadmap/arc1-extension.md) | **Planned** — when ARC-1's extension framework reaches **v2**, repackage LISA's 3 tools as in-process `Custom_*` tools. |
+| Share the auth layer (standalone) | [`roadmap/shared-auth-module.md`](./roadmap/shared-auth-module.md) | ✅ **Shipped in v0.4.0** — LISA's in-tree XSUAA/BTP auth was replaced by a dependency on [`@arc-mcp/xsuaa-auth`](https://www.npmjs.com/package/@arc-mcp/xsuaa-auth). |
 
 ---
 
@@ -247,8 +246,8 @@ LISA/
 ├── src/
 │   ├── index.ts          # entry point
 │   ├── handlers/         # MCP tool defs (tools.ts) + registration (intent.ts)
-│   ├── sap/              # i18n-client.ts (HTTP to ABAP) + btp.ts (destinations)
-│   └── server/           # transport, config, XSUAA OAuth proxy, logging
+│   ├── sap/              # i18n-client.ts (HTTP to ABAP; BTP via @arc-mcp/xsuaa-auth/btp)
+│   └── server/           # transport, config, logging (XSUAA OAuth via @arc-mcp/xsuaa-auth)
 ├── mta.yaml              # BTP MTA descriptor
 ├── xs-security.json      # XSUAA config (authentication only)
 └── .env.example
@@ -258,13 +257,15 @@ LISA/
 
 ## Credits
 
-Architecture, auth proxy and BTP connectivity patterns are modeled on **[ARC-1](https://github.com/marianfoo/arc-1)** by [marianfoo](https://github.com/marianfoo). The translation service itself is built on SAP's **XCO i18n** generation APIs.
+LISA's authentication and BTP connectivity layer is provided by **[`@arc-mcp/xsuaa-auth`](https://www.npmjs.com/package/@arc-mcp/xsuaa-auth)** — the XSUAA/OAuth proxy + principal-propagation package extracted from **[ARC-1](https://github.com/marianfoo/arc-1)** by [marianfoo](https://github.com/marianfoo); LISA's transport and overall architecture follow ARC-1's patterns. The translation service itself is built on SAP's **XCO i18n** generation APIs.
 
 ## License
 
 [MIT](./LICENSE) © 2026 Clément Ringot.
 
-Portions (the XSUAA OAuth proxy, stateless DCR store, OAuth state codec and BTP
-connectivity layer) are derived from **[ARC-1](https://github.com/marianfoo/arc-1)**
+LISA's XSUAA OAuth + BTP connectivity layer is provided by the MIT-licensed
+**[`@arc-mcp/xsuaa-auth`](https://www.npmjs.com/package/@arc-mcp/xsuaa-auth)**
+dependency (authored by the ARC-1 maintainers). A small remaining portion (the
+OAuth callback-proxy handler) is derived from **[ARC-1](https://github.com/marianfoo/arc-1)**
 and used under its MIT License — see the [`LICENSE`](./LICENSE) file for the
 preserved upstream copyright.
