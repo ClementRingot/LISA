@@ -63,6 +63,9 @@ METHODS get_ddls_field_attr
     METHODS iso_from_sap
       IMPORTING iv_spras      TYPE spras
       RETURNING VALUE(rv_iso) TYPE string.
+    METHODS to_spras
+      IMPORTING iv_lang         TYPE string
+      RETURNING VALUE(rv_spras) TYPE spras.
     METHODS build_text_json_entry
       IMPORTING iv_level      TYPE string
                 iv_field_name TYPE string
@@ -196,7 +199,7 @@ CLASS zcl_i18n_service IMPLEMENTATION.
     DATA(lv_position) = 1.
     IF lv_position_s IS NOT INITIAL. lv_position = CONV i( lv_position_s ). ENDIF.
     TRY.
-        DATA(lo_language) = xco_cp=>language( CONV spras( lv_language ) ).
+        DATA(lo_language) = xco_cp=>language( to_spras( lv_language ) ).
         DATA lv_json TYPE string.
         CASE lv_target_type.
           WHEN 'data_element'.
@@ -370,7 +373,7 @@ CLASS zcl_i18n_service IMPLEMENTATION.
     IF lt_attrs IS INITIAL. rs_response = build_error( iv_code = 'MISSING_PARAM' iv_message = 'texts array is empty or could not be parsed' ). RETURN. ENDIF.
     DATA lv_attr TYPE string. DATA lv_val TYPE string.
     TRY.
-        DATA(lo_language) = xco_cp=>language( CONV spras( lv_language ) ).
+        DATA(lo_language) = xco_cp=>language( to_spras( lv_language ) ).
         DATA(lo_change_scenario) = xco_cp_cts=>transport->for( CONV #( lv_transport ) ).
         CASE lv_target_type.
           WHEN 'data_element'.
@@ -546,8 +549,8 @@ CLASS zcl_i18n_service IMPLEMENTATION.
     FIND PCRE '"fields"\s*:\s*\[([^\]]*)\]' IN iv_params SUBMATCHES DATA(lv_fields_str).
     IF sy-subrc = 0 AND lv_fields_str IS NOT INITIAL. lt_fields = parse_string_array( lv_fields_str ). ENDIF.
     TRY.
-        DATA(lo_src_lang) = xco_cp=>language( CONV spras( lv_source_lang ) ).
-        DATA(lo_tgt_lang) = xco_cp=>language( CONV spras( lv_target_lang ) ).
+        DATA(lo_src_lang) = xco_cp=>language( to_spras( lv_source_lang ) ).
+        DATA(lo_tgt_lang) = xco_cp=>language( to_spras( lv_target_lang ) ).
         CASE lv_target_type.
           WHEN 'data_definition'.
             DATA(lo_cmp_ent) = xco_i18n=>target->data_definition->entity( CONV sxco_cds_object_name( lv_object_name ) ).
@@ -706,7 +709,8 @@ CLASS zcl_i18n_service IMPLEMENTATION.
     DATA(lv_lang_omitted) = xsdbool( lv_language IS INITIAL ).
     IF lv_language IS INITIAL. lv_language = resolve_original_language( iv_target_type = lv_target_type iv_object_name = lv_object_name iv_pool_type = lv_pool_type ). ENDIF. TRANSLATE lv_language TO UPPER CASE.
     TRY.
-        DATA(lo_language) = xco_cp=>language( CONV spras( lv_language ) ).
+        DATA(lv_spras) = to_spras( lv_language ).
+        DATA(lo_language) = xco_cp=>language( lv_spras ).
         DATA(lv_orig_spras) = resolve_original_language( iv_target_type = lv_target_type iv_object_name = lv_object_name iv_pool_type = lv_pool_type ).
         DATA(lo_orig_language) = xco_cp=>language( lv_orig_spras ).
         DATA lv_texts_json TYPE string.
@@ -770,7 +774,7 @@ CLASS zcl_i18n_service IMPLEMENTATION.
                   CATCH cx_root. CLEAR lv_lt_ov. ENDTRY.
                 IF lv_lt_ov IS NOT INITIAL.
                   DATA(lv_lt_fv) = ||.
-                  IF lv_language <> lv_orig_spras.
+                  IF lv_spras <> lv_orig_spras.
                     TRY. DATA(lo_lt_fr2) = lo_lt_fld->get_translation( io_language = lo_language it_text_attributes = lt_lt_fa ).
                         IF lo_lt_fr2->texts IS NOT INITIAL. lv_lt_fv = lo_lt_fr2->texts[ 1 ]->get_string_value( ). ENDIF. CATCH cx_root. CLEAR lv_lt_fv. ENDTRY.
                   ELSE. lv_lt_fv = lv_lt_ov. ENDIF.
@@ -808,7 +812,7 @@ CLASS zcl_i18n_service IMPLEMENTATION.
                     CONTINUE.
                   ENDIF.
                   lv_lt_dd_misses = 0.
-                  IF lv_language <> lv_orig_spras.
+                  IF lv_spras <> lv_orig_spras.
                     TRY. DATA(lo_lt_dd_pr4) = lo_lt_dd_fld->get_translation( io_language = lo_language it_text_attributes = lt_lt_fa ).
                         IF lo_lt_dd_pr4->texts IS NOT INITIAL. lv_lt_dd_pv2 = lo_lt_dd_pr4->texts[ 1 ]->get_string_value( ). ENDIF. CATCH cx_root. CLEAR lv_lt_dd_pv2. ENDTRY.
                   ELSE. lv_lt_dd_pv2 = lv_lt_dd_pov2. ENDIF.
@@ -839,7 +843,7 @@ CLASS zcl_i18n_service IMPLEMENTATION.
                     DATA(lv_lt_mov) = ||. IF lo_lt_mr->texts IS NOT INITIAL. lv_lt_mov = lo_lt_mr->texts[ 1 ]->get_string_value( ). ENDIF. CATCH cx_root. CLEAR lv_lt_mov. ENDTRY.
                 IF lv_lt_mov IS NOT INITIAL.
                   DATA(lv_lt_mv) = ||.
-                  IF lv_language <> lv_orig_spras.
+                  IF lv_spras <> lv_orig_spras.
                     TRY. DATA(lo_lt_mr2) = lo_lt_me_tgt->get_translation( io_language = lo_language it_text_attributes = lt_lt_ma ).
                         IF lo_lt_mr2->texts IS NOT INITIAL. lv_lt_mv = lo_lt_mr2->texts[ 1 ]->get_string_value( ). ENDIF. CATCH cx_root. CLEAR lv_lt_mv. ENDTRY.
                   ELSE. lv_lt_mv = lv_lt_mov. ENDIF.
@@ -868,7 +872,7 @@ CLASS zcl_i18n_service IMPLEMENTATION.
                     CONTINUE.
                   ENDIF.
                   lv_lt_misses = 0.
-                  IF lv_language <> lv_orig_spras.
+                  IF lv_spras <> lv_orig_spras.
                     TRY. DATA(lo_lt_pr2) = lo_lt_me_p->get_translation( io_language = lo_language it_text_attributes = lt_lt_ma ).
                         IF lo_lt_pr2->texts IS NOT INITIAL. lv_lt_pv = lo_lt_pr2->texts[ 1 ]->get_string_value( ). ENDIF. CATCH cx_root. CLEAR lv_lt_pv. ENDTRY.
                   ELSE. lv_lt_pv = lv_lt_pov. ENDIF.
@@ -896,7 +900,7 @@ CLASS zcl_i18n_service IMPLEMENTATION.
           WHEN 'text_pool'.
             IF lv_pool_type = 'function_group'.
               DATA lv_lt_fg_prog TYPE syrepid. lv_lt_fg_prog = |SAPL{ lv_object_name }|.
-              DATA lt_lt_fg_tp TYPE TABLE OF textpool. DATA(lv_lt_fg_lang) = CONV spras( lv_language ).
+              DATA lt_lt_fg_tp TYPE TABLE OF textpool. DATA(lv_lt_fg_lang) = to_spras( lv_language ).
               READ TEXTPOOL lv_lt_fg_prog INTO lt_lt_fg_tp LANGUAGE lv_lt_fg_lang.
               LOOP AT lt_lt_fg_tp INTO DATA(ls_lt_fg_tp) WHERE id = 'I'.
                 DATA(lv_lt_fg_key) = ls_lt_fg_tp-key.
@@ -911,7 +915,7 @@ CLASS zcl_i18n_service IMPLEMENTATION.
               ENDLOOP.
             ELSE.
               DATA lv_lt_cls_prog TYPE syrepid. lv_lt_cls_prog = |{ lv_object_name }======================CP|.
-              DATA lt_lt_cls_tp TYPE TABLE OF textpool. DATA(lv_lt_cls_lang) = CONV spras( lv_language ).
+              DATA lt_lt_cls_tp TYPE TABLE OF textpool. DATA(lv_lt_cls_lang) = to_spras( lv_language ).
               READ TEXTPOOL lv_lt_cls_prog INTO lt_lt_cls_tp LANGUAGE lv_lt_cls_lang.
               LOOP AT lt_lt_cls_tp INTO DATA(ls_lt_cls_tp) WHERE id = 'I'.
                 DATA(lv_lt_cls_key) = ls_lt_cls_tp-key.
@@ -943,7 +947,7 @@ CLASS zcl_i18n_service IMPLEMENTATION.
             rs_response = build_error( iv_code = 'UNSUPPORTED_TARGET' iv_message = |list_texts: target_type '{ lv_target_type }' is not supported| ). RETURN.
         ENDCASE.
         DATA(lv_out_language) = COND string( WHEN lv_lang_omitted = abap_true
-                                             THEN iso_from_sap( CONV spras( lv_language ) )
+                                             THEN iso_from_sap( lv_spras )
                                              ELSE lv_language ).
         DATA(lv_data) = json_obj( json_join( VALUE #(
           ( json_str( iv_key = 'target_type' iv_value = lv_target_type ) )
@@ -1111,6 +1115,24 @@ CLASS zcl_i18n_service IMPLEMENTATION.
       rv_iso = lv_iso.
     ELSE.
       rv_iso = iv_spras.   " no ISO mapping -> fall back to the SAP code
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD to_spras.
+    " Resolve a language code to the SAP single-char SPRAS. The input may already be a
+    " SAP 1-char code (E, D, F, R...) or a 2-char ISO 639-1 code (EN, DE, FR, RO...). A
+    " naive CONV spras( ) truncates a 2-char ISO to its first char (e.g. RO -> R = Russian),
+    " so a 2-char value is resolved via I_Language. Unknown input falls back to the raw value
+    " (the downstream XCO call then rejects it with a precise error).
+    DATA(lv) = iv_lang.
+    TRANSLATE lv TO UPPER CASE. CONDENSE lv.
+    IF strlen( lv ) <= 1.
+      rv_spras = lv.
+      RETURN.
+    ENDIF.
+    SELECT SINGLE Language FROM I_Language WHERE LanguageISOCode = @lv INTO @rv_spras.
+    IF sy-subrc <> 0.
+      rv_spras = lv.
     ENDIF.
   ENDMETHOD.
 
