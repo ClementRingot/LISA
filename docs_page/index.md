@@ -30,4 +30,4 @@
 | **Object types** | data elements, domains, CDS views, CDS metadata extensions, message classes, class/FG text pools, application log objects, business configuration objects |
 | **Transports** | `http-streamable` (default) and `stdio` |
 | **Auth** | none (stdio/local), API key, OIDC/JWT, XSUAA (BTP) |
-| **Built like** | [ARC-1](https://github.com/marianfoo/arc-1) |
+| **Built like** | [ARC-1](https://github.com/arc-mcp/arc-1) |

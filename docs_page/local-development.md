@@ -66,4 +66,4 @@ src/
 
 ## When in doubt
 
-This project depends on **[`@arc-mcp/xsuaa-auth`](https://www.npmjs.com/package/@arc-mcp/xsuaa-auth)** for auth + BTP connectivity, and follows **[ARC-1](https://github.com/marianfoo/arc-1)**'s patterns for HTTP transport and rate limiting. If an auth/BTP behaviour is unclear, the package (and ARC-1, from which it was extracted) is the reference implementation.
+This project depends on **[`@arc-mcp/xsuaa-auth`](https://www.npmjs.com/package/@arc-mcp/xsuaa-auth)** for auth + BTP connectivity, and follows **[ARC-1](https://github.com/arc-mcp/arc-1)**'s patterns for HTTP transport and rate limiting. If an auth/BTP behaviour is unclear, the package (and ARC-1, from which it was extracted) is the reference implementation.

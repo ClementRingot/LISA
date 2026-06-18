@@ -4,7 +4,7 @@
 
 **LISA** (Localization & Internationalization Service for ABAP) is a [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server that lets AI assistants (Claude, Cursor, VS Code, …) manage the translation of SAP repository objects — data elements, domains, CDS views, message classes, class/function-group text pools, and more — without leaving the chat.
 
-For authentication and SAP BTP connectivity it builds on the **same stack as [ARC-1](https://github.com/marianfoo/arc-1)** — in fact it **depends on** the published [`@arc-mcp/xsuaa-auth`](https://www.npmjs.com/package/@arc-mcp/xsuaa-auth) package (the XSUAA OAuth proxy + BTP principal-propagation layer extracted from ARC-1) rather than re-implementing it, on the same Express / MCP-SDK transport. On top of that, instead of the full ADT toolset, it exposes **3 focused translation tools** backed by a small ABAP HTTP service that wraps SAP's [XCO i18n APIs](https://help.sap.com/docs/abap-cloud/abap-development-tools-user-guide/internationalization-i18n).
+For authentication and SAP BTP connectivity it builds on the **same stack as [ARC-1](https://github.com/arc-mcp/arc-1)** — in fact it **depends on** the published [`@arc-mcp/xsuaa-auth`](https://www.npmjs.com/package/@arc-mcp/xsuaa-auth) package (the XSUAA OAuth proxy + BTP principal-propagation layer extracted from ARC-1) rather than re-implementing it, on the same Express / MCP-SDK transport. On top of that, instead of the full ADT toolset, it exposes **3 focused translation tools** backed by a small ABAP HTTP service that wraps SAP's [XCO i18n APIs](https://help.sap.com/docs/btp/sap-business-technology-platform/i18n-apis?locale=en-US).
 
 > **Deployment target:** `LISA` is designed to run on **SAP BTP (Cloud Foundry)** — that is the primary, supported way to use it (XSUAA login + principal propagation to SAP). Running it **locally** is fully supported too, but it is meant for **development and testing**, not production. The two paths are [Part 2 (BTP)](#part-2--deploy-to-sap-btp-recommended) and [Part 3 (local)](#part-3--run-locally-development--testing) below.
 
@@ -58,7 +58,7 @@ These are XCO **semantic** literals, not DDIC short codes:
 
 ## Use it alongside an ADT MCP server
 
-`LISA` is focused on the **translation** step — it deliberately does *not* discover objects or manage transports. For an interactive, AI-driven workflow it is designed to be used **next to an ADT MCP server** (e.g. [ARC-1](https://github.com/marianfoo/arc-1)), which provides the surrounding capabilities:
+`LISA` is focused on the **translation** step — it deliberately does *not* discover objects or manage transports. For an interactive, AI-driven workflow it is designed to be used **next to an ADT MCP server** (e.g. [ARC-1](https://github.com/arc-mcp/arc-1)), which provides the surrounding capabilities:
 
 - **object discovery** — find the data element / CDS view / message class to translate;
 - **transport handling** — locate or create the transport request that `TranslateSetTexts` requires;
@@ -70,7 +70,7 @@ Typical division of labour: the **ADT MCP** finds the object and a transport →
 
 ## Prerequisites
 
-- An SAP system with the **XCO i18n APIs** available (S/4HANA 2022+ / ABAP Platform 2022+ / ABAP Cloud) and the new HTTP handler model (`IF_HTTP_SERVICE_EXTENSION`).
+- An SAP system with the **XCO i18n APIs** available (S/4HANA 2022+ / ABAP Platform 2022+ / ABAP Cloud) and the new HTTP handler model (`IF_HTTP_SERVICE_EXTENSION`). XCO i18n docs per landscape: [ABAP Platform](https://help.sap.com/docs/ABAP_PLATFORM_NEW/b5670aaaa2364a29935f40b16499972d/f22992e198f04e559c468e81e3f7a55e.html?locale=en-US) (on-premise / private cloud) · [S/4HANA Public Cloud](https://help.sap.com/docs/SAP_S4HANA_CLOUD/6aa39f1ac05441e5a23f484f31e477e7/f22992e198f04e559c468e81e3f7a55e.html?locale=en-US) · [SAP BTP ABAP Environment](https://help.sap.com/docs/btp/sap-business-technology-platform/i18n-apis?locale=en-US).
 - Authorization to import a class and create an ABAP **HTTP service** (ADT), plus rights to expose it: via `UCON_HTTP_SERVICES` (on-premise / private cloud) or a **communication scenario** (BTP ABAP Environment / public cloud).
 - **Node.js 22.x** to run the MCP server.
 - For production: an **SAP BTP** subaccount (Cloud Foundry) with XSUAA, Destination and Connectivity services.
@@ -257,7 +257,7 @@ LISA/
 
 ## Credits
 
-LISA's authentication and BTP connectivity layer is provided by **[`@arc-mcp/xsuaa-auth`](https://www.npmjs.com/package/@arc-mcp/xsuaa-auth)** — the XSUAA/OAuth proxy + principal-propagation package extracted from **[ARC-1](https://github.com/marianfoo/arc-1)** by [marianfoo](https://github.com/marianfoo); LISA's transport and overall architecture follow ARC-1's patterns. The translation service itself is built on SAP's **XCO i18n** generation APIs.
+LISA's authentication and BTP connectivity layer is provided by **[`@arc-mcp/xsuaa-auth`](https://www.npmjs.com/package/@arc-mcp/xsuaa-auth)** — the XSUAA/OAuth proxy + principal-propagation package extracted from **[ARC-1](https://github.com/arc-mcp/arc-1)** by [marianfoo](https://github.com/marianfoo); LISA's transport and overall architecture follow ARC-1's patterns. The translation service itself is built on SAP's **XCO i18n** generation APIs.
 
 ## License
 
@@ -266,6 +266,6 @@ LISA's authentication and BTP connectivity layer is provided by **[`@arc-mcp/xsu
 LISA's XSUAA OAuth + BTP connectivity layer is provided by the MIT-licensed
 **[`@arc-mcp/xsuaa-auth`](https://www.npmjs.com/package/@arc-mcp/xsuaa-auth)**
 dependency (authored by the ARC-1 maintainers). A small remaining portion (the
-OAuth callback-proxy handler) is derived from **[ARC-1](https://github.com/marianfoo/arc-1)**
+OAuth callback-proxy handler) is derived from **[ARC-1](https://github.com/arc-mcp/arc-1)**
 and used under its MIT License — see the [`LICENSE`](./LICENSE) file for the
 preserved upstream copyright.

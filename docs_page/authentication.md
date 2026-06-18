@@ -39,7 +39,7 @@ MCP client ──JWT──▶ LISA ──(user JWT)──▶ Destination Service
 
 ## OAuth proxy & dynamic client registration
 
-For XSUAA, the server runs an OAuth proxy provided by the [`@arc-mcp/xsuaa-auth`](https://www.npmjs.com/package/@arc-mcp/xsuaa-auth) package (the XSUAA/OAuth layer extracted from [ARC-1](https://github.com/marianfoo/arc-1)) so standard MCP OAuth clients can authenticate against XSUAA, including:
+For XSUAA, the server runs an OAuth proxy provided by the [`@arc-mcp/xsuaa-auth`](https://www.npmjs.com/package/@arc-mcp/xsuaa-auth) package (the XSUAA/OAuth layer extracted from [ARC-1](https://github.com/arc-mcp/arc-1)) so standard MCP OAuth clients can authenticate against XSUAA, including:
 
 - a **stateless DCR client store** (the `client_id` *is* the signed payload),
 - a redirect-URI allowlist mirrored from `xs-security.json` (LISA passes its own list to the package),
