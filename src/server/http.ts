@@ -361,7 +361,7 @@ export function createHttpServer(config: Config): express.Application {
       // Per-request server + transport pattern avoids "already connected" errors.
       const server = new McpServer({ name: 'lisa', version: VERSION });
       // Pass the raw bearer token so the SAP client can use principal propagation
-      registerTranslationTools(server, config, token);
+      await registerTranslationTools(server, config, token);
 
       // Stateless mode (sessionIdGenerator: undefined): each request is
       // self-contained. Required for the per-request server pattern — a stateful

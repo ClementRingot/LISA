@@ -11,6 +11,7 @@
  */
 
 import { z } from 'zod';
+import type { Capabilities } from '../sap/i18n-client.js';
 
 // ─── Shared argument schemas ──────────────────────────────────────────────────
 
@@ -37,11 +38,7 @@ export const TargetTypeSchema = z
       'NOTE: a CDS view (data_definition) often has its UI labels defined/overridden in a separate ' +
       "metadata extension (DDLX). To translate ALL of a view's texts, also query the corresponding " +
       'metadata_extension object (its own DDLX name, not the view name). ' +
-      'STACK DIFFERENCES: public cloud / BTP ABAP Environment and on-premise / private cloud support ' +
-      'DIFFERENT object types per operation — some are available on only one of the two (e.g. reading ' +
-      'text_pool texts is not available on public cloud / BTP ABAP Environment), and the supported set ' +
-      'can also differ between on-premise / private cloud systems depending on the system version. A ' +
-      'target_type the target system does not support for the requested operation is rejected up-front.',
+      'The object types actually available on the target system are stated per tool (see each tool description).',
   );
 
 export const LanguageSchema = z
@@ -163,3 +160,17 @@ export const TOOLS = {
 } as const;
 
 export type ToolName = keyof typeof TOOLS;
+
+/**
+ * Per-action sentence appended to a tool's description so the agent knows up-front which
+ * target_type values THIS system accepts for the operation. When the backend declares an
+ * allow-list for the action we state it concretely; otherwise we fall back to the generic
+ * stack-differences caveat (older handler / capabilities probe unavailable).
+ */
+export function supportedTargetTypesNote(action: string, capabilities: Capabilities | null): string {
+  const allowed = capabilities?.[action];
+  if (allowed && allowed.length > 0) {
+    return `On THIS SAP system, '${action}' supports these target_type values: ${allowed.join(', ')}. Any other target_type is rejected before reaching SAP.`;
+  }
+  return 'STACK DIFFERENCES: public cloud / BTP ABAP Environment and on-premise / private cloud support DIFFERENT object types per operation, and the supported set can also differ by system version. A target_type the target system does not support for this operation is rejected up-front.';
+}

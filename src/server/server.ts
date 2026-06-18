@@ -11,7 +11,7 @@ export async function createAndStartServer(config: Config): Promise<void> {
 
   if (config.transport === 'stdio') {
     const server = new McpServer({ name: 'lisa', version: VERSION });
-    registerTranslationTools(server, config);
+    await registerTranslationTools(server, config);
 
     const transport = new StdioServerTransport();
     await server.connect(transport);

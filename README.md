@@ -39,7 +39,7 @@ There are **two halves** to a working setup:
 
 ### Supported object types (`target_type`)
 
-These are XCO **semantic** literals, not DDIC short codes:
+This is the **full catalog** of object types LISA understands — XCO **semantic** literals, not DDIC short codes. Which of them are *actually* available depends on the target system: public cloud / BTP ABAP Environment and on-premise / private cloud support **different** types per operation, and the set can also differ by system version. LISA probes the connected backend at startup and states the concrete per-operation list **in each tool's description** (a `target_type` the system doesn't support is rejected up-front).
 
 | `target_type` | SAP object | Typical attributes |
 |---------------|-----------|--------------------|

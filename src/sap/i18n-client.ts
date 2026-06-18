@@ -431,6 +431,21 @@ export class I18nClient {
     }
   }
 
+  /**
+   * The backend's per-action allow-list, so tool descriptions can advertise the object types THIS
+   * system actually supports (proactive guidance, not just the reactive assertActionSupported reject).
+   * Cached process-wide like loadCapabilities. Returns null when the backend declares no allow-list
+   * (older handler) OR the connection cannot be resolved — callers then fall back to generic wording.
+   */
+  async getCapabilities(): Promise<Capabilities | null> {
+    try {
+      const conn = await resolveConnection(this.config, this.userJwt);
+      return await loadCapabilities(conn, this.path);
+    } catch {
+      return null;
+    }
+  }
+
   async listLanguages(): Promise<SapLanguage[]> {
     const conn = await resolveConnection(this.config, this.userJwt);
     const data = await callAction<{ languages: SapLanguage[] }>(conn, this.path, 'list_languages', {});
