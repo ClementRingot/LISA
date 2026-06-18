@@ -36,7 +36,11 @@ export const TargetTypeSchema = z
       'application_log_object (APLO), business_configuration_object (SMBC). ' +
       'NOTE: a CDS view (data_definition) often has its UI labels defined/overridden in a separate ' +
       "metadata extension (DDLX). To translate ALL of a view's texts, also query the corresponding " +
-      'metadata_extension object (its own DDLX name, not the view name).',
+      'metadata_extension object (its own DDLX name, not the view name). ' +
+      'STACK DIFFERENCES: public cloud / BTP ABAP Environment and on-premise / private cloud support ' +
+      'DIFFERENT object types per operation — some are available on only one of the two (e.g. reading ' +
+      'text_pool texts is not available on public cloud / BTP ABAP Environment). A target_type the ' +
+      'target system does not support for the requested operation is rejected up-front.',
   );
 
 export const LanguageSchema = z

@@ -28,6 +28,8 @@ CLASS zcl_i18n_service DEFINITION PUBLIC FINAL CREATE PUBLIC.
     METHODS handle_list_texts
       IMPORTING iv_params TYPE string
       RETURNING VALUE(rs_response) TYPE ty_response.
+    METHODS handle_capabilities
+      RETURNING VALUE(rs_response) TYPE ty_response.
     METHODS parse_string_array
       IMPORTING iv_content TYPE string
       RETURNING VALUE(rt_values) TYPE string_table.
@@ -115,6 +117,7 @@ CLASS zcl_i18n_service IMPLEMENTATION.
       WHEN 'list_languages'.       ls_response = handle_list_languages( lv_params ).
       WHEN 'compare_translations'. ls_response = handle_compare_translations( lv_params ).
       WHEN 'list_texts'.           ls_response = handle_list_texts( lv_params ).
+      WHEN 'capabilities'.         ls_response = handle_capabilities( ).
       WHEN OTHERS.
         ls_response = build_error( iv_code = 'UNKNOWN_ACTION' iv_message = |Action '{ lv_action }' is not supported| ).
     ENDCASE.
@@ -143,6 +146,37 @@ CLASS zcl_i18n_service IMPLEMENTATION.
       ( json_bool( iv_key = 'success' iv_value = abap_true ) )
       ( |"data":{ iv_data }| )
     ) ) ).
+  ENDMETHOD.
+
+  METHOD handle_capabilities.
+    " Allow-list of the object types this stack can translate, per action. The MCP server
+    " enforces it (a target_type not listed for an action is rejected up-front). To remove a
+    " possibility, delete its line below. Public cloud / BTP ABAP Environment and on-premise /
+    " private cloud support DIFFERENT object types; this classic stack supports all of them.
+    " The set can also vary by system release: a future per-release class (e.g.
+    " zcl_i18n_service_2022 / _2025) would simply declare its own list here.
+    DATA(lv_list_texts) = |[{ json_join( VALUE #(
+      ( |"data_element"| )
+      ( |"domain"| )
+      ( |"data_definition"| )
+      ( |"message_class"| )
+      ( |"text_pool"| )
+      ( |"metadata_extension"| )
+      ( |"application_log_object"| )
+      ( |"business_configuration_object"| ) ) ) }]|.
+    DATA(lv_set_translation) = |[{ json_join( VALUE #(
+      ( |"data_element"| )
+      ( |"domain"| )
+      ( |"data_definition"| )
+      ( |"message_class"| )
+      ( |"text_pool"| )
+      ( |"metadata_extension"| )
+      ( |"application_log_object"| )
+      ( |"business_configuration_object"| ) ) ) }]|.
+    DATA(lv_data) = json_obj( json_join( VALUE #(
+      ( |"list_texts":{ lv_list_texts }| )
+      ( |"set_translation":{ lv_set_translation }| ) ) ) ).
+    rs_response = build_success( iv_data = lv_data ).
   ENDMETHOD.
 
   METHOD handle_get_translation.
