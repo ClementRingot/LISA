@@ -10,6 +10,14 @@
  */
 
 import { randomUUID } from 'node:crypto';
+import {
+  type OAuthStateCodec,
+  type StatelessDcrClientStore,
+  createChainedTokenVerifier,
+  createOidcVerifier,
+  createXsuaaOAuthProvider,
+  createXsuaaTokenVerifier,
+} from '@arc-mcp/xsuaa-auth';
 import { mcpAuthRouter } from '@modelcontextprotocol/sdk/server/auth/router.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
@@ -18,17 +26,35 @@ import express, { type Request, type Response, type NextFunction } from 'express
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import { registerTranslationTools } from '../handlers/intent.js';
-import { getLogger, requestContext } from './logger.js';
-import type { OAuthStateCodec } from './oauth-state.js';
-import type { StatelessDcrClientStore } from './stateless-client-store.js';
+import { getLogger, requestContext, toPackageLogger } from './logger.js';
 import type { Config } from './types.js';
 import { VERSION } from './version.js';
-import {
-  createChainedTokenVerifier,
-  createOidcVerifier,
-  createXsuaaOAuthProvider,
-  createXsuaaTokenVerifier,
-} from './xsuaa.js';
+
+/**
+ * Mirror of `oauth2-configuration.redirect-uris` in `xs-security.json`. The
+ * `@arc-mcp/xsuaa-auth` defaults carry extra patterns (mistral, azure-apim) that
+ * LISA's XSUAA service does not register, so we pass LISA's own list to keep the
+ * callback-proxy allowlist in lock-step with the service binding. MUST stay in
+ * sync with `xs-security.json`.
+ */
+const XSUAA_REDIRECT_URI_PATTERNS = [
+  'http://localhost:*/**',
+  'https://*.hana.ondemand.com/**',
+  'https://*.applicationstudio.cloud.sap/**',
+  'https://claude.ai/api/mcp/auth_callback',
+  'cursor://anysphere.cursor-retrieval/**',
+  'cursor://anysphere.cursor-mcp/**',
+  'vscode://vscode.microsoft-authentication/**',
+] as const;
+
+/** Built-in redirect_uris baked into the pre-registered XSUAA default client. */
+const XSUAA_DEFAULT_REDIRECT_URIS = [
+  'http://localhost:6274/oauth/callback', // MCP Inspector
+  'http://localhost:3000/oauth/callback', // Local dev
+  'https://claude.ai/api/mcp/auth_callback', // Claude Desktop
+  'cursor://anysphere.cursor-retrieval/oauth/callback', // Cursor
+  'vscode://vscode.microsoft-authentication/callback', // VS Code
+] as const;
 
 const HTML_ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 function escapeHtml(s: string): string {
@@ -237,9 +263,30 @@ export function createHttpServer(config: Config): express.Application {
   });
 
   // ── Chained token verifier (XSUAA → OIDC → API key) ───────────────────────
-  const xsuaaVerifier = config.xsuaaBinding ? createXsuaaTokenVerifier(config.xsuaaBinding) : undefined;
-  const oidcVerifier = config.oidcIssuer ? createOidcVerifier(config.oidcIssuer, config.oidcAudience) : undefined;
-  const verifyToken = createChainedTokenVerifier({ apiKeys: config.apiKeys }, xsuaaVerifier, oidcVerifier);
+  const authLogger = toPackageLogger();
+
+  // LISA authenticates only — SAP enforces rights downstream — so the XSUAA
+  // verifier extracts no scopes (`acceptedScopes: []`).
+  const xsuaaVerifier = config.xsuaaBinding
+    ? createXsuaaTokenVerifier(config.xsuaaBinding, { acceptedScopes: [], logger: authLogger })
+    : undefined;
+
+  // `config.oidcAudience` may be undefined (OIDC_AUDIENCE unset). jose treats an
+  // undefined audience as "do not validate the audience" — LISA's historical
+  // behaviour — so we pass it through; the open-audience warning fires below.
+  if (config.oidcIssuer && !config.oidcAudience) {
+    log.warn(
+      'OIDC_AUDIENCE is not set — JWT audience is NOT validated. Any token from the configured issuer will be accepted regardless of its intended audience. Set OIDC_AUDIENCE to restrict tokens to this server.',
+    );
+  }
+  const oidcVerifier = config.oidcIssuer
+    ? createOidcVerifier(config.oidcIssuer, config.oidcAudience as string, { logger: authLogger })
+    : undefined;
+
+  // Map LISA's `{ key, profile }` API keys to the package's `ApiKeyEntry`,
+  // preserving the historical `api-key:<profile>` client identity.
+  const apiKeys = config.apiKeys.map((entry) => ({ key: entry.key, clientId: `api-key:${entry.profile}` }));
+  const verifyToken = createChainedTokenVerifier({ apiKeys }, xsuaaVerifier, oidcVerifier, { logger: authLogger });
 
   // ── XSUAA OAuth proxy (stateless DCR + callback proxy) ────────────────────
   if (config.xsuaaBinding) {
@@ -251,6 +298,9 @@ export function createHttpServer(config: Config): express.Application {
       dcrTtlSeconds: config.oauthDcrTtlSeconds,
       dcrSigningSecret: config.dcrSigningSecret,
       callbackUrl,
+      redirectUriPatterns: XSUAA_REDIRECT_URI_PATTERNS,
+      defaultRedirectUris: XSUAA_DEFAULT_REDIRECT_URIS,
+      logger: authLogger,
     });
 
     // Auto-register a candidate redirect_uri for the pre-registered XSUAA client

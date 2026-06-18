@@ -8,5 +8,6 @@ dist/
 # MTA build artifacts
 mta_archives/
 
-# MTA extension descriptor — real landscape file (template is tracked)
-mta-overrides.mtaext
+# MTA extension descriptor — real landscape files (the .example template stays
+# tracked: the glob ends at `.mtaext`, so `mta-overrides.mtaext.example` is not matched)
+mta-overrides*.mtaext

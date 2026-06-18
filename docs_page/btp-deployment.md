@@ -31,12 +31,12 @@ Set the two property values in `mta.yaml` to the destination **names** you creat
 The base `mta.yaml` deliberately ships without a fixed route. To deploy under a short, stable URL your MCP clients can connect to, copy the tracked template and pin a `host:`:
 
 ```bash
-cp mta-overrides.mtaext.example mta-overrides.mtaext
-# edit mta-overrides.mtaext — it keeps the lisa-<space> convention by default,
+cp mta-overrides.mtaext.example mta-overrides-dev.mtaext
+# edit mta-overrides-dev.mtaext — it keeps the lisa-<space> convention by default,
 # so the dev space resolves to https://lisa-dev.cfapps.<region>.../mcp
 ```
 
-The real `mta-overrides.mtaext` is gitignored; the `.example` template is tracked. Override per-landscape destinations and other properties in the same file. The host must be lowercase letters/digits/hyphens and free on the shared region domain (first-come-first-served across **all** subaccounts) — pin a landscape-specific name if `lisa-<space>` ever clashes.
+Use one file per landscape (e.g. `mta-overrides-dev.mtaext`, `mta-overrides-sbx.mtaext`). All `mta-overrides*.mtaext` are gitignored; the `.example` template is tracked. Override per-landscape destinations and other properties in the same file. The host must be lowercase letters/digits/hyphens and free on the shared region domain (first-come-first-served across **all** subaccounts) — pin a landscape-specific name if `lisa-<space>` ever clashes. When running more than one instance in the **same subaccount** (e.g. sandbox alongside dev), each needs a distinct XSUAA `xsappname` — see the `mta-overrides.mtaext.example` "XSUAA xsappname" block.
 
 ## 3. Build
 
@@ -49,10 +49,10 @@ mbt build            # → mta_archives/lisa_0.1.0.mtar
 
 ```bash
 cf login              # target the right org/space
-cf deploy mta_archives/lisa_0.1.0.mtar -e mta-overrides.mtaext
+cf deploy mta_archives/lisa_0.1.0.mtar -e mta-overrides-dev.mtaext
 ```
 
-Or in one step from npm: `npm run btp:build-deploy-ext` (builds the `.mtar` and deploys it with the extension applied). Omit `-e mta-overrides.mtaext` / use `npm run btp:build-deploy` to deploy on the auto-assigned default host.
+Or in one step from npm: `npm run btp:build-deploy-dev` (builds the `.mtar` and deploys it with the extension applied); use `btp:build-deploy-sbx` for the sandbox landscape. Omit `-e mta-overrides-dev.mtaext` / use `npm run btp:build-deploy` to deploy on the auto-assigned default host.
 
 This creates the XSUAA, Destination, Connectivity and App-Logs service instances (if missing) and pushes the app.
 

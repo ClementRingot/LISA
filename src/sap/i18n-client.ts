@@ -23,8 +23,6 @@
  *                                        …selectors }
  */
 
-import { Client, type Dispatcher, fetch as undiciFetch } from 'undici';
-import type { Config } from '../server/types.js';
 import {
   type BTPConfig,
   type BTPProxyConfig,
@@ -32,7 +30,10 @@ import {
   lookupDestination,
   lookupDestinationWithUserToken,
   parseVCAPServices,
-} from './btp.js';
+} from '@arc-mcp/xsuaa-auth/btp';
+import { Client, type Dispatcher, fetch as undiciFetch } from 'undici';
+import { toPackageLogger } from '../server/logger.js';
+import type { Config } from '../server/types.js';
 
 // ─── Response types (match ZCL_I18N_SERVICE JSON exactly) ──────────────────────
 
@@ -129,14 +130,18 @@ interface ResolvedConnection {
 let btpConfigCache: BTPConfig | null | undefined;
 let proxyCache: BTPProxyConfig | null | undefined;
 
+// Route the package's BTP / principal-propagation diagnostics into LISA's logger
+// (the package's `./btp` helpers default to a silent no-op otherwise).
+const btpLogger = toPackageLogger();
+
 function getBtpConfig(): BTPConfig | null {
-  if (btpConfigCache === undefined) btpConfigCache = parseVCAPServices();
+  if (btpConfigCache === undefined) btpConfigCache = parseVCAPServices(undefined, btpLogger);
   return btpConfigCache;
 }
 
 function getProxy(btpConfig: BTPConfig, proxyType: string, locationId?: string): BTPProxyConfig | null {
   if (proxyType !== 'OnPremise') return null;
-  if (proxyCache === undefined) proxyCache = createConnectivityProxy(btpConfig, locationId);
+  if (proxyCache === undefined) proxyCache = createConnectivityProxy(btpConfig, locationId, btpLogger);
   return proxyCache;
 }
 
@@ -161,6 +166,7 @@ async function resolveConnection(config: Config, userJwt?: string): Promise<Reso
         btpConfig,
         config.btpPpDestination,
         userJwt,
+        btpLogger,
       );
       if (authTokens.sapConnectivityAuth) {
         headers['SAP-Connectivity-Authentication'] = authTokens.sapConnectivityAuth;
@@ -177,7 +183,7 @@ async function resolveConnection(config: Config, userJwt?: string): Promise<Reso
       };
     }
 
-    const dest = await lookupDestination(btpConfig, config.btpDestination);
+    const dest = await lookupDestination(btpConfig, config.btpDestination, btpLogger);
     if (dest.User && dest.Password) {
       headers.Authorization = basicAuth(dest.User, dest.Password);
     }

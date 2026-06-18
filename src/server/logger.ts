@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import type { Logger as PackageLogger } from '@arc-mcp/xsuaa-auth';
 import type { LogFormat, LogLevel } from './types.js';
 
 const LEVELS: Record<LogLevel, number> = { debug: 0, info: 1, warn: 2, error: 3 };
@@ -78,4 +79,28 @@ export function initLogger(format: LogFormat, level: LogLevel): Logger {
 export function getLogger(): Logger {
   if (!_logger) throw new Error('Logger not initialised — call initLogger() first');
   return _logger;
+}
+
+/**
+ * Adapt LISA's logger to the `@arc-mcp/xsuaa-auth` `Logger` contract so the
+ * package's auth + BTP/principal-propagation diagnostics flow into LISA's log
+ * stream (the package defaults to a silent no-op otherwise). The level methods
+ * line up 1:1; `emitAudit` is normalised because the package emits a flat record
+ * (`{ level, event, … }`) whereas LISA's `emitAudit` requires typed fields.
+ *
+ * Methods resolve `getLogger()` lazily on each call, so the adapter can be built
+ * at module load (before `initLogger`) and still target the live logger.
+ */
+export function toPackageLogger(): PackageLogger {
+  return {
+    debug: (message, data) => getLogger().debug(message, data),
+    info: (message, data) => getLogger().info(message, data),
+    warn: (message, data) => getLogger().warn(message, data),
+    error: (message, data) => getLogger().error(message, data),
+    emitAudit: (event) => {
+      const level = event.level === 'debug' || event.level === 'warn' || event.level === 'error' ? event.level : 'info';
+      const name = typeof event.event === 'string' ? event.event : 'audit';
+      getLogger().emitAudit({ ...event, level, event: name });
+    },
+  };
 }
