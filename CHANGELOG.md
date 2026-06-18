@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-06-18
+
+### Added
+- `roadmap/` — forward-looking design docs (not implemented): distributing LISA as an
+  ARC-1 extension once the extension framework reaches v2, and sharing the XSUAA/BTP auth
+  layer via the published `@arc-mcp/xsuaa-auth` package.
+
+### Changed
+- Docs: clarify that the service is exposed via `UCON_HTTP_SERVICES` on **on-premise /
+  private cloud** and via a **communication scenario** on BTP ABAP Environment / public cloud
+  (the prerequisites previously implied `UCON_HTTP_SERVICES` for all stacks).
+- Docs: refresh ARC-1 upstream references to the `arc-mcp` org (repo, `docs.arc-1-mcp.com`,
+  `ghcr.io/arc-mcp/arc-1`).
+
 ## [0.3.0] — 2026-06-16
 
 ### Added
@@ -65,7 +79,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - XSUAA OAuth proxy (stateless DCR + signed callback state), OIDC and API-key auth.
 - BTP deployment (MTA), Destination + Connectivity (principal propagation).
 
-[Unreleased]: https://github.com/ClementRingot/LISA/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/ClementRingot/LISA/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/ClementRingot/LISA/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/ClementRingot/LISA/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/ClementRingot/LISA/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/ClementRingot/LISA/releases/tag/v0.1.0

@@ -71,7 +71,7 @@ Typical division of labour: the **ADT MCP** finds the object and a transport →
 ## Prerequisites
 
 - An SAP system with the **XCO i18n APIs** available (S/4HANA 2022+ / ABAP Platform 2022+ / ABAP Cloud) and the new HTTP handler model (`IF_HTTP_SERVICE_EXTENSION`).
-- Authorization to import a class, create an ABAP **HTTP service** (ADT), and enable it via `UCON_HTTP_SERVICES`.
+- Authorization to import a class and create an ABAP **HTTP service** (ADT), plus rights to expose it: via `UCON_HTTP_SERVICES` (on-premise / private cloud) or a **communication scenario** (BTP ABAP Environment / public cloud).
 - **Node.js 22.x** to run the MCP server.
 - For production: an **SAP BTP** subaccount (Cloud Foundry) with XSUAA, Destination and Connectivity services.
 
@@ -86,7 +86,7 @@ The ABAP handler to copy into your **target SAP system** lives in [`abap/`](./ab
 | [`abap/zcl_i18n_service.clas.abap`](./abap/zcl_i18n_service.clas.abap) | `ZCL_I18N_SERVICE` | **On-premise / private cloud** — classic ABAP stack (S/4HANA 2022+ / ABAP Platform 2022+). |
 | [`abap/zcl_i18n_service_cloud.clas.abap`](./abap/zcl_i18n_service_cloud.clas.abap) | `ZCL_I18N_SERVICE_CLOUD` | **SAP BTP ABAP Environment / public cloud** (Steampunk) — Cloud-API-compliant variant. |
 
-Both implement `IF_HTTP_SERVICE_EXTENSION`, route actions from the URL path, and speak the **same wire contract** — they only differ in the released/Cloud-compliant APIs the public-cloud stack allows. Import the one file for your stack (abapGit, or paste via ADT), create an ABAP **HTTP service** whose handler class is that class, and **enable** it (`UCON_HTTP_SERVICES` on-premise; a communication scenario on ABAP Environment). Point the MCP at its URL (default `/sap/bc/http/sap/zi18n_service`).
+Both implement `IF_HTTP_SERVICE_EXTENSION`, route actions from the URL path, and speak the **same wire contract** — they only differ in the released/Cloud-compliant APIs the public-cloud stack allows. Import the one file for your stack (abapGit, or paste via ADT), create an ABAP **HTTP service** whose handler class is that class, and **enable** it (`UCON_HTTP_SERVICES` on-premise / private cloud; a communication scenario on ABAP Environment). Point the MCP at its URL (default `/sap/bc/http/sap/zi18n_service`).
 
 👉 Full step-by-step instructions: **[docs: ABAP service setup](./docs_page/abap-service-setup.md)**.
 
@@ -223,6 +223,18 @@ The [`docs_page/`](./docs_page) folder holds the long-form guides:
 
 ---
 
+## Roadmap
+
+Forward-looking work — **planned, not implemented** — lives in [`roadmap/`](./roadmap/README.md).
+Two independent tracks:
+
+| Track | Doc | In one line |
+|-------|-----|-------------|
+| Distribute LISA as an ARC-1 extension | [`roadmap/arc1-extension.md`](./roadmap/arc1-extension.md) | When ARC-1's extension framework reaches **v2**, repackage LISA's 3 tools as in-process `Custom_*` tools. |
+| Share the auth layer (standalone) | [`roadmap/shared-auth-module.md`](./roadmap/shared-auth-module.md) | Replace LISA's in-tree XSUAA/BTP auth with a dependency on [`@arc-mcp/xsuaa-auth`](https://www.npmjs.com/package/@arc-mcp/xsuaa-auth). |
+
+---
+
 ## Project structure
 
 ```
@@ -231,6 +243,7 @@ LISA/
 │   ├── zcl_i18n_service.clas.abap        # on-premise / private cloud
 │   └── zcl_i18n_service_cloud.clas.abap  # BTP ABAP Environment / public cloud
 ├── docs_page/            # long-form documentation
+├── roadmap/              # forward-looking design docs (planned, not implemented)
 ├── src/
 │   ├── index.ts          # entry point
 │   ├── handlers/         # MCP tool defs (tools.ts) + registration (intent.ts)

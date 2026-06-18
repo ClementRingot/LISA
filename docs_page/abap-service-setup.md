@@ -10,7 +10,7 @@ The MCP server cannot translate anything on its own — it forwards requests to 
 
 - **XCO i18n APIs** available — S/4HANA 2022+ / ABAP Platform 2022+ / ABAP Cloud. Older releases do not have the `XCO_CP_I18N` generation APIs this handler relies on.
 - The **`IF_HTTP_SERVICE_EXTENSION`** programming model (ABAP Platform 1809 / 7.53+).
-- Developer authorization (create class/interface and an HTTP service) plus rights for transaction **`UCON_HTTP_SERVICES`** to enable the service.
+- Developer authorization (create class/interface and an HTTP service) plus rights to expose the service: transaction **`UCON_HTTP_SERVICES`** (on-premise / private cloud) or a **communication scenario** (ABAP Environment / public cloud — see [Create and enable the HTTP service](#create-and-enable-the-http-service)).
 - A target package (any Z/local package works).
 
 ## Pick the class for your stack
@@ -57,8 +57,8 @@ All HTTP services live under `/sap/bc/http`. The MCP server defaults to `/sap/bc
 
 HTTP services are **disabled by default**; calling one returns **HTTP 403** until enabled.
 
-- **On-premise, S/4HANA 2022+:** transaction **`UCON_HTTP_SERVICES`** → search for your service → mark it → **Enable** (multi-select supported). No ICF/SICF node is involved. See SAP note **3211278**.
-- **On-premise, before S/4HANA 2022:** the framework creates a matching SICF node — open **SICF**, find it by the service's URL path, right-click ▸ **Activate**.
+- **On-premise / private cloud, S/4HANA 2022+:** transaction **`UCON_HTTP_SERVICES`** → search for your service → mark it → **Enable** (multi-select supported). No ICF/SICF node is involved. See SAP note **3211278**.
+- **On-premise / private cloud, before S/4HANA 2022:** the framework creates a matching SICF node — open **SICF**, find it by the service's URL path, right-click ▸ **Activate**.
 - **ABAP Cloud (ABAP environment):** the underlying SICF node is activated automatically once the service is assigned to a **communication scenario** (inbound).
 
 The handler then determines the **action** from the last path segment (e.g. `…/zi18n_service/list_languages`), so it must sit at the fixed path you configured.

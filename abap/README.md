@@ -8,7 +8,7 @@ Each handler class is **fully self-contained** (the JSON/parameter helpers are i
 
 | File | Object | Use when |
 |------|--------|----------|
-| `zcl_i18n_service.clas.abap` | `ZCL_I18N_SERVICE` | Classic ABAP stack (on-premise S/4HANA 2022+ / ABAP Platform). |
+| `zcl_i18n_service.clas.abap` | `ZCL_I18N_SERVICE` | Classic ABAP stack (on-premise / private cloud — S/4HANA 2022+ / ABAP Platform). |
 | `zcl_i18n_service_cloud.clas.abap` | `ZCL_I18N_SERVICE_CLOUD` | ABAP Cloud (Steampunk / ABAP Environment) — Cloud-API-compliant variant. |
 
 Both implement `IF_HTTP_SERVICE_EXTENSION`, route actions from the URL path, and call the XCO i18n APIs. Same wire contract (see below) — just copy-paste the file that matches your stack.
@@ -31,13 +31,13 @@ These files use the **source-format** naming abapGit understands (`*.clas.abap`)
 
 ## Expose it as an HTTP service
 
-This is an ABAP **HTTP service** (`IF_HTTP_SERVICE_EXTENSION`), **not** a hand-made SICF node. On S/4HANA 2022+ you create it in ADT and enable it in `UCON_HTTP_SERVICES` — no ICF node is created. The handler reads the **action from the last segment of the URL path** (e.g. `…/zi18n_service/list_languages`) and all parameters from the **JSON request body**.
+This is an ABAP **HTTP service** (`IF_HTTP_SERVICE_EXTENSION`), **not** a hand-made SICF node. On S/4HANA 2022+ (on-premise / private cloud) you create it in ADT and enable it in `UCON_HTTP_SERVICES` — no ICF node is created. The handler reads the **action from the last segment of the URL path** (e.g. `…/zi18n_service/list_languages`) and all parameters from the **JSON request body**.
 
 1. In ADT: **New ▸ Other ABAP Repository Object ▸ HTTP service**. Give it a package/name/description.
 2. Set its **Handler class** to the class for your stack — **`ZCL_I18N_SERVICE`** (classic) or **`ZCL_I18N_SERVICE_CLOUD`** (ABAP Cloud) — letting the wizard generate the class, then paste in the implementation (see "Manual" above).
 3. **Enable** it:
-   - On-premise **S/4HANA 2022+** → transaction **`UCON_HTTP_SERVICES`** → find the service → **Enable** (disabled by default → HTTP 403 until enabled).
-   - On-premise **pre-2022** → activate the generated node in **SICF**.
+   - On-premise / private cloud **S/4HANA 2022+** → transaction **`UCON_HTTP_SERVICES`** → find the service → **Enable** (disabled by default → HTTP 403 until enabled).
+   - On-premise / private cloud **pre-2022** → activate the generated node in **SICF**.
    - **ABAP Cloud** → assign the service to a communication scenario (activates automatically).
    - After an abapGit import → click **Publish Locally** in the HTTP service editor.
 4. Note the service URL and set the MCP server's `SAP_I18N_SERVICE_PATH` (or the `mta.yaml` property) to match — default `/sap/bc/http/sap/zi18n_service`.
