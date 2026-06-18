@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { GetTextsSchema, ListLanguagesSchema, SetTranslationSchema, TOOLS, TargetTypeSchema } from './tools.js';
+import {
+  GetTextsSchema,
+  ListLanguagesSchema,
+  SetTranslationSchema,
+  TOOLS,
+  TargetTypeSchema,
+  supportedTargetTypesNote,
+} from './tools.js';
 
 describe('TargetTypeSchema', () => {
   it('accepts the XCO semantic literals', () => {
@@ -108,6 +115,34 @@ describe('SetTranslationSchema', () => {
 describe('ListLanguagesSchema', () => {
   it('ListLanguages takes no args', () => {
     expect(ListLanguagesSchema.safeParse({}).success).toBe(true);
+  });
+});
+
+describe('supportedTargetTypesNote', () => {
+  const caps = {
+    list_texts: ['data_element', 'data_definition'],
+    set_translation: ['data_element', 'text_pool'],
+  };
+
+  it('states the concrete per-action allow-list when capabilities are known', () => {
+    const note = supportedTargetTypesNote('list_texts', caps);
+    expect(note).toContain("'list_texts' supports these target_type values: data_element, data_definition");
+    expect(note).toContain('rejected before reaching SAP');
+    expect(note).not.toContain('STACK DIFFERENCES');
+  });
+
+  it('uses the per-action list (read vs write differ)', () => {
+    expect(supportedTargetTypesNote('set_translation', caps)).toContain('data_element, text_pool');
+  });
+
+  it('falls back to the generic stack-differences caveat when capabilities are unavailable', () => {
+    for (const note of [
+      supportedTargetTypesNote('list_texts', null),
+      supportedTargetTypesNote('unknown_action', caps),
+    ]) {
+      expect(note).toContain('STACK DIFFERENCES');
+      expect(note).toContain('rejected up-front');
+    }
   });
 });
 
