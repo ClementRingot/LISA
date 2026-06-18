@@ -390,11 +390,7 @@ export function isTargetTypeSupported(
 
 /** Assistant-facing message for an object type the target system does not support. */
 export function unsupportedTargetMessage(action: string, targetType: string): string {
-  return (
-    `target_type '${targetType}' is not available for '${action}' on this SAP system ` +
-    '(not in its declared capabilities). Public cloud / BTP ABAP Environment and ' +
-    'on-premise / private cloud support different object types.'
-  );
+  return `target_type '${targetType}' is not available for '${action}' on this SAP system (not in its declared capabilities). Public cloud / BTP ABAP Environment and on-premise / private cloud support different object types.`;
 }
 
 // Probed once per process (the backend is fixed for the app lifetime).
