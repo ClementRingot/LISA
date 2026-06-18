@@ -39,8 +39,9 @@ export const TargetTypeSchema = z
       'metadata_extension object (its own DDLX name, not the view name). ' +
       'STACK DIFFERENCES: public cloud / BTP ABAP Environment and on-premise / private cloud support ' +
       'DIFFERENT object types per operation — some are available on only one of the two (e.g. reading ' +
-      'text_pool texts is not available on public cloud / BTP ABAP Environment). A target_type the ' +
-      'target system does not support for the requested operation is rejected up-front.',
+      'text_pool texts is not available on public cloud / BTP ABAP Environment), and the supported set ' +
+      'can also differ between on-premise / private cloud systems depending on the system version. A ' +
+      'target_type the target system does not support for the requested operation is rejected up-front.',
   );
 
 export const LanguageSchema = z

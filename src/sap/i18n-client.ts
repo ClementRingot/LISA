@@ -362,13 +362,12 @@ export function normalizeListTextEntry(entry: ListTextEntry): ListTextEntry {
 // The ABAP `capabilities` action returns an ALLOW-LIST: the object types this stack
 // can translate, per action (e.g. { list_texts: [...], set_translation: [...] }).
 // Public cloud / BTP ABAP Environment and on-premise / private cloud support DIFFERENT
-// object types, and the supported set can also vary by SYSTEM RELEASE (a future deployment
-// might ship per-release handler classes, e.g. zcl_i18n_service_2022 / _2025). Because each
-// class DECLARES its own list, LISA follows whatever the bound handler reports with no code
-// change. The list is editable in the handler class (remove a type to disable it). LISA
-// fetches it once, caches it, and rejects a target_type not on the list up-front instead of
-// round-tripping to SAP only to hit the CLOUD_UNSUPPORTED backstop. Older handlers without
-// the action degrade gracefully to permissive (the backstop still fires).
+// object types, and the set can also differ by system version. Because the handler class
+// DECLARES its own list, LISA follows whatever the bound handler reports with no code change.
+// The list is editable in the handler class (remove a type to disable it). LISA fetches it
+// once, caches it, and rejects a target_type not on the list up-front instead of round-tripping
+// to SAP only to hit the CLOUD_UNSUPPORTED backstop. Older handlers without the action degrade
+// gracefully to permissive (the backstop still fires).
 
 /** Supported object types per wire action, as declared by the handler's allow-list. */
 export type Capabilities = Record<string, string[]>;

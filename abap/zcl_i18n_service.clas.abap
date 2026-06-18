@@ -152,9 +152,8 @@ CLASS zcl_i18n_service IMPLEMENTATION.
     " Allow-list of the object types this stack can translate, per action. The MCP server
     " enforces it (a target_type not listed for an action is rejected up-front). To remove a
     " possibility, delete its line below. Public cloud / BTP ABAP Environment and on-premise /
-    " private cloud support DIFFERENT object types; this classic stack supports all of them.
-    " The set can also vary by system release: a future per-release class (e.g.
-    " zcl_i18n_service_2022 / _2025) would simply declare its own list here.
+    " private cloud support DIFFERENT object types (and the set can differ by system version);
+    " this classic stack supports all of them.
     DATA(lv_list_texts) = |[{ json_join( VALUE #(
       ( |"data_element"| )
       ( |"domain"| )

@@ -149,10 +149,9 @@ CLASS zcl_i18n_service_cloud IMPLEMENTATION.
     " Allow-list of the object types this stack can translate, per action. The MCP server
     " enforces it (a target_type not listed for an action is rejected up-front). To remove a
     " possibility, delete its line below. Public cloud / BTP ABAP Environment and on-premise /
-    " private cloud support DIFFERENT object types; here text_pool is writable but NOT listable
-    " with the released cloud APIs (see handle_list_texts), so it is omitted from list_texts only.
-    " The set can also vary by system release: a future per-release class (e.g.
-    " zcl_i18n_service_2022 / _2025) would simply declare its own list here.
+    " private cloud support DIFFERENT object types (and the set can differ by system version);
+    " here text_pool is writable but NOT listable with the released cloud APIs (see
+    " handle_list_texts), so it is omitted from list_texts only.
     DATA(lv_list_texts) = |[{ json_join( VALUE #(
       ( |"data_element"| )
       ( |"domain"| )
