@@ -7,9 +7,10 @@
  *
  * Wire contract — mirrors ZCL_I18N_SERVICE exactly:
  *   - The ACTION is the last segment of the URL path (handler reads `~path_info`),
- *     lowercase. The wrapper drives three actions: list_languages | list_texts | set_translation.
- *     (The handler also exposes get_translation and compare_translations, but the MCP surface no
- *     longer uses them — list_texts is the whole-object reader and the client diffs locally.)
+ *     lowercase. The wrapper drives list_languages | list_texts | set_translation, plus a
+ *     `capabilities` probe (cached) used to reject stack-unsupported (action, target_type) calls
+ *     up-front. (The handler also exposes get_translation and compare_translations, but the MCP
+ *     surface no longer uses them — list_texts is the whole-object reader and the client diffs locally.)
  *   - ALL parameters are sent in the JSON request BODY (handler reads `request->get_text()`
  *     and string-matches "name":"value"). We therefore POST every action with a JSON body.
  *   - Object kinds are the XCO semantic `target_type` literals (data_element, domain, …).
@@ -317,6 +318,11 @@ async function callAction<T>(
   if (!envelope.success || status < 200 || status >= 300) {
     const code = envelope.error?.code ?? `HTTP_${status}`;
     const message = envelope.error?.message ?? respBody.slice(0, 300);
+    // The cloud handler's backstop for operations the released APIs cannot serve.
+    // Surface it as a clear stack-limitation message rather than a raw error code.
+    if (code === 'CLOUD_UNSUPPORTED') {
+      throw new Error(`Not available on the SAP ABAP Cloud (public cloud / BTP ABAP Environment) stack — ${message}`);
+    }
     throw new Error(`SAP i18n error [${code}]: ${message}`);
   }
   if (envelope.data === undefined) {
@@ -352,6 +358,64 @@ export function normalizeListTextEntry(entry: ListTextEntry): ListTextEntry {
   return { ...entry, populated };
 }
 
+// ─── Backend capabilities (proactive object-type guard) ────────────────────────
+// The ABAP `capabilities` action returns an ALLOW-LIST: the object types this stack
+// can translate, per action (e.g. { list_texts: [...], set_translation: [...] }).
+// Public cloud / BTP ABAP Environment and on-premise / private cloud support DIFFERENT
+// object types, and the supported set can also vary by SYSTEM RELEASE (a future deployment
+// might ship per-release handler classes, e.g. zcl_i18n_service_2022 / _2025). Because each
+// class DECLARES its own list, LISA follows whatever the bound handler reports with no code
+// change. The list is editable in the handler class (remove a type to disable it). LISA
+// fetches it once, caches it, and rejects a target_type not on the list up-front instead of
+// round-tripping to SAP only to hit the CLOUD_UNSUPPORTED backstop. Older handlers without
+// the action degrade gracefully to permissive (the backstop still fires).
+
+/** Supported object types per wire action, as declared by the handler's allow-list. */
+export type Capabilities = Record<string, string[]>;
+
+/**
+ * Pure check: does the backend allow this target_type for this action? Permissive (true)
+ * when the backend declares nothing for the action (older handler / unknown) — the ABAP
+ * CLOUD_UNSUPPORTED backstop still catches real gaps in that case.
+ */
+export function isTargetTypeSupported(
+  capabilities: Capabilities | null | undefined,
+  action: string,
+  targetType: string,
+): boolean {
+  const allowed = capabilities?.[action];
+  if (!allowed) return true;
+  return allowed.includes(targetType);
+}
+
+/** Assistant-facing message for an object type the target system does not support. */
+export function unsupportedTargetMessage(action: string, targetType: string): string {
+  return (
+    `target_type '${targetType}' is not available for '${action}' on this SAP system ` +
+    '(not in its declared capabilities). Public cloud / BTP ABAP Environment and ' +
+    'on-premise / private cloud support different object types.'
+  );
+}
+
+// Probed once per process (the backend is fixed for the app lifetime).
+// undefined = not probed; null = backend exposes no `capabilities` action (permissive).
+let capabilitiesCache: Capabilities | null | undefined;
+
+async function loadCapabilities(conn: ResolvedConnection, servicePath: string): Promise<Capabilities | null> {
+  if (capabilitiesCache !== undefined) return capabilitiesCache;
+  try {
+    capabilitiesCache = await callAction<Capabilities>(conn, servicePath, 'capabilities', {});
+  } catch (e) {
+    // Handler without the `capabilities` action (older build) → permissive: rely on
+    // the ABAP CLOUD_UNSUPPORTED backstop. Other (transient) errors stay permissive
+    // for this call without poisoning the cache so a later call can retry.
+    const msg = e instanceof Error ? e.message : '';
+    if (/\[(UNKNOWN_ACTION|HTTP_404)\]/.test(msg)) capabilitiesCache = null;
+    return capabilitiesCache ?? null;
+  }
+  return capabilitiesCache;
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
 export class I18nClient {
@@ -362,6 +426,14 @@ export class I18nClient {
 
   private get path(): string {
     return this.config.i18nServicePath;
+  }
+
+  /** Reject a target_type the backend's allow-list does not include for this action. */
+  private async assertActionSupported(conn: ResolvedConnection, action: string, targetType: string): Promise<void> {
+    const caps = await loadCapabilities(conn, this.path);
+    if (!isTargetTypeSupported(caps, action, targetType)) {
+      throw new Error(unsupportedTargetMessage(action, targetType));
+    }
   }
 
   async listLanguages(): Promise<SapLanguage[]> {
@@ -382,6 +454,7 @@ export class I18nClient {
     text_pool_owner_type?: string;
   }): Promise<ListTextsResult> {
     const conn = await resolveConnection(this.config, this.userJwt);
+    await this.assertActionSupported(conn, 'list_texts', params.target_type);
     const data = await callAction<ListTextsResult>(conn, this.path, 'list_texts', { ...params });
     return { ...data, texts: (data.texts ?? []).map(normalizeListTextEntry) };
   }
@@ -396,6 +469,7 @@ export class I18nClient {
     } & I18nSelectors,
   ): Promise<SetTranslationResult> {
     const conn = await resolveConnection(this.config, this.userJwt);
+    await this.assertActionSupported(conn, 'set_translation', params.target_type);
     return callAction<SetTranslationResult>(conn, this.path, 'set_translation', { ...params });
   }
 }
