@@ -1,7 +1,15 @@
+
 # Standalone LISA: adopt `@arc-mcp/xsuaa-auth`
 
-> **Status: forward-looking.** Not implemented yet. This concerns the **standalone** LISA MCP
-> server and is independent of the [ARC-1 extension track](./arc1-extension.md).
+> **Status: implemented** (released in v0.4.0) — validated on a live BTP **sandbox** deploy
+> (XSUAA OAuth + public-PKCE flow). This concerns the **standalone** LISA MCP server and is
+> independent of the [ARC-1 extension track](./arc1-extension.md).
+>
+> **Note vs. the original plan:** adopting the package also required bumping LISA's direct
+> `express` dependency from 4 → 5. The package (and the `@modelcontextprotocol/sdk` ≥1.18.2 it
+> targets, already resolved to 1.29 in LISA) declare an `express ^5` peer; the SDK itself already
+> pulls in Express 5, so the upgrade aligns LISA with the rest of its tree rather than adding new
+> surface. The MCP SDK floor was raised to `^1.18.2`.
 
 ## Context
 

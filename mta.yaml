@@ -1,7 +1,7 @@
 _schema-version: '3.1'
 ID: lisa
 description: LISA — Localization & Internationalization Service for ABAP (MCP server for translating ABAP objects)
-version: 0.3.0
+version: 0.4.0
 
 modules:
   - name: lisa-mcp
@@ -58,6 +58,10 @@ resources:
     parameters:
       service: xsuaa
       service-plan: application
+      # xsappname comes from xs-security.json (`lisa`). It is unique per
+      # subaccount, so a SECOND instance in the same subaccount (e.g. sandbox
+      # alongside dev) MUST override it in mta-overrides.mtaext — see the
+      # "XSUAA xsappname" block in mta-overrides.mtaext.example.
       path: ./xs-security.json
 
   - name: lisa-destination

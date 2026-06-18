@@ -1,18 +1,19 @@
 # ──────────────────────────────────────────────────────────────────────
 # MTA Extension Descriptor — Environment-Specific Overrides (TEMPLATE)
 #
-# This is a tracked template. Copy it to a real file (which is gitignored
-# by `.gitignore`) and fill in your landscape values:
+# This is a tracked template. Copy it to a real, per-landscape file (all
+# `mta-overrides*.mtaext` are gitignored) and fill in your landscape values —
+# one file per landscape, e.g. `-dev` / `-sbx`:
 #
-#   cp mta-overrides.mtaext.example mta-overrides.mtaext
-#   # edit mta-overrides.mtaext
+#   cp mta-overrides.mtaext.example mta-overrides-dev.mtaext
+#   # edit mta-overrides-dev.mtaext
 #
 # Then build + deploy with the extension applied:
 #
-#   npm run btp:build-deploy-ext
+#   npm run btp:build-deploy-dev        # or btp:build-deploy-sbx for sandbox
 #   # or, manually:
 #   mbt build
-#   cf deploy mta_archives/lisa_<version>.mtar -e mta-overrides.mtaext
+#   cf deploy mta_archives/lisa_<version>.mtar -e mta-overrides-dev.mtaext
 #
 # Any property left commented uses the `mta.yaml` value unchanged.
 # ──────────────────────────────────────────────────────────────────────
@@ -37,6 +38,9 @@ modules:
     # first-come-first-served across ALL subaccounts in that region). If
     # `lisa-<space>` ever collides, pin a customer/landscape-specific name like
     # `host: lisa-teag-dev` instead.
+    # NOTE: `${space}` expands to the LITERAL space name — if your space is
+    # uppercase (e.g. `SANDBOX`), `lisa-${space}` becomes the invalid host
+    # `lisa-SANDBOX`. Pin a lowercase literal (`host: lisa-sbx`) in that case.
     properties:
       # ── Destinations (REQUIRED — not defaulted in mta.yaml) ──────────
       # BasicAuth destination for system-level calls / startup fallback.
@@ -61,12 +65,22 @@ modules:
       # OIDC_ISSUER: "https://login.microsoftonline.com/<tenant>/v2.0"
       # OIDC_AUDIENCE: "api://<app-id>"
 
-# ── XSUAA xsappname (optional, independent of the route) ───────────────
-# Base mta.yaml derives the XSUAA service instance name from the resource
-# (`lisa-xsuaa`). Pin a fixed `xsappname` only if you need a stable OAuth app
-# identifier across landscapes. Uncomment and append this resource block:
+# ── XSUAA xsappname — REQUIRED when running >1 instance per subaccount ─
+# `xs-security.json` pins `xsappname: lisa`, which XSUAA turns into the appid
+# `lisa!t<tenant>`. That appid is UNIQUE PER SUBACCOUNT (tenant): two service
+# instances in the same subaccount cannot share it. So the moment you deploy a
+# SECOND landscape alongside an existing one in the same subaccount — e.g. a
+# `sandbox` instance next to `dev` — you MUST give it its own xsappname here, or
+# the deploy fails at service creation with:
+#
+#   Error creating service "lisa-xsuaa" ... Application with xsappname
+#   lisa!t<tenant> already exists.
+#
+# Uncomment and append this resource block, picking a distinct name per instance
+# (e.g. `lisa-sbx`, `lisa-${space}`). It overrides the `xsappname` from
+# xs-security.json; scopes/role-templates still resolve against the new appid.
 # resources:
 #   - name: lisa-xsuaa
 #     parameters:
 #       config:
-#         xsappname: lisa-${space}
+#         xsappname: lisa-sbx
