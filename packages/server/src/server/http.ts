@@ -295,8 +295,8 @@ export function createHttpServer(config: Config): express.Application {
     const callbackUrl = `${appUrl}/oauth/callback`;
 
     const { provider, clientStore, stateCodec } = createXsuaaOAuthProvider(config.xsuaaBinding, appUrl, {
-      // Brand LISA's DCR client_ids (`sapt-…`) instead of the package default `mcp-`.
-      clientIdPrefix: 'sapt-',
+      // Brand LISA's DCR client_ids (`lisa-…`) instead of the package default `mcp-`.
+      clientIdPrefix: 'lisa-',
       dcrTtlSeconds: config.oauthDcrTtlSeconds,
       dcrSigningSecret: config.dcrSigningSecret,
       callbackUrl,

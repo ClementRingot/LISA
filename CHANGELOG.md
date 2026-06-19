@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- DCR client_id prefix changed `sapt-` → `lisa-` (the prior prefix was an undocumented
+  acronym; `lisa-` is self-documenting and traceable in XSUAA/logs). Changing the prefix
+  re-issues DCR client_ids: already-registered MCP clients re-register automatically on
+  their next sign-in — one-time, transparent, no migration needed since the DCR store is
+  stateless/HMAC.
+
 ## [0.3.1] — 2026-06-18
 
 ### Added
