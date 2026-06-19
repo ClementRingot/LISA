@@ -20,7 +20,8 @@
 ## Operations
 
 - **[Local development](./local-development.md)** — dev loop, lint, build.
-- **[BTP deployment](./btp-deployment.md)** — Cloud Foundry / MTA.
+- **[BTP deployment](./btp-deployment.md)** — Cloud Foundry / MTA (standalone server).
+- **[ARC-1 extension deployment](./arc1-extension-deployment.md)** — run LISA's tools in-process inside ARC-1.
 
 ## At a glance
 

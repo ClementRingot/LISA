@@ -217,7 +217,8 @@ The [`docs_page/`](./docs_page) folder holds the long-form guides:
 | [MCP tools usage](./docs_page/mcp-usage.md) | Every tool, with examples. |
 | [Configuration reference](./docs_page/configuration-reference.md) | All env vars in detail. |
 | [Authentication](./docs_page/authentication.md) | Auth model & options. |
-| [BTP deployment](./docs_page/btp-deployment.md) | Cloud Foundry / MTA. |
+| [BTP deployment](./docs_page/btp-deployment.md) | Cloud Foundry / MTA (standalone server). |
+| [ARC-1 extension deployment](./docs_page/arc1-extension-deployment.md) | Run LISA's tools in-process inside ARC-1. |
 | [Local development](./docs_page/local-development.md) | Dev loop, lint, build. |
 | [Architecture](./docs_page/architecture.md) | How the pieces fit together. |
 

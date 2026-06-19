@@ -127,6 +127,10 @@ rewriting anything.
 
 ## Integration & deployment ("do I deploy it separately?")
 
+> For the step-by-step ops guide (build, `ARC1_PLUGINS`, the write flags, Docker/buildpack, verify,
+> troubleshooting) see **[docs: ARC-1 extension deployment](../docs_page/arc1-extension-deployment.md)**.
+> The summary below is the rationale.
+
 **No — an extension is not a separate deployment.** No second Cloud Foundry app, no second URL,
 no second XSUAA. It's a file loaded **in-process** by ARC-1 at startup via `ARC1_PLUGINS`
 (a CSV of **absolute** paths). Operationally you go from **two CF apps** (arc1 + lisa) to

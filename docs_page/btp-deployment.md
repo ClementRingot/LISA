@@ -41,15 +41,15 @@ Use one file per landscape (e.g. `mta-overrides-dev.mtaext`, `mta-overrides-sbx.
 ## 3. Build
 
 ```bash
-npm run build
-mbt build            # → mta_archives/lisa_0.1.0.mtar
+npm run build        # builds all workspaces; the server bundles @lisa/core into its dist
+mbt build            # → mta_archives/lisa_0.6.0.mtar (matches the version in mta.yaml)
 ```
 
 ## 4. Deploy
 
 ```bash
 cf login              # target the right org/space
-cf deploy mta_archives/lisa_0.1.0.mtar -e mta-overrides-dev.mtaext
+cf deploy mta_archives/lisa_0.6.0.mtar -e mta-overrides-dev.mtaext
 ```
 
 Or in one step from npm: `npm run btp:build-deploy-dev` (builds the `.mtar` and deploys it with the extension applied); use `btp:build-deploy-sbx` for the sandbox landscape. Omit `-e mta-overrides-dev.mtaext` / use `npm run btp:build-deploy` to deploy on the auto-assigned default host.
