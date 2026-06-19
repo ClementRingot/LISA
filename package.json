@@ -1,23 +1,26 @@
 {
   "name": "lisa",
   "version": "0.6.0",
-  "description": "MCP Server for SAP object translation — deployable on BTP",
+  "description": "LISA — SAP object translation. Workspaces: @lisa/core (shared wire contract), the standalone MCP server (deployable on BTP), and the ARC-1 extension.",
   "private": true,
   "license": "MIT",
   "engines": {
     "node": "22.x"
   },
   "type": "module",
-  "main": "dist/index.js",
+  "workspaces": [
+    "packages/core",
+    "packages/arc1-extension",
+    "packages/server"
+  ],
   "scripts": {
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "dev": "tsx src/index.ts",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "lint": "biome check src/",
-    "format": "biome format --write src/",
-    "clean": "rm -rf dist",
+    "build": "npm run build --workspaces --if-present",
+    "start": "node packages/server/dist/index.js",
+    "dev": "npm run dev --workspace packages/server",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "format": "biome format --write packages/*/src/",
+    "clean": "npm run clean --workspaces --if-present",
     "btp:build": "mbt build",
     "btp:deploy": "cf deploy mta_archives/lisa_$npm_package_version.mtar",
     "btp:deploy-dev": "cf deploy mta_archives/lisa_$npm_package_version.mtar -e mta-overrides-dev.mtaext",
@@ -26,25 +29,7 @@
     "btp:build-deploy-dev": "npm run btp:build && npm run btp:deploy-dev",
     "btp:build-deploy-sbx": "npm run btp:build && npm run btp:deploy-sbx"
   },
-  "dependencies": {
-    "@arc-mcp/xsuaa-auth": "^0.1.3",
-    "@modelcontextprotocol/sdk": "^1.18.2",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^5.1.0",
-    "express-rate-limit": "^7.5.0",
-    "helmet": "^7.2.0",
-    "jose": "^5.9.6",
-    "undici": "^8.4.0",
-    "zod": "^3.23.8"
-  },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.4",
-    "@types/cors": "^2.8.17",
-    "@types/express": "^5.0.0",
-    "@types/node": "^22.10.0",
-    "tsx": "^4.19.2",
-    "typescript": "^5.7.2",
-    "vitest": "^2.1.9"
+    "@biomejs/biome": "^1.9.4"
   }
 }

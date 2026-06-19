@@ -5,7 +5,7 @@ import {
   isTargetTypeSupported,
   normalizeListTextEntry,
   unsupportedTargetMessage,
-} from './i18n-client.js';
+} from './wire.js';
 
 describe('normalizeListTextEntry', () => {
   it('decomposes a positional attribute "name[n]" into base attribute + position', () => {

@@ -1,0 +1,27 @@
+{
+  "name": "lisa-arc1-extension",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LISA SAP-translation tools packaged as an ARC-1 extension (loaded in-process via ARC1_PLUGINS)",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "lint": "biome check src/",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@lisa/core": "*",
+    "zod": "^4.3.6"
+  },
+  "peerDependencies": {
+    "arc-1": "*"
+  },
+  "devDependencies": {
+    "arc-1": "*",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.9"
+  }
+}

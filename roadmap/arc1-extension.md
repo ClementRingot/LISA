@@ -1,7 +1,13 @@
 # Distribute LISA as an ARC-1 extension (waiting for v2)
 
-> **Status: forward-looking.** Nothing here is implemented. The ARC-1 extension API is
-> `@experimental` and the capabilities LISA needs land in **v2**. Revisit when v2 ships.
+> **Status: implemented, pending an ARC-1 release.** `packages/arc1-extension` (`lisa-arc1-extension`)
+> now ships the `Custom_*` tools described below, on top of the monorepo topology recommended in
+> this doc (`@lisa/core` + `packages/server` + `packages/arc1-extension`, npm workspaces instead of
+> Changesets). The remaining blocker: ARC-1's gated `ctx.http.post`/`put`/`delete` (PR
+> [arc-1#474](https://github.com/arc-mcp/arc-1/pull/474)) is merged on `main` but not yet in a
+> published npm release — `arc-1@0.9.19` still ships GET/HEAD-only. Until that release lands,
+> `packages/arc1-extension/src/transport.ts` bridges the gap with a single documented
+> `as unknown as` cast at the transport boundary.
 
 ## Goal
 

@@ -135,7 +135,7 @@ git clone <this-repo>
 cd LISA
 npm install
 cp .env.example .env      # then edit .env
-npm run dev               # tsx src/index.ts  (hot dev)
+npm run dev               # tsx packages/server/src/index.ts  (hot dev)
 # or
 npm run build && npm start
 ```
@@ -171,7 +171,7 @@ By default the server starts an HTTP-streamable MCP endpoint on `http://localhos
   "mcpServers": {
     "lisa": {
       "command": "node",
-      "args": ["/absolute/path/to/LISA/dist/index.js"],
+      "args": ["/absolute/path/to/LISA/packages/server/dist/index.js"],
       "env": { "MCP_TRANSPORT": "stdio", "SAP_URL": "…", "SAP_USERNAME": "…", "SAP_PASSWORD": "…" }
     }
   }
@@ -229,7 +229,7 @@ Larger structural work lives in [`roadmap/`](./roadmap/README.md). Two tracks:
 
 | Track | Doc | In one line |
 |-------|-----|-------------|
-| Distribute LISA as an ARC-1 extension | [`roadmap/arc1-extension.md`](./roadmap/arc1-extension.md) | **Planned** — when ARC-1's extension framework reaches **v2**, repackage LISA's 3 tools as in-process `Custom_*` tools. |
+| Distribute LISA as an ARC-1 extension | [`roadmap/arc1-extension.md`](./roadmap/arc1-extension.md) | **In progress** — `packages/arc1-extension` now packages the 3 tools as in-process `Custom_*` tools; blocked on ARC-1 publishing `ctx.http.post` (merged on `main`, not yet released to npm). |
 | Share the auth layer (standalone) | [`roadmap/shared-auth-module.md`](./roadmap/shared-auth-module.md) | ✅ **Shipped in v0.4.0** — LISA's in-tree XSUAA/BTP auth was replaced by a dependency on [`@arc-mcp/xsuaa-auth`](https://www.npmjs.com/package/@arc-mcp/xsuaa-auth). |
 
 ---
@@ -243,11 +243,17 @@ LISA/
 │   └── zcl_i18n_service_cloud.clas.abap  # BTP ABAP Environment / public cloud
 ├── docs_page/            # long-form documentation
 ├── roadmap/              # forward-looking design docs (planned, not implemented)
-├── src/
-│   ├── index.ts          # entry point
-│   ├── handlers/         # MCP tool defs (tools.ts) + registration (intent.ts)
-│   ├── sap/              # i18n-client.ts (HTTP to ABAP; BTP via @arc-mcp/xsuaa-auth/btp)
-│   └── server/           # transport, config, logging (XSUAA OAuth via @arc-mcp/xsuaa-auth)
+├── packages/
+│   ├── core/             # @lisa/core — transport-agnostic wire contract (Zod schemas + ZCL_I18N_SERVICE wire logic)
+│   │   └── src/          # wire.ts, schemas.ts, index.ts
+│   ├── server/           # standalone MCP server (deployable on BTP)
+│   │   └── src/
+│   │       ├── index.ts  # entry point
+│   │       ├── handlers/ # tool registration (intent.ts), built on @lisa/core
+│   │       ├── sap/      # transport.ts (HTTP to ABAP; BTP via @arc-mcp/xsuaa-auth/btp)
+│   │       └── server/   # transport, config, logging (XSUAA OAuth via @arc-mcp/xsuaa-auth)
+│   └── arc1-extension/   # lisa-arc1-extension — the same 3 tools as an in-process ARC-1 plugin
+│       └── src/          # Custom_* tool defs + index.ts (loaded via ARC1_PLUGINS)
 ├── mta.yaml              # BTP MTA descriptor
 ├── xs-security.json      # XSUAA config (authentication only)
 └── .env.example

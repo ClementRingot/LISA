@@ -55,13 +55,14 @@ The XCO i18n APIs are ABAP-side generation APIs with no general REST surface. A 
 
 | Concern | File |
 |---------|------|
-| Tool schemas | `src/handlers/tools.ts` |
-| Tool registration | `src/handlers/intent.ts` |
-| SAP wire contract | `src/sap/i18n-client.ts` |
-| BTP destinations / proxy | `@arc-mcp/xsuaa-auth/btp` (consumed in `src/sap/i18n-client.ts`) |
-| Config | `src/server/config.ts` |
-| Transport / OAuth router / callback proxy | `src/server/http.ts` |
-| XSUAA proxy + verifier, DCR store, OAuth state codec | `@arc-mcp/xsuaa-auth` (wired in `src/server/http.ts`) |
-| Logger → package adapter | `src/server/logger.ts` (`toPackageLogger`) |
+| Wire contract + tool schemas | `packages/core/src/wire.ts`, `packages/core/src/schemas.ts` |
+| Tool registration (standalone server) | `packages/server/src/handlers/intent.ts` |
+| Tool registration (ARC-1 extension) | `packages/arc1-extension/src/tools/` |
+| BTP transport | `packages/server/src/sap/transport.ts` |
+| BTP destinations / proxy | `@arc-mcp/xsuaa-auth/btp` (consumed in `packages/server/src/sap/transport.ts`) |
+| Config | `packages/server/src/server/config.ts` |
+| Transport / OAuth router / callback proxy | `packages/server/src/server/http.ts` |
+| XSUAA proxy + verifier, DCR store, OAuth state codec | `@arc-mcp/xsuaa-auth` (wired in `packages/server/src/server/http.ts`) |
+| Logger → package adapter | `packages/server/src/server/logger.ts` (`toPackageLogger`) |
 | ABAP handler (on-premise / private cloud) | `abap/zcl_i18n_service.clas.abap` |
 | ABAP handler (BTP ABAP Environment / public cloud) | `abap/zcl_i18n_service_cloud.clas.abap` |

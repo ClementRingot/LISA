@@ -1,8 +1,15 @@
+import {
+  GetTextsSchema,
+  I18nCore,
+  ListLanguagesSchema,
+  SetTranslationSchema,
+  TOOLS,
+  supportedTargetTypesNote,
+} from '@lisa/core';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { I18nClient } from '../sap/i18n-client.js';
+import { btpTransport } from '../sap/transport.js';
 import { getLogger } from '../server/logger.js';
 import type { Config } from '../server/types.js';
-import { GetTextsSchema, ListLanguagesSchema, SetTranslationSchema, TOOLS, supportedTargetTypesNote } from './tools.js';
 
 function formatError(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e);
@@ -15,7 +22,7 @@ function json(data: unknown): string {
 
 export async function registerTranslationTools(server: McpServer, config: Config, userJwt?: string): Promise<void> {
   const log = getLogger();
-  const client = new I18nClient(config, userJwt);
+  const client = new I18nCore(btpTransport(config, userJwt));
 
   // No MCP-level authorization: every authenticated principal gets all tools.
   // The user's JWT is propagated to SAP, whose own authorization objects decide
