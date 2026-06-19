@@ -1,5 +1,5 @@
 import type { I18nHttpResponse, I18nTransport, WireAction } from '@lisa/core';
-import type { SafeHttpClient } from 'arc-1/public';
+import type { AdtResponse, SafeHttpClient } from 'arc-1/public';
 
 /**
  * The ARC-1 side of the `I18nTransport` seam: perform the POST to LISA's custom ICF
@@ -15,13 +15,11 @@ import type { SafeHttpClient } from 'arc-1/public';
  * declare `post`/`put`/`delete` yet. The cast below is the single boundary point for that gap —
  * drop it once arc-1 publishes a release containing #474.
  */
+// Mirrors the exact `post` signature arc-mcp/arc-1#474 adds to `SafeHttpClient`
+// (Promise<AdtResponse>), so this whole type — and the cast below — collapses to a
+// no-op the moment that signature ships in `SafeHttpClient` itself.
 type GatedHttpClient = SafeHttpClient & {
-  post(
-    path: string,
-    body?: string,
-    contentType?: string,
-    headers?: Record<string, string>,
-  ): Promise<{ statusCode: number; body: string }>;
+  post(path: string, body?: string, contentType?: string, headers?: Record<string, string>): Promise<AdtResponse>;
 };
 
 const DEFAULT_SERVICE_PATH = '/sap/bc/http/sap/zi18n_service';
