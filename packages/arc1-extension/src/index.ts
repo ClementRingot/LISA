@@ -14,8 +14,8 @@ import setTexts from './tools/Custom_TranslateSetTexts.js';
  *   SAP_ALLOW_PLUGIN_RAW_WRITES=true        # all three tools POST → require the raw-write opt-in
  *   SAP_I18N_SERVICE_PATH=/sap/bc/http/sap/zi18n_service   # optional override
  *
- * Requires LISA's ZCL_I18N_SERVICE (or _CLOUD) handler class imported on the target SAP system,
- * and an arc-1 version containing arc-mcp/arc-1#474 (gated ctx.http.post) — see transport.ts.
+ * Requires LISA's ZCL_I18N_SERVICE (or _CLOUD) handler class imported on the target SAP system.
+ * See docs_page/arc1-extension-deployment.md for the full runbook.
  */
 const plugin: Plugin = {
   name: 'lisa-arc1-extension',

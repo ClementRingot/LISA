@@ -8,14 +8,10 @@ LISA ships in **two distributions** from the same monorepo, sharing one wire con
 - the **ARC-1 extension** (`packages/arc1-extension`, `lisa-arc1-extension`) — the same three
   tools loaded **in-process** by an existing ARC-1 instance via `ARC1_PLUGINS`. **This page.**
 
-> **Status.** The extension is implemented (`Custom_TranslateListLanguages`,
-> `Custom_TranslateGetTexts`, `Custom_TranslateSetTexts`). It needs an `arc-1` build that exposes
-> gated `ctx.http.post` — [arc-mcp/arc-1#474](https://github.com/arc-mcp/arc-1/pull/474), **merged
-> on `main` but not yet in a published npm release** (`arc-1@0.9.19` is GET/HEAD-only). Until that
-> release lands, the extension type-checks and tests against the installed package via a single
-> documented cast (`packages/arc1-extension/src/transport.ts`), but a deployed ARC-1 running
-> `0.9.19` will reject the tools' POSTs at runtime. Deploy it against an ARC-1 built from a commit
-> that contains #474.
+> **Tools.** `Custom_TranslateListLanguages`, `Custom_TranslateGetTexts`, `Custom_TranslateSetTexts`
+> — the same three the standalone server exposes, sharing `@lisa/core`. They reach SAP through
+> ARC-1's gated `ctx.http.post`, so they run on any ARC-1 whose `SafeHttpClient` exposes the raw
+> write surface.
 
 ## Standalone vs extension — which one?
 
@@ -30,7 +26,7 @@ way (see [ABAP service setup](./abap-service-setup.md)).
 
 ## Prerequisites
 
-- An **ARC-1 instance** you control, built from a revision that includes #474 (gated `ctx.http.post`).
+- An **ARC-1 instance** you control.
 - The **ABAP service installed** on the target SAP system ([ABAP service setup](./abap-service-setup.md)).
   ARC-1's own SAP connection (destination / Cloud Connector) must reach it.
 - Node 22 + this repo, to build the plugin bundle.
@@ -77,7 +73,7 @@ An extension is **not** a separate deployment — no second app, URL, or XSUAA. 
 ### A. Derived Docker image (recommended by ARC-1)
 
 ```dockerfile
-FROM ghcr.io/arc-mcp/arc-1:<tag-with-#474>
+FROM ghcr.io/arc-mcp/arc-1:latest
 COPY --chown=arc1:arc1 packages/arc1-extension/dist/ /home/arc1/plugins/lisa/dist/
 ENV ARC1_PLUGINS=/home/arc1/plugins/lisa/dist/index.js
 ```
@@ -127,7 +123,6 @@ In an MCP client connected to ARC-1, the three `Custom_Translate*` tools should 
 | Tools missing from `tools/list` | `ARC1_PLUGINS` path absolute & correct; plugin file owner (`arc1`, not root) on Docker; `cf logs` for a loader rejection. |
 | Tool call fails: "Set SAP_ALLOW_PLUGIN_RAW_WRITES=true…" | `SAP_ALLOW_PLUGIN_RAW_WRITES` and/or `SAP_ALLOW_WRITES` not set on ARC-1. |
 | Tool call fails: "may not write to an ADT path" | `SAP_I18N_SERVICE_PATH` was pointed at a `/sap/bc/adt/…` path — LISA's ICF service must be non-ADT. |
-| `post is not a function` / runtime type error | ARC-1 build predates #474 (GET/HEAD-only `ctx.http`). Rebuild ARC-1 from a revision containing #474. |
 | Authenticated but SAP auth errors | Expected — SAP enforces translation authorization; grant the user the rights in SAP. |
 
 ## See also

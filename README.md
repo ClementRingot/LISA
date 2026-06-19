@@ -230,7 +230,7 @@ Larger structural work lives in [`roadmap/`](./roadmap/README.md). Two tracks:
 
 | Track | Doc | In one line |
 |-------|-----|-------------|
-| Distribute LISA as an ARC-1 extension | [`roadmap/arc1-extension.md`](./roadmap/arc1-extension.md) | **In progress** — `packages/arc1-extension` now packages the 3 tools as in-process `Custom_*` tools; blocked on ARC-1 publishing `ctx.http.post` (merged on `main`, not yet released to npm). |
+| Distribute LISA as an ARC-1 extension | [`roadmap/arc1-extension.md`](./roadmap/arc1-extension.md) | ✅ **Shipped** — `packages/arc1-extension` packages the 3 tools as in-process `Custom_*` tools loaded via `ARC1_PLUGINS`. See [docs: ARC-1 extension deployment](./docs_page/arc1-extension-deployment.md). |
 | Share the auth layer (standalone) | [`roadmap/shared-auth-module.md`](./roadmap/shared-auth-module.md) | ✅ **Shipped in v0.4.0** — LISA's in-tree XSUAA/BTP auth was replaced by a dependency on [`@arc-mcp/xsuaa-auth`](https://www.npmjs.com/package/@arc-mcp/xsuaa-auth). |
 
 ---
