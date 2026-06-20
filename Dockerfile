@@ -4,19 +4,16 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 
 COPY package*.json ./
-COPY packages/core/package.json           ./packages/core/package.json
-COPY packages/arc1-extension/package.json ./packages/arc1-extension/package.json
-COPY packages/server/package.json         ./packages/server/package.json
-RUN npm ci
+COPY packages/core/package.json   ./packages/core/package.json
+COPY packages/server/package.json ./packages/server/package.json
+RUN npm ci --workspace packages/core --workspace packages/server
 
-COPY packages/core/tsconfig.json           ./packages/core/tsconfig.json
-COPY packages/core/src/                    ./packages/core/src/
-COPY packages/arc1-extension/tsconfig.json ./packages/arc1-extension/tsconfig.json
-COPY packages/arc1-extension/src/          ./packages/arc1-extension/src/
-COPY packages/server/tsconfig.json         ./packages/server/tsconfig.json
-COPY packages/server/esbuild.config.mjs    ./packages/server/esbuild.config.mjs
-COPY packages/server/src/                  ./packages/server/src/
-RUN npm run build && npm prune --omit=dev
+COPY packages/core/tsconfig.json        ./packages/core/tsconfig.json
+COPY packages/core/src/                 ./packages/core/src/
+COPY packages/server/tsconfig.json      ./packages/server/tsconfig.json
+COPY packages/server/esbuild.config.mjs ./packages/server/esbuild.config.mjs
+COPY packages/server/src/               ./packages/server/src/
+RUN npm run build --workspace packages/core --workspace packages/server && npm prune --omit=dev
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
 FROM node:22-alpine
