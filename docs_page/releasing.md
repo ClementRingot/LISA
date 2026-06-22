@@ -19,10 +19,18 @@ always agree:
 
 `@lisa/core` and `lisa-arc1-extension` are **versioned independently** — they're
 separate distributions, not part of the product version — so they're left
-alone by the release flow.
+alone by the release flow. `@lisa/core` is private and consumed only via the
+`"*"` workspace range, so its `version` is inert and unchecked.
 
-`npm run check:version` fails if those three drift apart, and CI runs it on
-every PR, so a mismatch can't be merged.
+`npm run check:version` enforces two independent invariants (CI runs it on
+every PR, so a mismatch can't be merged):
+
+1. **Product version** — the three files above must agree.
+2. **ARC-1 extension version** — `packages/arc1-extension/package.json` must
+   match `plugin.version` in `packages/arc1-extension/src/index.ts`. ARC-1
+   reads the latter at load time (it's what shows up in the host/audit), so the
+   two can drift silently; this catches it. When you bump the extension, change
+   both.
 
 > **`mta.yaml` does not select what gets built.** `mbt build` builds the
 > current working tree, not a git ref — it has no notion of git at all. The
