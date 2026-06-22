@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { I18nCore, type I18nTransport, type WireAction, __resetCapabilitiesCache } from './wire.js';
+import {
+  I18nCore,
+  type I18nTransport,
+  type ListTextEntry,
+  type WireAction,
+  __resetCapabilitiesCache,
+  narrowListTexts,
+} from './wire.js';
 
 /**
  * Contract tests for the shared I18nCore against a mock transport. These guard BOTH distributions
@@ -108,5 +115,35 @@ describe('I18nCore wire contract', () => {
 
     const capabilityCalls = post.mock.calls.filter(([action]) => action === 'capabilities');
     expect(capabilityCalls).toHaveLength(1);
+  });
+});
+
+describe('narrowListTexts', () => {
+  const entry = (over: Partial<ListTextEntry>): ListTextEntry => ({
+    attribute: 'label',
+    value: 'x',
+    level: 'field',
+    field_name: 'FOO',
+    populated: true,
+    ...over,
+  });
+  const texts: ListTextEntry[] = [
+    entry({ field_name: 'FOO', position: '1' }),
+    entry({ field_name: 'FOO', position: '2' }),
+    entry({ field_name: 'BAR', position: '1' }),
+  ];
+
+  it('returns every entry unchanged when no selectors are given', () => {
+    expect(narrowListTexts(texts, {})).toEqual(texts);
+  });
+
+  it('filters by field_name case-insensitively', () => {
+    expect(narrowListTexts(texts, { field_name: 'foo' }).map((t) => t.field_name)).toEqual(['FOO', 'FOO']);
+  });
+
+  it('filters by position (exact string match) and combines with field_name', () => {
+    expect(narrowListTexts(texts, { field_name: 'FOO', position: '1' })).toEqual([
+      entry({ field_name: 'FOO', position: '1' }),
+    ]);
   });
 });

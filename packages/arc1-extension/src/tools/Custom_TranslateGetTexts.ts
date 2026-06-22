@@ -1,4 +1,4 @@
-import { GetTextsSchema, I18nCore, TOOLS } from '@lisa/core';
+import { GetTextsSchema, I18nCore, TOOLS, narrowListTexts } from '@lisa/core';
 import { OperationType, defineTool } from 'arc-1/public';
 import { ctxHttpTransport } from '../transport.js';
 
@@ -33,14 +33,7 @@ export default defineTool({
       text_pool_owner_type: a.text_pool_owner_type,
     });
 
-    let texts = result.texts;
-    if (a.field_name) {
-      const fieldName = a.field_name.toUpperCase();
-      texts = texts.filter((t) => t.field_name.toUpperCase() === fieldName);
-    }
-    if (a.position) {
-      texts = texts.filter((t) => t.position === a.position);
-    }
+    const texts = narrowListTexts(result.texts, { field_name: a.field_name, position: a.position });
 
     return { content: [{ type: 'text', text: JSON.stringify({ ...result, texts }, null, 2) }] };
   },

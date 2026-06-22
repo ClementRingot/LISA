@@ -4,6 +4,7 @@ import {
   ListLanguagesSchema,
   SetTranslationSchema,
   TOOLS,
+  narrowListTexts,
   supportedTargetTypesNote,
 } from '@lisa/core';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -64,14 +65,10 @@ export async function registerTranslationTools(server: McpServer, config: Config
         text_pool_owner_type: args.text_pool_owner_type,
       });
 
-      let texts = result.texts;
-      if (args.field_name) {
-        const fieldName = args.field_name.toUpperCase();
-        texts = texts.filter((t) => t.field_name.toUpperCase() === fieldName);
-      }
-      if (args.position) {
-        texts = texts.filter((t) => t.position === args.position);
-      }
+      const texts = narrowListTexts(result.texts, {
+        field_name: args.field_name,
+        position: args.position,
+      });
 
       return { content: [{ type: 'text', text: json({ ...result, texts }) }] };
     } catch (e) {

@@ -187,6 +187,27 @@ export function normalizeListTextEntry(entry: ListTextEntry): ListTextEntry {
   return { ...entry, populated };
 }
 
+/**
+ * Narrow whole-object list_texts entries by the optional `field_name` (case-insensitive) /
+ * `position` selectors. `list_texts` enumerates every field/position, so both distributions
+ * (standalone server + ARC-1 extension) filter client-side on top of the reader — this is the
+ * one shared implementation so the two can't drift.
+ */
+export function narrowListTexts(
+  texts: ListTextEntry[],
+  selectors: { field_name?: string; position?: string },
+): ListTextEntry[] {
+  let out = texts;
+  if (selectors.field_name) {
+    const fieldName = selectors.field_name.toUpperCase();
+    out = out.filter((t) => t.field_name.toUpperCase() === fieldName);
+  }
+  if (selectors.position) {
+    out = out.filter((t) => t.position === selectors.position);
+  }
+  return out;
+}
+
 // ─── Backend capabilities (proactive object-type guard) ────────────────────────
 // The ABAP `capabilities` action returns an ALLOW-LIST: the object types this stack
 // can translate, per action (e.g. { list_texts: [...], set_translation: [...] }).
