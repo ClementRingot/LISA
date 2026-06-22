@@ -7,27 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-06-22
+
 ### Added
+- **LISA as an ARC-1 extension** — a second distribution (`lisa-arc1-extension`) packages the
+  same three tools as in-process ARC-1 plugins (`Custom_TranslateListLanguages`,
+  `Custom_TranslateGetTexts`, `Custom_TranslateSetTexts`) loaded via `ARC1_PLUGINS`. It reuses
+  the host ARC-1's authenticated SAP client, safety ceiling, scope policy, audit, and per-user
+  principal propagation — no second auth stack and no second URL. The standalone server and the
+  extension share one wire contract (`@lisa/core`) and one ABAP handler. See
+  [docs: ARC-1 extension deployment](./docs_page/arc1-extension-deployment.md).
 - Startup warning when `LISA_DCR_SIGNING_SECRET` is set but no XSUAA binding is present — the
   secret is only consumed by the XSUAA OAuth proxy, so this surfaces a dead-config misconfig
   instead of ignoring it silently (parity with ARC-1's set-but-unused signing-secret warn).
+- Reproducible release tooling: `npm run release <version>` (`scripts/release.sh`) bumps the
+  synced version fields, rolls the CHANGELOG, build/lint/tests, and stages a commit + annotated
+  tag; a version-sync guard (`scripts/check-version-sync.mjs`, wired into CI as `check:version`)
+  fails the build if the product version or the extension version drifts across the files that
+  carry it. Documented in [docs: releasing](./docs_page/releasing.md).
+- Dependabot for the npm workspaces, the Docker base image, and the GitHub Actions, with grouped
+  weekly PRs (`arc-1`/`@arc-mcp/*` kept in their own group).
 
 ### Changed
+- **Restructured into an npm-workspaces monorepo**: `@lisa/core` (the transport-agnostic wire
+  contract + Zod schemas shared by both consumers), `packages/server` (the existing standalone
+  BTP server, now consuming `@lisa/core` and bundled with esbuild so the deploy artifact carries
+  no workspace symlinks), and `packages/arc1-extension`. No behavior change to the standalone
+  server; the deployable surface and the 3 tools are unchanged.
+- README now presents the **standalone server** and the **ARC-1 extension** as two first-class
+  deployment paths (Part 2 / Part 3) instead of mentioning the extension only in passing.
 - arc-1 extension: pin the `arc-1` dependency to `>=0.9.20` — the version that ships the gated
-  `ctx.http.post` (raw write surface) the extension's transport calls. The dev floor moves to
-  `^0.9.20` (it was `*`, which had resolved to 0.9.19 where `SafeHttpClient` was GET/HEAD-only and
-  `tsc` failed on `http.post`), and the peer floor to `>=0.9.20` so a host older than that is
-  flagged rather than failing at runtime.
-- Docs: `mta-overrides.mtaext.example` now documents `SAP_OAUTH_DCR_TTL_SECONDS` (set `0` so
-  DCR registrations never expire) and spells out that `LISA_DCR_SIGNING_SECRET` must be pinned
-  out-of-band via `cf set-env` — left unset, it falls back to the XSUAA `clientsecret`, which
-  `cf deploy` rotates on every deploy, invalidating cached client registrations. Ported from
-  `main`'s v0.6.2 (this branch had diverged from `main` before the monorepo restructuring).
+  `ctx.http.post` (raw write surface) the extension's transport calls (dev floor `^0.9.20`, peer
+  floor `>=0.9.20`, so an older host is flagged rather than failing at runtime on a missing `post`).
 - DCR client_id prefix changed `sapt-` → `lisa-` (the prior prefix was an undocumented
   acronym; `lisa-` is self-documenting and traceable in XSUAA/logs). Changing the prefix
   re-issues DCR client_ids: already-registered MCP clients re-register automatically on
   their next sign-in — one-time, transparent, no migration needed since the DCR store is
   stateless/HMAC.
+- Bumped `zod` to v4 across all packages (arc-1 peer-depends on `zod` ^4; the MCP SDK supports
+  both 3.25+ and 4 — usage was already a compatible subset).
+- Docs: aligned the `LISA_DCR_SIGNING_SECRET` generation command across README / BTP deployment /
+  mtaext template on `openssl rand -base64 48` (the value `@arc-mcp/xsuaa-auth` recommends).
+
+## [0.6.2] — 2026-06-22
+
+### Changed
+- Docs: `mta-overrides.mtaext.example` now documents `SAP_OAUTH_DCR_TTL_SECONDS` (set `0` so DCR
+  registrations never expire) and spells out that `LISA_DCR_SIGNING_SECRET` must be pinned
+  out-of-band via `cf set-env` — left unset it falls back to the XSUAA `clientsecret`, which
+  `cf deploy` rotates on every deploy, invalidating cached client registrations.
+
+## [0.6.1] — 2026-06-22
+
+### Changed
+- Adopted `@arc-mcp/xsuaa-auth` `0.1.3`; refreshed the XCO i18n requirements wording in the docs.
 
 ## [0.6.0] — 2026-06-18
 
@@ -146,7 +179,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - XSUAA OAuth proxy (stateless DCR + signed callback state), OIDC and API-key auth.
 - BTP deployment (MTA), Destination + Connectivity (principal propagation).
 
-[Unreleased]: https://github.com/ClementRingot/LISA/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/ClementRingot/LISA/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/ClementRingot/LISA/compare/v0.6.2...v0.7.0
+[0.6.2]: https://github.com/ClementRingot/LISA/compare/v0.6.1...v0.6.2
+[0.6.1]: https://github.com/ClementRingot/LISA/compare/v0.6.0...v0.6.1
+[0.6.0]: https://github.com/ClementRingot/LISA/compare/v0.5.1...v0.6.0
+[0.5.1]: https://github.com/ClementRingot/LISA/compare/v0.5.0...v0.5.1
+[0.5.0]: https://github.com/ClementRingot/LISA/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/ClementRingot/LISA/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/ClementRingot/LISA/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/ClementRingot/LISA/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/ClementRingot/LISA/compare/v0.1.0...v0.2.0
