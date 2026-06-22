@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instead of ignoring it silently (parity with ARC-1's set-but-unused signing-secret warn).
 
 ### Changed
+- arc-1 extension: pin the `arc-1` dependency to `>=0.9.20` — the version that ships the gated
+  `ctx.http.post` (raw write surface) the extension's transport calls. The dev floor moves to
+  `^0.9.20` (it was `*`, which had resolved to 0.9.19 where `SafeHttpClient` was GET/HEAD-only and
+  `tsc` failed on `http.post`), and the peer floor to `>=0.9.20` so a host older than that is
+  flagged rather than failing at runtime.
 - Docs: `mta-overrides.mtaext.example` now documents `SAP_OAUTH_DCR_TTL_SECONDS` (set `0` so
   DCR registrations never expire) and spells out that `LISA_DCR_SIGNING_SECRET` must be pinned
   out-of-band via `cf set-env` — left unset, it falls back to the XSUAA `clientsecret`, which

@@ -17,10 +17,10 @@
     "zod": "^4.3.6"
   },
   "peerDependencies": {
-    "arc-1": "*"
+    "arc-1": ">=0.9.20"
   },
   "devDependencies": {
-    "arc-1": "*",
+    "arc-1": "^0.9.20",
     "typescript": "^5.7.2",
     "vitest": "^2.1.9"
   }
