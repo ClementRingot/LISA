@@ -40,29 +40,40 @@ If this works but the MCP tool doesn't, the problem is in the server config (pat
 ## Project layout
 
 ```
-src/
-├── index.ts                 # entry point: resolveConfig → initLogger → start server
-├── handlers/
-│   ├── tools.ts             # Zod schemas + tool metadata (the 3 tools)
-│   └── intent.ts            # registers tools on the MCP server
-├── sap/
-│   └── i18n-client.ts       # HTTP client for ZCL_I18N_SERVICE (wire contract); BTP via @arc-mcp/xsuaa-auth/btp
-└── server/
-    ├── config.ts            # env → Config
-    ├── server.ts            # builds & starts the MCP server
-    ├── http.ts              # Express transport, mcpAuthRouter, OAuth callback; wires @arc-mcp/xsuaa-auth
-    ├── logger.ts            # logging + audit events; toPackageLogger() adapter for @arc-mcp/xsuaa-auth
-    └── types.ts             # shared types
+packages/
+├── core/                         # @lisa/core — transport-agnostic wire contract
+│   └── src/
+│       ├── wire.ts               # I18nTransport port + I18nCore (wire logic, ZCL_I18N_SERVICE mirror)
+│       ├── schemas.ts            # Zod schemas + tool metadata (the 3 tools)
+│       └── index.ts              # public exports
+├── server/                       # standalone MCP server
+│   └── src/
+│       ├── index.ts              # entry point: resolveConfig → initLogger → start server
+│       ├── handlers/
+│       │   └── intent.ts         # registers tools on the MCP server, built on @lisa/core
+│       ├── sap/
+│       │   └── transport.ts      # btpTransport: HTTP to ABAP; BTP via @arc-mcp/xsuaa-auth/btp
+│       └── server/
+│           ├── config.ts         # env → Config
+│           ├── server.ts         # builds & starts the MCP server
+│           ├── http.ts           # Express transport, mcpAuthRouter, OAuth callback; wires @arc-mcp/xsuaa-auth
+│           ├── logger.ts         # logging + audit events; toPackageLogger() adapter for @arc-mcp/xsuaa-auth
+│           └── types.ts          # shared types
+└── arc1-extension/               # lisa-arc1-extension — the 3 tools as an in-process ARC-1 plugin
+    └── src/
+        ├── transport.ts          # ctxHttpTransport: I18nTransport over ctx.http (ARC-1's SafeHttpClient)
+        ├── tools/                # Custom_TranslateListLanguages.ts, Custom_TranslateGetTexts.ts, Custom_TranslateSetTexts.ts
+        └── index.ts              # default-exports the Plugin
 ```
 
 > The XSUAA OAuth proxy, DCR client store, OAuth state codec, chained verifier and
 > BTP connectivity now live in the **[`@arc-mcp/xsuaa-auth`](https://www.npmjs.com/package/@arc-mcp/xsuaa-auth)**
-> dependency (consumed in `http.ts` and `i18n-client.ts`), not in this repo.
+> dependency (consumed in `http.ts` and `transport.ts`), not in this repo.
 
 ## Conventions
 
 - Code style is enforced by **Biome** (`biome.json`). Run `npm run lint` before committing.
-- The wire contract in `src/sap/i18n-client.ts` mirrors `ZCL_I18N_SERVICE` exactly — if you change one, change the other.
+- The wire contract in `packages/core/src/wire.ts` mirrors `ZCL_I18N_SERVICE` exactly — if you change one, change the other.
 
 ## When in doubt
 

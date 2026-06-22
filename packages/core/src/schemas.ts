@@ -1,9 +1,9 @@
 /**
- * MCP tool definitions for SAP object translation.
+ * MCP/tool input schemas for SAP object translation.
  *
  * These schemas mirror the wire contract of the ABAP handler class
  * `zcl_i18n_service` exactly:
- *   - the action is the last segment of the URL path (handled in i18n-client),
+ *   - the action is the last segment of the URL path (handled in wire.ts),
  *   - every parameter is sent in the JSON request body,
  *   - object kinds are the XCO *semantic* target types (data_element, domain, …),
  *     NOT DDIC short codes (DTEL, DOMA, …),
@@ -11,7 +11,7 @@
  */
 
 import { z } from 'zod';
-import type { Capabilities } from '../sap/i18n-client.js';
+import type { Capabilities } from './wire.js';
 
 // ─── Shared argument schemas ──────────────────────────────────────────────────
 

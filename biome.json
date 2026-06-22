@@ -30,8 +30,5 @@
       "semicolons": "always",
       "trailingCommas": "all"
     }
-  },
-  "files": {
-    "include": ["src/**"]
   }
 }

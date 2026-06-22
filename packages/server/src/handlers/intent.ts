@@ -1,8 +1,16 @@
+import {
+  GetTextsSchema,
+  I18nCore,
+  ListLanguagesSchema,
+  SetTranslationSchema,
+  TOOLS,
+  narrowListTexts,
+  supportedTargetTypesNote,
+} from '@lisa/core';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { I18nClient } from '../sap/i18n-client.js';
+import { btpTransport } from '../sap/transport.js';
 import { getLogger } from '../server/logger.js';
 import type { Config } from '../server/types.js';
-import { GetTextsSchema, ListLanguagesSchema, SetTranslationSchema, TOOLS, supportedTargetTypesNote } from './tools.js';
 
 function formatError(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e);
@@ -15,7 +23,7 @@ function json(data: unknown): string {
 
 export async function registerTranslationTools(server: McpServer, config: Config, userJwt?: string): Promise<void> {
   const log = getLogger();
-  const client = new I18nClient(config, userJwt);
+  const client = new I18nCore(btpTransport(config, userJwt));
 
   // No MCP-level authorization: every authenticated principal gets all tools.
   // The user's JWT is propagated to SAP, whose own authorization objects decide
@@ -57,14 +65,10 @@ export async function registerTranslationTools(server: McpServer, config: Config
         text_pool_owner_type: args.text_pool_owner_type,
       });
 
-      let texts = result.texts;
-      if (args.field_name) {
-        const fieldName = args.field_name.toUpperCase();
-        texts = texts.filter((t) => t.field_name.toUpperCase() === fieldName);
-      }
-      if (args.position) {
-        texts = texts.filter((t) => t.position === args.position);
-      }
+      const texts = narrowListTexts(result.texts, {
+        field_name: args.field_name,
+        position: args.position,
+      });
 
       return { content: [{ type: 'text', text: json({ ...result, texts }) }] };
     } catch (e) {

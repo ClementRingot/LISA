@@ -1,9 +1,5 @@
 /**
- * HTTP client for zi18n_service (ABAP handler class ZCL_I18N_SERVICE).
- *
- * The service must be registered in SICF (transaction) on the SAP system.
- * By default the path is /sap/bc/http/sap/zi18n_service but it is overridable
- * via the SAP_I18N_SERVICE_PATH env var.
+ * Transport-agnostic wire contract for zi18n_service (ABAP handler class ZCL_I18N_SERVICE).
  *
  * Wire contract — mirrors ZCL_I18N_SERVICE exactly:
  *   - The ACTION is the last segment of the URL path (handler reads `~path_info`),
@@ -22,19 +18,30 @@
  *   POST {path}/set_translation  body: { target_type, object_name, language, transport,
  *                                        texts: [{ attribute, value, field_name?, position? }, …],
  *                                        …selectors }
+ *
+ * This module knows nothing about HOW a request reaches the backend (BTP destinations,
+ * principal propagation, Cloud Connector, plain fetch, or an already-authenticated ARC-1
+ * `ctx.http`) — that is the `I18nTransport` seam each distribution implements.
  */
 
-import {
-  type BTPConfig,
-  type BTPProxyConfig,
-  createConnectivityProxy,
-  lookupDestination,
-  lookupDestinationWithUserToken,
-  parseVCAPServices,
-} from '@arc-mcp/xsuaa-auth/btp';
-import { Client, type Dispatcher, fetch as undiciFetch } from 'undici';
-import { toPackageLogger } from '../server/logger.js';
-import type { Config } from '../server/types.js';
+// ─── Transport seam ─────────────────────────────────────────────────────────
+
+export interface I18nHttpResponse {
+  status: number;
+  body: string;
+}
+
+export type WireAction = 'list_languages' | 'list_texts' | 'set_translation' | 'capabilities';
+
+/**
+ * The only thing a distribution (standalone MCP server, ARC-1 extension, …) must implement.
+ * `jsonBody` is already the final compacted+serialized JSON string — transports just POST it to
+ * `{servicePath}/{action}` (sap-client as a query param) and return the raw status + body. All
+ * wire-contract logic (compaction, serialization, envelope unwrap) stays in core.
+ */
+export interface I18nTransport {
+  post(action: WireAction, jsonBody: string): Promise<I18nHttpResponse>;
+}
 
 // ─── Response types (match ZCL_I18N_SERVICE JSON exactly) ──────────────────────
 
@@ -113,175 +120,6 @@ export interface I18nSelectors {
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
-interface ResolvedConnection {
-  baseUrl: string;
-  headers: Record<string, string>;
-  // Cloud Connector proxy — set only for OnPremise BTP destinations. When present, requests are
-  // sent through it using standard HTTP forward-proxy (NOT CONNECT tunneling), the only protocol
-  // the BTP connectivity proxy supports. Mirrors ARC-1's AdtHttpClient.doProxyRequest().
-  proxy: BTPProxyConfig | null;
-  // sap-client query param. From the destination on BTP, or SAP_CLIENT for local dev.
-  sapClient?: string;
-}
-
-// ─── Cached BTP service bindings ──────────────────────────────────────────────
-// Parsed once: VCAP_SERVICES is immutable for the app lifetime, and the connectivity proxy
-// caches/refreshes its own token internally, so a single proxy instance must be reused.
-
-let btpConfigCache: BTPConfig | null | undefined;
-let proxyCache: BTPProxyConfig | null | undefined;
-
-// Route the package's BTP / principal-propagation diagnostics into LISA's logger
-// (the package's `./btp` helpers default to a silent no-op otherwise).
-const btpLogger = toPackageLogger();
-
-function getBtpConfig(): BTPConfig | null {
-  if (btpConfigCache === undefined) btpConfigCache = parseVCAPServices(undefined, btpLogger);
-  return btpConfigCache;
-}
-
-function getProxy(btpConfig: BTPConfig, proxyType: string, locationId?: string): BTPProxyConfig | null {
-  if (proxyType !== 'OnPremise') return null;
-  if (proxyCache === undefined) proxyCache = createConnectivityProxy(btpConfig, locationId, btpLogger);
-  return proxyCache;
-}
-
-function basicAuth(user: string, password: string): string {
-  return `Basic ${Buffer.from(`${user}:${password}`).toString('base64')}`;
-}
-
-async function resolveConnection(config: Config, userJwt?: string): Promise<ResolvedConnection> {
-  if (config.btpDestination) {
-    const btpConfig = getBtpConfig();
-    if (!btpConfig) {
-      throw new Error('SAP_BTP_DESTINATION is set but VCAP_SERVICES is unavailable. Running on BTP CF?');
-    }
-
-    const headers: Record<string, string> = { Accept: 'application/json' };
-
-    // Principal propagation: when the user JWT is available AND a PP destination is configured,
-    // resolve the destination per-user so BTP/Cloud Connector authenticate as the backend user.
-    // Falls back to the BasicAuth (technical) destination otherwise — e.g. system-level calls.
-    if (userJwt && config.btpPpDestination) {
-      const { destination, authTokens } = await lookupDestinationWithUserToken(
-        btpConfig,
-        config.btpPpDestination,
-        userJwt,
-        btpLogger,
-      );
-      if (authTokens.sapConnectivityAuth) {
-        headers['SAP-Connectivity-Authentication'] = authTokens.sapConnectivityAuth;
-      } else if (authTokens.bearerToken) {
-        headers.Authorization = `Bearer ${authTokens.bearerToken}`;
-      } else if (destination.User && destination.Password) {
-        headers.Authorization = basicAuth(destination.User, destination.Password);
-      }
-      return {
-        baseUrl: destination.URL.replace(/\/$/, ''),
-        headers,
-        proxy: getProxy(btpConfig, destination.ProxyType, destination.CloudConnectorLocationId),
-        sapClient: destination['sap-client'],
-      };
-    }
-
-    const dest = await lookupDestination(btpConfig, config.btpDestination, btpLogger);
-    if (dest.User && dest.Password) {
-      headers.Authorization = basicAuth(dest.User, dest.Password);
-    }
-    return {
-      baseUrl: dest.URL.replace(/\/$/, ''),
-      headers,
-      proxy: getProxy(btpConfig, dest.ProxyType, dest.CloudConnectorLocationId),
-      sapClient: dest['sap-client'],
-    };
-  }
-
-  // Local dev: direct connection (no principal propagation, no Cloud Connector proxy)
-  if (!config.sapUrl) throw new Error('SAP_URL is required for local development');
-  const headers: Record<string, string> = { Accept: 'application/json' };
-  if (config.sapUsername && config.sapPassword) {
-    headers.Authorization = basicAuth(config.sapUsername, config.sapPassword);
-  }
-  return { baseUrl: config.sapUrl.replace(/\/$/, ''), headers, proxy: null, sapClient: config.sapClient };
-}
-
-function buildUrl(baseUrl: string, path: string, params: Record<string, string>): string {
-  const url = new URL(baseUrl + path);
-  for (const [k, v] of Object.entries(params)) {
-    if (v !== undefined && v !== '') url.searchParams.set(k, v);
-  }
-  return url.toString();
-}
-
-interface RawResponse {
-  status: number;
-  body: string;
-}
-
-/**
- * Send a request through the BTP connectivity proxy using standard HTTP forward-proxy
- * (RFC 7230): the full target URL is sent as the request path, with Proxy-Authorization
- * (connectivity token) and, for principal propagation, SAP-Connectivity-Authentication.
- *
- * The BTP connectivity proxy only supports standard proxying for HTTP targets — it returns
- * 405 on CONNECT tunneling, so undici's ProxyAgent cannot be used. Ported from ARC-1's
- * AdtHttpClient.doProxyRequest().
- */
-async function doProxyRequest(
-  proxy: BTPProxyConfig,
-  url: string,
-  method: string,
-  headers: Record<string, string>,
-  body?: string,
-): Promise<RawResponse> {
-  const proxyOrigin = `${proxy.protocol}://${proxy.host}:${proxy.port}`;
-  const proxyToken = await proxy.getProxyToken();
-
-  const targetUrl = new URL(url);
-  const hostHeader = targetUrl.port ? `${targetUrl.hostname}:${targetUrl.port}` : targetUrl.hostname;
-
-  const proxyHeaders: Record<string, string> = {
-    ...headers,
-    Host: hostHeader,
-    'Proxy-Authorization': `Bearer ${proxyToken}`,
-  };
-  // Required when several Cloud Connectors share the subaccount with different Location IDs.
-  if (proxy.locationId) {
-    proxyHeaders['SAP-Connectivity-SCC-Location_ID'] = proxy.locationId;
-  }
-
-  const client = new Client(proxyOrigin);
-  try {
-    const resp = await client.request({
-      method: method as Dispatcher.HttpMethod,
-      path: url, // full URL as path — standard HTTP forward-proxy protocol
-      headers: proxyHeaders,
-      body: body ?? undefined,
-      signal: AbortSignal.timeout(120_000),
-    });
-    return { status: resp.statusCode, body: await resp.body.text() };
-  } finally {
-    await client.close();
-  }
-}
-
-async function sapRequest(conn: ResolvedConnection, method: string, url: string, body?: string): Promise<RawResponse> {
-  const headers = { ...conn.headers };
-  if (body !== undefined) headers['Content-Type'] = 'application/json';
-
-  if (conn.proxy) {
-    return doProxyRequest(conn.proxy, url, method, headers, body);
-  }
-
-  const resp = await undiciFetch(url, {
-    method,
-    headers,
-    body,
-    signal: AbortSignal.timeout(120_000),
-  });
-  return { status: resp.status, body: await resp.text() };
-}
-
 /** Drop undefined/empty fields so we only send what the handler should parse. */
 function compact(body: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
@@ -292,21 +130,12 @@ function compact(body: Record<string, unknown>): Record<string, unknown> {
 }
 
 /**
- * POST an action to {servicePath}/{action} with a JSON body and unwrap the
+ * POST an action to {servicePath}/{action} via the injected transport and unwrap the
  * { success, data, error } envelope. The ABAP action is the last path segment,
  * so it must be lowercase (list_languages, get_translation, …).
  */
-async function callAction<T>(
-  conn: ResolvedConnection,
-  servicePath: string,
-  action: string,
-  body: Record<string, unknown>,
-): Promise<T> {
-  // sap-client stays a query param — it is consumed by the ICF framework, not the handler.
-  const url = buildUrl(conn.baseUrl, `${servicePath}/${action}`, {
-    ...(conn.sapClient ? { 'sap-client': conn.sapClient } : {}),
-  });
-  const { status, body: respBody } = await sapRequest(conn, 'POST', url, JSON.stringify(compact(body)));
+async function callAction<T>(transport: I18nTransport, action: WireAction, body: Record<string, unknown>): Promise<T> {
+  const { status, body: respBody } = await transport.post(action, JSON.stringify(compact(body)));
 
   let envelope: SapEnvelope<T>;
   try {
@@ -358,6 +187,27 @@ export function normalizeListTextEntry(entry: ListTextEntry): ListTextEntry {
   return { ...entry, populated };
 }
 
+/**
+ * Narrow whole-object list_texts entries by the optional `field_name` (case-insensitive) /
+ * `position` selectors. `list_texts` enumerates every field/position, so both distributions
+ * (standalone server + ARC-1 extension) filter client-side on top of the reader — this is the
+ * one shared implementation so the two can't drift.
+ */
+export function narrowListTexts(
+  texts: ListTextEntry[],
+  selectors: { field_name?: string; position?: string },
+): ListTextEntry[] {
+  let out = texts;
+  if (selectors.field_name) {
+    const fieldName = selectors.field_name.toUpperCase();
+    out = out.filter((t) => t.field_name.toUpperCase() === fieldName);
+  }
+  if (selectors.position) {
+    out = out.filter((t) => t.position === selectors.position);
+  }
+  return out;
+}
+
 // ─── Backend capabilities (proactive object-type guard) ────────────────────────
 // The ABAP `capabilities` action returns an ALLOW-LIST: the object types this stack
 // can translate, per action (e.g. { list_texts: [...], set_translation: [...] }).
@@ -365,9 +215,12 @@ export function normalizeListTextEntry(entry: ListTextEntry): ListTextEntry {
 // object types, and the set can also differ by system version. Because the handler class
 // DECLARES its own list, LISA follows whatever the bound handler reports with no code change.
 // The list is editable in the handler class (remove a type to disable it). LISA fetches it
-// once, caches it, and rejects a target_type not on the list up-front instead of round-tripping
-// to SAP only to hit the CLOUD_UNSUPPORTED backstop. Older handlers without the action degrade
-// gracefully to permissive (the backstop still fires).
+// once per process, caches it, and rejects a target_type not on the list up-front instead of
+// round-tripping to SAP only to hit the CLOUD_UNSUPPORTED backstop. Older handlers without the
+// action degrade gracefully to permissive (the backstop still fires).
+//
+// The cache is process-wide (module scope), not per-I18nCore-instance: the ARC-1 extension
+// constructs a fresh I18nCore per tool call, so an instance-level cache would never hit.
 
 /** Supported object types per wire action, as declared by the handler's allow-list. */
 export type Capabilities = Record<string, string[]>;
@@ -396,10 +249,10 @@ export function unsupportedTargetMessage(action: string, targetType: string): st
 // undefined = not probed; null = backend exposes no `capabilities` action (permissive).
 let capabilitiesCache: Capabilities | null | undefined;
 
-async function loadCapabilities(conn: ResolvedConnection, servicePath: string): Promise<Capabilities | null> {
+async function loadCapabilities(transport: I18nTransport): Promise<Capabilities | null> {
   if (capabilitiesCache !== undefined) return capabilitiesCache;
   try {
-    capabilitiesCache = await callAction<Capabilities>(conn, servicePath, 'capabilities', {});
+    capabilitiesCache = await callAction<Capabilities>(transport, 'capabilities', {});
   } catch (e) {
     // Handler without the `capabilities` action (older build) → permissive: rely on
     // the ABAP CLOUD_UNSUPPORTED backstop. Other (transient) errors stay permissive
@@ -411,21 +264,19 @@ async function loadCapabilities(conn: ResolvedConnection, servicePath: string): 
   return capabilitiesCache;
 }
 
+/** Test seam: reset the process-wide capabilities cache between unit tests. */
+export function __resetCapabilitiesCache(): void {
+  capabilitiesCache = undefined;
+}
+
 // ─── Public API ───────────────────────────────────────────────────────────────
 
-export class I18nClient {
-  constructor(
-    private readonly config: Config,
-    private readonly userJwt?: string,
-  ) {}
-
-  private get path(): string {
-    return this.config.i18nServicePath;
-  }
+export class I18nCore {
+  constructor(private readonly transport: I18nTransport) {}
 
   /** Reject a target_type the backend's allow-list does not include for this action. */
-  private async assertActionSupported(conn: ResolvedConnection, action: string, targetType: string): Promise<void> {
-    const caps = await loadCapabilities(conn, this.path);
+  private async assertActionSupported(action: WireAction, targetType: string): Promise<void> {
+    const caps = await loadCapabilities(this.transport);
     if (!isTargetTypeSupported(caps, action, targetType)) {
       throw new Error(unsupportedTargetMessage(action, targetType));
     }
@@ -434,21 +285,19 @@ export class I18nClient {
   /**
    * The backend's per-action allow-list, so tool descriptions can advertise the object types THIS
    * system actually supports (proactive guidance, not just the reactive assertActionSupported reject).
-   * Cached process-wide like loadCapabilities. Returns null when the backend declares no allow-list
-   * (older handler) OR the connection cannot be resolved — callers then fall back to generic wording.
+   * Returns null when the backend declares no allow-list (older handler) OR the probe failed —
+   * callers then fall back to generic wording.
    */
   async getCapabilities(): Promise<Capabilities | null> {
     try {
-      const conn = await resolveConnection(this.config, this.userJwt);
-      return await loadCapabilities(conn, this.path);
+      return await loadCapabilities(this.transport);
     } catch {
       return null;
     }
   }
 
   async listLanguages(): Promise<SapLanguage[]> {
-    const conn = await resolveConnection(this.config, this.userJwt);
-    const data = await callAction<{ languages: SapLanguage[] }>(conn, this.path, 'list_languages', {});
+    const data = await callAction<{ languages: SapLanguage[] }>(this.transport, 'list_languages', {});
     return data.languages;
   }
 
@@ -463,9 +312,8 @@ export class I18nClient {
     language?: string;
     text_pool_owner_type?: string;
   }): Promise<ListTextsResult> {
-    const conn = await resolveConnection(this.config, this.userJwt);
-    await this.assertActionSupported(conn, 'list_texts', params.target_type);
-    const data = await callAction<ListTextsResult>(conn, this.path, 'list_texts', { ...params });
+    await this.assertActionSupported('list_texts', params.target_type);
+    const data = await callAction<ListTextsResult>(this.transport, 'list_texts', { ...params });
     return { ...data, texts: (data.texts ?? []).map(normalizeListTextEntry) };
   }
 
@@ -478,8 +326,7 @@ export class I18nClient {
       texts: SetTextEntry[];
     } & I18nSelectors,
   ): Promise<SetTranslationResult> {
-    const conn = await resolveConnection(this.config, this.userJwt);
-    await this.assertActionSupported(conn, 'set_translation', params.target_type);
-    return callAction<SetTranslationResult>(conn, this.path, 'set_translation', { ...params });
+    await this.assertActionSupported('set_translation', params.target_type);
+    return callAction<SetTranslationResult>(this.transport, 'set_translation', { ...params });
   }
 }

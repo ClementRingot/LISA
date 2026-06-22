@@ -288,6 +288,15 @@ export function createHttpServer(config: Config): express.Application {
   const apiKeys = config.apiKeys.map((entry) => ({ key: entry.key, clientId: `api-key:${entry.profile}` }));
   const verifyToken = createChainedTokenVerifier({ apiKeys }, xsuaaVerifier, oidcVerifier, { logger: authLogger });
 
+  // LISA_DCR_SIGNING_SECRET is only consumed by the XSUAA OAuth proxy path below. When it is
+  // set but no XSUAA binding is present, the secret is dead config — surface the misconfig
+  // instead of ignoring it silently (mirrors ARC-1's warn on a set-but-unused signing secret).
+  if (config.dcrSigningSecret && !config.xsuaaBinding) {
+    log.warn(
+      'LISA_DCR_SIGNING_SECRET is set but no XSUAA binding is present — the secret is only used by the XSUAA OAuth proxy and will be ignored here.',
+    );
+  }
+
   // ── XSUAA OAuth proxy (stateless DCR + callback proxy) ────────────────────
   if (config.xsuaaBinding) {
     const serverUrl = resolvePublicUrl(config.port);
@@ -295,8 +304,8 @@ export function createHttpServer(config: Config): express.Application {
     const callbackUrl = `${appUrl}/oauth/callback`;
 
     const { provider, clientStore, stateCodec } = createXsuaaOAuthProvider(config.xsuaaBinding, appUrl, {
-      // Brand LISA's DCR client_ids (`sapt-…`) instead of the package default `mcp-`.
-      clientIdPrefix: 'sapt-',
+      // Brand LISA's DCR client_ids (`lisa-…`) instead of the package default `mcp-`.
+      clientIdPrefix: 'lisa-',
       dcrTtlSeconds: config.oauthDcrTtlSeconds,
       dcrSigningSecret: config.dcrSigningSecret,
       callbackUrl,

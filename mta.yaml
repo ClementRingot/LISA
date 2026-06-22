@@ -37,14 +37,14 @@ modules:
     build-parameters:
       builder: custom
       commands:
-        - npm ci
-        - npm run build
+        - npm ci --workspace packages/core --workspace packages/server
+        - npm run build --workspace packages/core --workspace packages/server
         - npm prune --omit=dev
       build-result: .
       ignore:
         - .env
         - .env.example
-        - src/
+        - packages/*/src/
         - "*.log"
         - mta_archives/
         - .git/

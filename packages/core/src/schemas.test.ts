@@ -6,7 +6,7 @@ import {
   TOOLS,
   TargetTypeSchema,
   supportedTargetTypesNote,
-} from './tools.js';
+} from './schemas.js';
 
 describe('TargetTypeSchema', () => {
   it('accepts the XCO semantic literals', () => {

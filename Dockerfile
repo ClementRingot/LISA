@@ -4,11 +4,16 @@ FROM node:22-alpine AS builder
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci
+COPY packages/core/package.json   ./packages/core/package.json
+COPY packages/server/package.json ./packages/server/package.json
+RUN npm ci --workspace packages/core --workspace packages/server
 
-COPY tsconfig.json ./
-COPY src/ ./src/
-RUN npm run build && npm prune --omit=dev
+COPY packages/core/tsconfig.json        ./packages/core/tsconfig.json
+COPY packages/core/src/                 ./packages/core/src/
+COPY packages/server/tsconfig.json      ./packages/server/tsconfig.json
+COPY packages/server/esbuild.config.mjs ./packages/server/esbuild.config.mjs
+COPY packages/server/src/               ./packages/server/src/
+RUN npm run build --workspace packages/core --workspace packages/server && npm prune --omit=dev
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
 FROM node:22-alpine
@@ -18,9 +23,10 @@ RUN apk add --no-cache tini ca-certificates \
 
 WORKDIR /app
 
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist         ./dist
-COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/node_modules             ./node_modules
+COPY --from=builder /app/package.json             ./package.json
+COPY --from=builder /app/packages/server/dist     ./packages/server/dist
+COPY --from=builder /app/packages/server/package.json ./packages/server/package.json
 
 # Non-root user
 RUN addgroup -S translator && adduser -S translator -G translator
@@ -36,4 +42,4 @@ ENV MCP_TRANSPORT=http-streamable \
     SAP_CLIENT=000
 
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["node", "dist/index.js"]
+CMD ["node", "packages/server/dist/index.js"]

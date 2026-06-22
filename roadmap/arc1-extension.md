@@ -1,7 +1,10 @@
 # Distribute LISA as an ARC-1 extension (waiting for v2)
 
-> **Status: forward-looking.** Nothing here is implemented. The ARC-1 extension API is
-> `@experimental` and the capabilities LISA needs land in **v2**. Revisit when v2 ships.
+> **Status: implemented.** `packages/arc1-extension` (`lisa-arc1-extension`) ships the `Custom_*`
+> tools described below, on top of the monorepo topology recommended in this doc (`@lisa/core` +
+> `packages/server` + `packages/arc1-extension`, npm workspaces instead of Changesets). The tools
+> reach SAP through ARC-1's gated `ctx.http.post` (raw non-ADT write surface). For the deployment
+> runbook see **[docs: ARC-1 extension deployment](../docs_page/arc1-extension-deployment.md)**.
 
 ## Goal
 
@@ -120,6 +123,10 @@ topologies, so you can publish `@lisa/core` later — if a third consumer appear
 rewriting anything.
 
 ## Integration & deployment ("do I deploy it separately?")
+
+> For the step-by-step ops guide (build, `ARC1_PLUGINS`, the write flags, Docker/buildpack, verify,
+> troubleshooting) see **[docs: ARC-1 extension deployment](../docs_page/arc1-extension-deployment.md)**.
+> The summary below is the rationale.
 
 **No — an extension is not a separate deployment.** No second Cloud Foundry app, no second URL,
 no second XSUAA. It's a file loaded **in-process** by ARC-1 at startup via `ARC1_PLUGINS`

@@ -78,7 +78,7 @@ modules:
       # OUT-OF-BAND with `cf set-env` (it survives deploys; verify at
       # startup via the log line `dcrSigningSource: "env"`):
       #
-      #   cf set-env lisa-mcp LISA_DCR_SIGNING_SECRET "$(openssl rand -hex 32)"
+      #   cf set-env lisa-mcp LISA_DCR_SIGNING_SECRET "$(openssl rand -base64 48)"
       #   cf restart lisa-mcp
 
 # ── XSUAA xsappname — REQUIRED when running >1 instance per subaccount ─

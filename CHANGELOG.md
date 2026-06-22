@@ -7,6 +7,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Startup warning when `LISA_DCR_SIGNING_SECRET` is set but no XSUAA binding is present — the
+  secret is only consumed by the XSUAA OAuth proxy, so this surfaces a dead-config misconfig
+  instead of ignoring it silently (parity with ARC-1's set-but-unused signing-secret warn).
+
+### Changed
+- arc-1 extension: pin the `arc-1` dependency to `>=0.9.20` — the version that ships the gated
+  `ctx.http.post` (raw write surface) the extension's transport calls. The dev floor moves to
+  `^0.9.20` (it was `*`, which had resolved to 0.9.19 where `SafeHttpClient` was GET/HEAD-only and
+  `tsc` failed on `http.post`), and the peer floor to `>=0.9.20` so a host older than that is
+  flagged rather than failing at runtime.
+- Docs: `mta-overrides.mtaext.example` now documents `SAP_OAUTH_DCR_TTL_SECONDS` (set `0` so
+  DCR registrations never expire) and spells out that `LISA_DCR_SIGNING_SECRET` must be pinned
+  out-of-band via `cf set-env` — left unset, it falls back to the XSUAA `clientsecret`, which
+  `cf deploy` rotates on every deploy, invalidating cached client registrations. Ported from
+  `main`'s v0.6.2 (this branch had diverged from `main` before the monorepo restructuring).
+- DCR client_id prefix changed `sapt-` → `lisa-` (the prior prefix was an undocumented
+  acronym; `lisa-` is self-documenting and traceable in XSUAA/logs). Changing the prefix
+  re-issues DCR client_ids: already-registered MCP clients re-register automatically on
+  their next sign-in — one-time, transparent, no migration needed since the DCR store is
+  stateless/HMAC.
+
+## [0.6.0] — 2026-06-18
+
+### Added
+- Tool descriptions for `TranslateGetTexts`/`TranslateSetTexts` now advertise the
+  **concrete `target_type` list THIS system accepts**, probed once from the ABAP backend's
+  `capabilities` action at tool registration (process-cached) instead of stating the generic
+  catalog. Falls back to the stack-differences caveat when the probe is unavailable (older
+  handler / SAP unreachable); the runtime reject on an unsupported type stays as the backstop.
+
+### Fixed
+- ABAP: 2-character ISO language codes were truncated to their first character before being
+  passed to XCO (`RO` → `R` = Russian, `ES` → `E` = English) — any language whose ISO initial
+  didn't match its 1-char SAP code (`SPRAS`) was silently translated to the wrong language or
+  rejected. Added a proper ISO→SPRAS resolution (`I_Language.LanguageISOCode`) used everywhere
+  a language is passed to XCO. **Requires re-importing the ABAP handler class(es).**
+
+## [0.5.1] — 2026-06-18
+
+### Changed
+- Docs: capabilities can also differ between on-premise/private-cloud systems by **system
+  version**, not just by stack (public cloud vs on-prem) — tool description and docs updated
+  accordingly; dropped speculative future-release-class wording.
+
+## [0.5.0] — 2026-06-18
+
+### Added
+- **Per-stack capability guard**: public cloud / BTP ABAP Environment and on-premise / private
+  cloud support different translatable object types. Each ABAP handler now declares an
+  allow-list per action via a new `capabilities` action (`{ list_texts: […], set_translation:
+  […] }`); the MCP server probes it once (cached) and rejects an unsupported `target_type`
+  up-front with a clear message, instead of surfacing a raw ABAP error after the call. Older
+  handlers without the `capabilities` action degrade gracefully to permissive (the
+  `CLOUD_UNSUPPORTED` backstop still fires).
+
+## [0.4.0] — 2026-06-18
+
+### Changed
+- **Adopted the shared `@arc-mcp/xsuaa-auth` package**, retiring LISA's in-tree XSUAA OAuth +
+  DCR + OAuth-state + BTP modules (net ~2100 LOC removed). Preserves all existing behavior:
+  LISA's redirect-uri allowlist, `api-key:<profile>` identity, optional OIDC audience,
+  authenticate-only (no scope enforcement), and the 3-tool surface. Auth + BTP connectivity is
+  now a dependency instead of vendored code.
+- Bumped Express 4 → 5 and the MCP SDK floor to `^1.18.2` (peer requirements of
+  `@arc-mcp/xsuaa-auth`).
+
 ## [0.3.1] — 2026-06-18
 
 ### Added
