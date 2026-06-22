@@ -1,7 +1,7 @@
 _schema-version: '3.1'
 ID: lisa
 description: LISA — Localization & Internationalization Service for ABAP (MCP server for translating ABAP objects)
-version: 0.6.1
+version: 0.6.2
 
 modules:
   - name: lisa-mcp
