@@ -82,10 +82,50 @@ See [BTP deployment](./btp-deployment.md) for the deploy itself.
 
 ## Which ref to deploy
 
-| Context | Deploy |
-|---------|--------|
-| **Production / standalone CF** | the latest tag (`git checkout vX.Y.Z`). Need a fix that's only on `main`? Cut a new release and deploy *that* tag. |
-| **Sandbox / dev** | `main` is fine — that's where you validate before tagging. |
+Deployment has **two independent axes**:
+
+- **Which code** — chosen by the git ref you check out: `main` vs a tag `vX.Y.Z`.
+- **Which landscape** — chosen by your `cf target` (org/space) **and** the
+  matching `.mtaext` (host + destinations). The `.mtaext` alone is not enough:
+  if you're targeted at the prod space but pass the sbx extension, you deploy
+  the sandbox config into prod. Always confirm `cf target` first.
+
+| Context | Code | Landscape |
+|---------|------|-----------|
+| **Sandbox** | `main` — that's where you validate before tagging | sandbox space + `mta-overrides-sbx.mtaext` |
+| **Production** | the latest **tag** (`git checkout vX.Y.Z`) — never a moving branch | prod space + `mta-overrides-prod.mtaext` |
+
+Each landscape needs its own `.mtaext` (copied from
+`mta-overrides.mtaext.example`, gitignored) with its own host, destinations,
+and — if it shares a subaccount with another instance — its own XSUAA
+`xsappname`. Each also needs its own `LISA_DCR_SIGNING_SECRET`
+(see [BTP deployment §5](./btp-deployment.md)).
+
+### Sandbox, from `main`
+
+```bash
+git checkout main && git pull
+cf target -o <org> -s <sandbox-space>     # confirm you're on sandbox
+npm run btp:build-deploy-sbx              # mbt build + cf deploy -e …-sbx.mtaext
+```
+
+### Production, from a release tag
+
+```bash
+git checkout v0.7.0                       # the immutable release, not main
+cf target -o <org> -s <prod-space>        # confirm you're on prod
+npm run btp:build-deploy-prod             # mbt build + cf deploy -e …-prod.mtaext
+```
+
+Building from the tag is what makes the `.mtar` name (`lisa_0.7.0.mtar`) and the
+deploy command's `$npm_package_version` agree — on `main` past the tag they'd
+still say the old version (the label would lie). `check:version` guarantees the
+`.mtar` label and `package.json` always match at a given ref.
+
+> First prod deploy: `cp mta-overrides.mtaext.example mta-overrides-prod.mtaext`,
+> fill in the prod host/destinations, then set `LISA_DCR_SIGNING_SECRET` on the
+> app once (see [BTP deployment §5](./btp-deployment.md)) — it survives
+> redeploys, so you only do it once per landscape.
 
 ## Keeping the CHANGELOG honest
 

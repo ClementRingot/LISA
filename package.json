@@ -27,9 +27,11 @@
     "btp:deploy": "cf deploy mta_archives/lisa_$npm_package_version.mtar",
     "btp:deploy-dev": "cf deploy mta_archives/lisa_$npm_package_version.mtar -e mta-overrides-dev.mtaext",
     "btp:deploy-sbx": "cf deploy mta_archives/lisa_$npm_package_version.mtar -e mta-overrides-sbx.mtaext",
+    "btp:deploy-prod": "cf deploy mta_archives/lisa_$npm_package_version.mtar -e mta-overrides-prod.mtaext",
     "btp:build-deploy": "npm run btp:build && npm run btp:deploy",
     "btp:build-deploy-dev": "npm run btp:build && npm run btp:deploy-dev",
-    "btp:build-deploy-sbx": "npm run btp:build && npm run btp:deploy-sbx"
+    "btp:build-deploy-sbx": "npm run btp:build && npm run btp:deploy-sbx",
+    "btp:build-deploy-prod": "npm run btp:build && npm run btp:deploy-prod"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4"
