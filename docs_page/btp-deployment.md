@@ -41,9 +41,11 @@ Use one file per landscape (e.g. `mta-overrides-dev.mtaext`, `mta-overrides-sbx.
 ## 3. Build
 
 ```bash
-npm run build        # builds all workspaces; the server bundles @lisa/core into its dist
+npm run build --workspace packages/core --workspace packages/server   # server bundles @lisa/core into its dist
 mbt build            # → mta_archives/lisa_0.6.0.mtar (matches the version in mta.yaml)
 ```
+
+`mbt build` doesn't need this first command — it runs its own build inside `mta.yaml`'s `build-parameters` — but running it locally first lets you catch errors before packaging. Only `packages/core` and `packages/server` are built for the standalone deploy; `packages/arc1-extension` is a separate distribution (see [ARC-1 extension deployment](./arc1-extension-deployment.md)) and isn't part of this artifact.
 
 ## 4. Deploy
 
