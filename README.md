@@ -6,7 +6,17 @@
 
 For authentication and SAP BTP connectivity it builds on the **same stack as [ARC-1](https://github.com/arc-mcp/arc-1)** — in fact it **depends on** the published [`@arc-mcp/xsuaa-auth`](https://www.npmjs.com/package/@arc-mcp/xsuaa-auth) package (the XSUAA OAuth proxy + BTP principal-propagation layer extracted from ARC-1) rather than re-implementing it, on the same Express / MCP-SDK transport. On top of that, instead of the full ADT toolset, it exposes **3 focused translation tools** backed by a small ABAP HTTP service that wraps SAP's [XCO i18n APIs](https://help.sap.com/docs/btp/sap-business-technology-platform/i18n-apis?locale=en-US).
 
-> **Deployment target:** `LISA` is designed to run on **SAP BTP (Cloud Foundry)** — that is the primary, supported way to use it (XSUAA login + principal propagation to SAP). Running it **locally** is fully supported too, but it is meant for **development and testing**, not production. The two paths are [Part 2 (BTP)](#part-2--deploy-to-sap-btp-recommended) and [Part 3 (local)](#part-3--run-locally-development--testing) below.
+`LISA` ships in **two distributions** from this one repo, sharing the same wire contract and ABAP
+handler — pick whichever fits how you already run things:
+
+- **Standalone MCP server** — its own Cloud Foundry app, its own XSUAA login. The primary,
+  production-supported path. → [Part 2](#part-2--deploy-to-sap-btp-recommended).
+- **ARC-1 extension** — if you already run [ARC-1](https://github.com/arc-mcp/arc-1), load LISA's 3
+  tools **in-process** instead: no second app, no second URL, no second XSUAA — you reuse ARC-1's
+  authenticated SAP client and per-user principal propagation. → [Part 3](#part-3--use-as-an-arc-1-extension).
+
+Running it **locally** ([Part 4](#part-4--run-locally-development--testing)) is also fully
+supported, but meant for development and testing, not production.
 
 ---
 
@@ -65,6 +75,8 @@ This is the **full catalog** of object types LISA understands — XCO **semantic
 - **inspection** — read the object before translating it.
 
 Typical division of labour: the **ADT MCP** finds the object and a transport → **LISA** reads, writes and compares its translations. On its own, `LISA` still works whenever the object name and transport are already known (e.g. batch or scripted translation).
+
+> This describes two **separate** MCP servers talking to the same AI assistant. If your "ADT MCP" *is* ARC-1, you can skip running LISA as a second server altogether and load its tools **inside** ARC-1 instead — see [Part 3 — Use as an ARC-1 extension](#part-3--use-as-an-arc-1-extension).
 
 ---
 
@@ -126,9 +138,43 @@ The client is redirected through XSUAA login on first use; its identity is then 
 
 ---
 
-## Part 3 — Run locally (development & testing)
+## Part 3 — Use as an ARC-1 extension
 
-For local development you connect **directly** to SAP (BasicAuth) — no BTP services involved. This path is for trying things out and developing the server; **production should run on BTP** (Part 2).
+Already run [ARC-1](https://github.com/arc-mcp/arc-1)? You don't need a second CF app for LISA.
+`packages/arc1-extension` packages the same 3 tools as `Custom_TranslateListLanguages` /
+`Custom_TranslateGetTexts` / `Custom_TranslateSetTexts`, loaded **in-process** by ARC-1 via
+`ARC1_PLUGINS` — they reach SAP through ARC-1's own gated `ctx.http.post`, so there is no second
+auth stack and no second URL to operate.
+
+| Pick the… | when |
+|-----------|------|
+| **Standalone server** (Part 2) | You want LISA reachable as its own MCP endpoint/URL, with its own XSUAA login, independent of any ARC-1 deployment. |
+| **ARC-1 extension** (this Part) | You already run ARC-1 and want LISA's tools to appear **inside** it — reusing ARC-1's authenticated SAP client, safety ceiling, scope policy, audit, and per-user principal propagation. Two CF apps (arc1 + lisa) become **one**. |
+
+```bash
+npm ci
+npm run build --workspace packages/arc1-extension   # → packages/arc1-extension/dist/index.js
+```
+
+Point an existing ARC-1 instance at the built plugin (env vars on the **ARC-1 side**):
+
+```bash
+ARC1_PLUGINS=/abs/path/to/lisa/dist/index.js
+SAP_ALLOW_WRITES=true
+SAP_ALLOW_PLUGIN_RAW_WRITES=true   # required even for the read-only tools — see the guide below
+```
+
+The ABAP service ([Part 1](#part-1--install-the-abap-service)) still installs the same way either
+distribution you pick — only who performs the HTTP call differs.
+
+👉 Full guide (Docker/buildpack deploy, the `SAP_ALLOW_PLUGIN_RAW_WRITES` rationale, troubleshooting):
+**[docs: ARC-1 extension deployment](./docs_page/arc1-extension-deployment.md)**.
+
+---
+
+## Part 4 — Run locally (development & testing)
+
+For local development you connect **directly** to SAP (BasicAuth) — no BTP services involved. This path is for trying things out and developing the server; **production should run on BTP** (Part 2) or **inside ARC-1** (Part 3).
 
 ```bash
 git clone <this-repo>
