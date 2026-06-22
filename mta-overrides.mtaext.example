@@ -65,6 +65,22 @@ modules:
       # OIDC_ISSUER: "https://login.microsoftonline.com/<tenant>/v2.0"
       # OIDC_AUDIENCE: "api://<app-id>"
 
+      # ── OAuth DCR (optional) ─────────────────────────────────────────
+      # TTL (seconds) of dynamic client registrations. Default lets them
+      # expire; set 0 so registrations NEVER expire (clients aren't
+      # re-prompted to register). Safe to keep in the descriptor.
+      # SAP_OAUTH_DCR_TTL_SECONDS: 0
+      #
+      # The DCR signing secret (the "token" that signs registrations and
+      # OAuth state) is a SECRET — do NOT put it here. If unset it falls
+      # back to the XSUAA `clientsecret`, which `cf deploy` rotates, so
+      # every deploy invalidates cached registrations. Pin a stable value
+      # OUT-OF-BAND with `cf set-env` (it survives deploys; verify at
+      # startup via the log line `dcrSigningSource: "env"`):
+      #
+      #   cf set-env lisa-mcp LISA_DCR_SIGNING_SECRET "$(openssl rand -hex 32)"
+      #   cf restart lisa-mcp
+
 # ── XSUAA xsappname — REQUIRED when running >1 instance per subaccount ─
 # `xs-security.json` pins `xsappname: lisa`, which XSUAA turns into the appid
 # `lisa!t<tenant>`. That appid is UNIQUE PER SUBACCOUNT (tenant): two service

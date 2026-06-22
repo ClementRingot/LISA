@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- Docs: `mta-overrides.mtaext.example` now documents `SAP_OAUTH_DCR_TTL_SECONDS` (set `0` so
+  DCR registrations never expire) and spells out that `LISA_DCR_SIGNING_SECRET` must be pinned
+  out-of-band via `cf set-env` — left unset, it falls back to the XSUAA `clientsecret`, which
+  `cf deploy` rotates on every deploy, invalidating cached client registrations. Ported from
+  `main`'s v0.6.2 (this branch had diverged from `main` before the monorepo restructuring).
 - DCR client_id prefix changed `sapt-` → `lisa-` (the prior prefix was an undocumented
   acronym; `lisa-` is self-documenting and traceable in XSUAA/logs). Changing the prefix
   re-issues DCR client_ids: already-registered MCP clients re-register automatically on
