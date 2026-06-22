@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Startup warning when `LISA_DCR_SIGNING_SECRET` is set but no XSUAA binding is present — the
+  secret is only consumed by the XSUAA OAuth proxy, so this surfaces a dead-config misconfig
+  instead of ignoring it silently (parity with ARC-1's set-but-unused signing-secret warn).
+
 ### Changed
 - Docs: `mta-overrides.mtaext.example` now documents `SAP_OAUTH_DCR_TTL_SECONDS` (set `0` so
   DCR registrations never expire) and spells out that `LISA_DCR_SIGNING_SECRET` must be pinned
