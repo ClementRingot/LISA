@@ -61,7 +61,7 @@ This creates the XSUAA, Destination, Connectivity and App-Logs service instances
 ## 5. Set the DCR signing secret (important)
 
 ```bash
-cf set-env lisa-mcp LISA_DCR_SIGNING_SECRET "$(openssl rand -hex 32)"
+cf set-env lisa-mcp LISA_DCR_SIGNING_SECRET "$(openssl rand -base64 48)"
 cf restage lisa-mcp
 ```
 

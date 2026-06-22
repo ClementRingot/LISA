@@ -118,7 +118,7 @@ cf deploy mta_archives/lisa_0.1.0.mtar
 Then set the DCR signing secret (one-off) and point your MCP client at the deployed URL:
 
 ```bash
-cf set-env lisa-mcp LISA_DCR_SIGNING_SECRET "$(openssl rand -hex 32)"
+cf set-env lisa-mcp LISA_DCR_SIGNING_SECRET "$(openssl rand -base64 48)"
 cf restage lisa-mcp
 ```
 
