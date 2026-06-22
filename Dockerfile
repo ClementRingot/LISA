@@ -1,5 +1,5 @@
 # ── Build stage ───────────────────────────────────────────────────────────────
-FROM node:22-alpine AS builder
+FROM node:26-alpine AS builder
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ COPY packages/server/src/               ./packages/server/src/
 RUN npm run build --workspace packages/core --workspace packages/server && npm prune --omit=dev
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
-FROM node:22-alpine
+FROM node:26-alpine
 
 RUN apk add --no-cache tini ca-certificates \
     && rm -rf /usr/lib/node_modules/npm
