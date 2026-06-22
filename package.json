@@ -21,6 +21,8 @@
     "lint": "npm run lint --workspaces --if-present",
     "format": "biome format --write packages/*/src/",
     "clean": "npm run clean --workspaces --if-present",
+    "check:version": "node scripts/check-version-sync.mjs",
+    "release": "./scripts/release.sh",
     "btp:build": "mbt build",
     "btp:deploy": "cf deploy mta_archives/lisa_$npm_package_version.mtar",
     "btp:deploy-dev": "cf deploy mta_archives/lisa_$npm_package_version.mtar -e mta-overrides-dev.mtaext",
