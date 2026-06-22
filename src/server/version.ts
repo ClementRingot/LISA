@@ -6,4 +6,4 @@
  * compiled entrypoint is run directly (`node dist/index.js`) it is absent, so we
  * fall back to the literal — keep it in sync with package.json on release.
  */
-export const VERSION = process.env.npm_package_version ?? '0.6.0';
+export const VERSION = process.env.npm_package_version ?? '0.6.1';
