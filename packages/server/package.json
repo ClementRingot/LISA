@@ -1,7 +1,7 @@
 {
   "name": "lisa-server",
-  "version": "0.7.0",
-  "description": "Standalone MCP Server for SAP object translation \u2014 deployable on BTP",
+  "version": "0.7.1",
+  "description": "Standalone MCP Server for SAP object translation — deployable on BTP",
   "private": true,
   "license": "MIT",
   "engines": {
