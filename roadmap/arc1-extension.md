@@ -1,6 +1,6 @@
-# Distribute LISA as an ARC-1 extension (waiting for v2)
+# Distribute LISA as an ARC-1 extension
 
-> **Status: implemented.** `packages/arc1-extension` (`lisa-arc1-extension`) ships the `Custom_*`
+> **Status: ✅ shipped in v0.7.0.** `packages/arc1-extension` (`lisa-arc1-extension`) ships the `Custom_*`
 > tools described below, on top of the monorepo topology recommended in this doc (`@lisa/core` +
 > `packages/server` + `packages/arc1-extension`, npm workspaces instead of Changesets). The tools
 > reach SAP through ARC-1's gated `ctx.http.post` (raw non-ADT write surface). For the deployment
