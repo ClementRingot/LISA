@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] — 2026-06-23
+
+### Fixed
+- **Docs: ARC-1 extension marked as shipped.** The roadmap index (`roadmap/README.md`) and the
+  `arc1-extension.md` banner/title still said "Planned" / "waiting for v2", and the main README's
+  roadmap row said "Shipped" without a version. All now read **✅ Shipped in v0.7.0**, matching the
+  released `packages/arc1-extension`.
+
 ## [0.7.0] — 2026-06-22
 
 ### Added
