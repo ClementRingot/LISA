@@ -90,12 +90,54 @@ Self-contained and version-pinned with ARC-1.
 > **`COPY --chown=arc1:arc1` is mandatory.** ARC-1's plugin loader refuses a plugin file owned by
 > `root` or world-writable; a plain `COPY` lands files as root and is rejected.
 
-### B. Buildpack co-deploy
+### B. Buildpack co-deploy (MTA)
 
-Put the built `dist/` in the pushed app bits (e.g. `plugins/lisa/`) and set
-`ARC1_PLUGINS=/home/vcap/app/plugins/lisa/dist/index.js`. Plain `cf push` / MTA; the bits are
-`vcap`-owned, so the ownership check above is a non-issue. Set the two `SAP_ALLOW_*` flags the same
-way (`cf set-env` or MTA properties).
+The plugin travels **inside ARC-1's own pushed app bits**. One catch: the raw `tsc` output
+(`packages/arc1-extension/dist/index.js`) still bare-imports `@lisa/core`, `zod`, and `arc-1/public`,
+which won't resolve once dropped next to a deployed ARC-1. **Bundle it into one self-contained file
+with esbuild**, keeping the two that must stay *shared* external:
+
+```bash
+# in the LISA repo, after `npm run build --workspace packages/arc1-extension`
+npx esbuild packages/arc1-extension/dist/index.js \
+  --bundle --format=esm --platform=node \
+  --external:zod --external:arc-1/public \
+  --outfile=dist-bundle/lisa/index.js
+```
+
+- **`arc-1/public` stays external** → resolves at runtime via ARC-1's package **self-reference**
+  (`package.json` `"name":"arc-1"` + `exports["./public"]`, and the file is deployed under the app
+  root), so the plugin uses ARC-1's *own* `defineTool` / `OperationType`.
+- **`zod` stays external** → resolves to the **app's own `zod`**. This is required, not tidy: ARC-1's
+  registry runs `z.toJSONSchema()` on your tool's schema, so plugin and registry must share one `zod`
+  instance. (ARC-1 0.9.20 ships `zod@4.4.3` ≥ LISA's `^4.3.6`.)
+- **`@lisa/core` is inlined** — no reason to ship it separately.
+
+Drop the ~14 KB bundle into a folder that is part of ARC-1's app bits and **not** in the MTA module's
+`ignore:` list (ARC-1 ignores `src/`, `tests/`, `node_modules/`, … but not an arbitrary `plugins/`):
+
+```bash
+# on the ARC-1 side
+mkdir -p plugins/lisa && cp /path/to/LISA/dist-bundle/lisa/index.js plugins/lisa/index.js
+```
+
+Then set the env on the ARC-1 side (`mta-overrides-*.mtaext` or `cf set-env`) and deploy:
+
+```yaml
+properties:
+  ARC1_PLUGINS: "/home/vcap/app/plugins/lisa/index.js"
+  SAP_ALLOW_WRITES: "true"
+  SAP_ALLOW_PLUGIN_RAW_WRITES: "true"
+```
+
+```bash
+npx mbt build -e mta-overrides-<landscape>.mtaext
+cf deploy mta_archives/arc1-mcp_<version>.mtar -e mta-overrides-<landscape>.mtaext
+```
+
+The bits are `vcap`-owned (not world-writable), so the loader's ownership check is a non-issue here.
+`node_modules/` **is** in ARC-1's `ignore:` list — the buildpack reinstalls deps in CF, which is
+exactly what makes the external `zod` and the `arc-1` self-reference resolve.
 
 ## 4. Verify
 
@@ -121,6 +163,7 @@ In an MCP client connected to ARC-1, the three `Custom_Translate*` tools should 
 | Symptom | Check |
 |---------|-------|
 | Tools missing from `tools/list` | `ARC1_PLUGINS` path absolute & correct; plugin file owner (`arc1`, not root) on Docker; `cf logs` for a loader rejection. |
+| Startup: `Cannot find package '@lisa/core'` (or `arc-1/public`) | You shipped the raw `tsc` `dist/` instead of an esbuild bundle. Build the self-contained file (§3.B) with `--external:zod --external:arc-1/public`. |
 | Tool call fails: "Set SAP_ALLOW_PLUGIN_RAW_WRITES=true…" | `SAP_ALLOW_PLUGIN_RAW_WRITES` and/or `SAP_ALLOW_WRITES` not set on ARC-1. |
 | Tool call fails: "may not write to an ADT path" | `SAP_I18N_SERVICE_PATH` was pointed at a `/sap/bc/adt/…` path — LISA's ICF service must be non-ADT. |
 | Authenticated but SAP auth errors | Expected — SAP enforces translation authorization; grant the user the rights in SAP. |
