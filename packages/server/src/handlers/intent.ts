@@ -86,24 +86,31 @@ export async function registerTranslationTools(server: McpServer, config: Config
   // ── TranslateSetTexts ─────────────────────────────────────────────────────
   server.tool('TranslateSetTexts', setTextsDescription, SetTranslationSchema.shape, async (args) => {
     try {
-      // Route each row to a physical object by its `owner` (CDS round-trip), falling back to the
-      // call's target_type for rows that carry none. Each object is written — and locked — once;
-      // one result per object is returned.
-      const results = await client.setTextsByOwner({
-        target_type: args.target_type,
-        object_name: args.object_name,
-        language: args.language,
-        transport: args.transport,
-        texts: args.texts,
-        field_name: args.field_name,
-        fixed_value: args.fixed_value,
-        message_number: args.message_number,
-        text_symbol_id: args.text_symbol_id,
-        text_pool_owner_type: args.text_pool_owner_type,
-        subobject_name: args.subobject_name,
-        position: args.position,
-      });
-      return { content: [{ type: 'text', text: json(results) }] };
+      // cds_entity = the merged CDS surface: group rows by their `owner` and write each group to the
+      // matching physical object (one backend call each). Any other target_type is a single 1:1 write.
+      const result =
+        args.target_type === CDS_ENTITY_TARGET
+          ? await client.setCdsEntityTexts({
+              object_name: args.object_name,
+              language: args.language,
+              transport: args.transport,
+              texts: args.texts,
+            })
+          : await client.setTranslation({
+              target_type: args.target_type,
+              object_name: args.object_name,
+              language: args.language,
+              transport: args.transport,
+              texts: args.texts,
+              field_name: args.field_name,
+              fixed_value: args.fixed_value,
+              message_number: args.message_number,
+              text_symbol_id: args.text_symbol_id,
+              text_pool_owner_type: args.text_pool_owner_type,
+              subobject_name: args.subobject_name,
+              position: args.position,
+            });
+      return { content: [{ type: 'text', text: json(result) }] };
     } catch (e) {
       log.error('TranslateSetTexts failed', { err: (e as Error).message });
       return { content: [{ type: 'text', text: formatError(e) }], isError: true };

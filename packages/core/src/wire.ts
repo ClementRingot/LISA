@@ -73,7 +73,7 @@ export interface TextEntry {
  *
  * `owner` is the physical CDS object the slot belongs to ("data_definition" for a view-owned
  * slot, "metadata_extension" for a DDLX-owned slot). It is the round-trip companion of the
- * `owner` the reader stamps on each CDS row: `setTextsByOwner` groups entries by it and routes
+ * `owner` the reader stamps on each CDS row: `setCdsEntityTexts` groups entries by it and routes
  * each group to the matching backend target_type, so each physical object (DDLS vs DDLX) is
  * locked/transported exactly once. It is a LISA routing key only — it is NOT sent on the wire.
  */
@@ -117,6 +117,35 @@ export interface SetTranslationResult {
   language: string;
   transport: string;
   success: boolean;
+}
+
+/** One sub-read of a `cds_entity` get that failed, attached to the partial result. */
+export interface CdsReadError {
+  target_type: string; // the real backend target that failed (data_definition | metadata_extension)
+  owner: string; // same value, as the routing key
+  error: string;
+}
+
+/** A `cds_entity` get result: the merged rows, plus any per-owner read error (partial success). */
+export type CdsEntityTextsResult = ListTextsResult & { errors?: CdsReadError[] };
+
+/** Outcome of the single backend set issued for one owner bucket of a `cds_entity` write. */
+export interface CdsOwnerSetOutcome {
+  target_type: string; // data_definition | metadata_extension
+  owner: string; // same value, the routing key the rows carried
+  written: number; // how many rows were sent to this physical object
+  success: boolean;
+  error?: string;
+}
+
+/**
+ * Aggregated result of a `cds_entity` set. `success` is true only when EVERY issued sub-call
+ * succeeded; writes are NOT atomic across the two physical objects, so a partial write reports
+ * success=false with both outcomes so the caller sees exactly what landed.
+ */
+export interface CdsEntitySetResult {
+  success: boolean;
+  results: CdsOwnerSetOutcome[];
 }
 
 /** Optional selectors the handler reads to disambiguate sub-objects within a target. */
@@ -377,22 +406,39 @@ export class I18nCore {
   async getCdsEntityTexts(params: {
     object_name: string;
     language?: string;
-  }): Promise<ListTextsResult> {
-    // Read each physical object in turn (view first, DDLX second) and concatenate. Sequential, not
-    // parallel: the capabilities probe is a process-wide cache, so back-to-back reads share one probe
-    // and the merged order is deterministic.
-    const parts: ListTextsResult[] = [];
+  }): Promise<CdsEntityTextsResult> {
+    // Read each physical object in turn (view/DDLS first, DDLX second) and concatenate, in that
+    // order. Sequential, not parallel: the capabilities probe is a process-wide cache, so back-to-back
+    // reads share one probe and the merged order is deterministic.
+    const texts: ListTextEntry[] = [];
+    const errors: CdsReadError[] = [];
+    let language = params.language ?? '';
     for (const owner of CDS_ENTITY_OWNERS) {
-      parts.push(
-        await this.getTexts({ target_type: owner, object_name: params.object_name, language: params.language }),
-      );
+      try {
+        const part = await this.getTexts({
+          target_type: owner,
+          object_name: params.object_name,
+          language: params.language,
+        });
+        if (part.language) language = part.language;
+        // Trust the backend's stamp; only default `owner` from the producing call if a row lacks it.
+        for (const t of part.texts) texts.push(t.owner ? t : { ...t, owner });
+      } catch (e) {
+        // Partial success: keep whatever the other call returned and attach this error.
+        errors.push({ target_type: owner, owner, error: e instanceof Error ? e.message : String(e) });
+      }
     }
-    return {
+    // Nothing came back AND something failed → there is no partial result to return; surface it.
+    if (texts.length === 0 && errors.length > 0) {
+      throw new Error(`cds_entity read failed: ${errors.map((e) => `${e.target_type}: ${e.error}`).join('; ')}`);
+    }
+    const result: CdsEntityTextsResult = {
       target_type: CDS_ENTITY_TARGET,
       object_name: params.object_name,
-      language: parts[0].language, // both reads use the same effective language
-      texts: parts.flatMap((p) => p.texts),
+      language,
+      texts,
     };
+    return errors.length > 0 ? { ...result, errors } : result;
   }
 
   async setTranslation(
@@ -410,34 +456,56 @@ export class I18nCore {
   }
 
   /**
-   * Owner-routed writer. Each incoming row is routed to a backend target_type by its own `owner`
-   * ("data_definition" -> the view/DDLS, "metadata_extension" -> the DDLX); a row WITHOUT `owner`
-   * (e.g. hand-built, or a non-CDS single-object write) falls back to the call's explicit
-   * `target_type`, exactly as today. Rows are grouped so each distinct physical object is written
-   * — and therefore locked/transported — exactly once. Positional slots keep their index
-   * (normalizeSetTextEntry). Returns one result per physical object written.
+   * Owner-routed writer for a CDS entity (target_type `cds_entity`). Every row MUST carry an
+   * `owner` of "data_definition" or "metadata_extension" — the call is rejected outright if any row
+   * lacks one, because guessing would write a label to the wrong physical object. Rows are grouped by
+   * owner and each NON-EMPTY bucket is written with exactly ONE backend set_translation to the
+   * matching real target (so each physical object is locked/transported once). Each row keeps its own
+   * field_name (EMPTY for the view's entity-level endusertext_label — never inherited) and its
+   * positional index (normalizeSetTextEntry); `owner` is stripped before the wire. Buckets are
+   * isolated: a failure in one is recorded and the other is still attempted, since the two objects
+   * are not written atomically — `success` is true only when every issued sub-call succeeded.
    */
-  async setTextsByOwner(
-    params: {
-      target_type: string;
-      object_name: string;
-      language: string;
-      transport: string;
-      texts: SetTextEntry[];
-    } & I18nSelectors,
-  ): Promise<SetTranslationResult[]> {
-    const { texts, target_type, ...rest } = params;
-    const groups = new Map<string, SetTextEntry[]>();
-    for (const entry of texts) {
-      const target = entry.owner || target_type;
-      const group = groups.get(target);
-      if (group) group.push(entry);
-      else groups.set(target, [entry]);
+  async setCdsEntityTexts(params: {
+    object_name: string;
+    language: string;
+    transport: string;
+    texts: SetTextEntry[];
+  }): Promise<CdsEntitySetResult> {
+    const buckets = new Map<string, SetTextEntry[]>();
+    for (const entry of params.texts) {
+      if (entry.owner !== 'data_definition' && entry.owner !== 'metadata_extension') {
+        throw new Error("cds_entity set requires an 'owner' on every text row (data_definition | metadata_extension)");
+      }
+      const bucket = buckets.get(entry.owner);
+      if (bucket) bucket.push(entry);
+      else buckets.set(entry.owner, [entry]);
     }
-    const results: SetTranslationResult[] = [];
-    for (const [target, groupTexts] of groups) {
-      results.push(await this.setTranslation({ ...rest, target_type: target, texts: groupTexts }));
+
+    const results: CdsOwnerSetOutcome[] = [];
+    // Deterministic order: the view/DDLS first, then its DDLX.
+    for (const owner of CDS_ENTITY_OWNERS) {
+      const bucket = buckets.get(owner);
+      if (!bucket || bucket.length === 0) continue;
+      try {
+        const r = await this.setTranslation({
+          target_type: owner,
+          object_name: params.object_name,
+          language: params.language,
+          transport: params.transport,
+          texts: bucket,
+        });
+        results.push({ target_type: owner, owner, written: bucket.length, success: r.success !== false });
+      } catch (e) {
+        results.push({
+          target_type: owner,
+          owner,
+          written: 0,
+          success: false,
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
     }
-    return results;
+    return { success: results.every((r) => r.success), results };
   }
 }

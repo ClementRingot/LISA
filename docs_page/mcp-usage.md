@@ -80,6 +80,7 @@ Returns `{ target_type, object_name, language, texts: [{ level, field_name, posi
 - `populated` is `true` when the slot is filled in this language, `false` when it exists but is empty (**still to translate**).
 - `position` is present only for repeatable annotations; the `attribute` is the **base** name (e.g. `ui_facet_label`), so `(field_name, position, attribute)` feeds `TranslateSetTexts` unchanged.
 - `owner` is present on **CDS rows** (`cds_entity`, and the single `data_definition` / `metadata_extension` reads): `"data_definition"` or `"metadata_extension"`, naming the physical object the slot lives in. Pass it back **unchanged** to `TranslateSetTexts` to route the write. Non-CDS targets have no `owner`.
+- For `cds_entity`, if only one of the two physical reads returns rows (e.g. the view has no DDLX) you just get those rows. If a sub-read **errors**, the successful rows are still returned and the failure is attached as `errors: [{ target_type, owner, error }]` (partial success). The two reads do not deduplicate: a `data_definition` row and a `metadata_extension` row may share `field_name`+`attribute` and are still distinct slots.
 
 To **list only filled** texts, keep entries with `populated === true`. To **compare** two languages, call once per language and diff on `(field_name, position, attribute, populated, value)`.
 
@@ -96,7 +97,16 @@ Write/update translations. **Requires a transport request.**
 | `texts` | ✅ | `[{ attribute, value, field_name?, position?, owner? }]`, at least one entry. |
 | selectors | ➖ | e.g. `fixed_value` for a domain, `message_number` for a message class. |
 
-Each `texts` entry may carry its own `field_name`/`position` (address several CDS fields in one call) and — for a `cds_entity` write — the `owner` from `TranslateGetTexts`. Rows are **grouped by `owner`** and each group written to its physical object (`"data_definition"` → the view, `"metadata_extension"` → the DDLX), so each object is locked/transported once. A row **without** `owner` falls back to the call's `target_type`, exactly as a single-object write does today. A positional slot keeps its 1-based index — send it as `position`, **or** keep the bracketed form in the attribute (`ui_lineitem_label[2]`); either way the index round-trips unchanged.
+Each `texts` entry may carry its own `field_name`/`position` (address several CDS fields in one call). For a **`cds_entity`** write, **every** entry must carry the `owner` returned by `TranslateGetTexts` — rows are **grouped by `owner`** and each group written to its physical object (`"data_definition"` → the view, `"metadata_extension"` → the DDLX) in one backend call, so each object is locked/transported once. A `cds_entity` write with **any** row missing `owner` is **rejected** (LISA never guesses the object). Entity-level texts (the view's own `endusertext_label`) must go out with an **empty `field_name`** — never inherited from another row. A positional slot keeps its 1-based index in `position` (string), bare attribute (e.g. `ui_lineitem_label`); the index is never renumbered or bracketed. The result reports, per owner, how many texts were written and the sub-call status — writes are **not atomic** across the two objects, so a partial write returns `success: false` with both outcomes:
+
+```json
+{ "success": true, "results": [
+  { "target_type": "data_definition",   "owner": "data_definition",   "written": 1, "success": true },
+  { "target_type": "metadata_extension","owner": "metadata_extension","written": 4, "success": true }
+] }
+```
+
+For the single targets (`data_definition` / `metadata_extension` and the non-CDS types) nothing changes: one 1:1 backend write returning `{ …, transport, success }`, and an entry without its own `field_name`/`position` falls back to the top-level selectors.
 
 ```json
 {

@@ -255,15 +255,94 @@ describe('cds_entity merged reader (getCdsEntityTexts)', () => {
     expect(res.texts).toHaveLength(2);
     expect(res.texts.map((t) => t.owner)).toEqual(['data_definition', 'metadata_extension']);
   });
+
+  it('returns the successful owner’s rows and attaches the error when the other read fails (partial success)', async () => {
+    const { transport, post } = mockTransport();
+    post.mockImplementation((action: WireAction, body: string) => {
+      if (action === 'capabilities')
+        return Promise.resolve(ok({ list_texts: ['data_definition', 'metadata_extension'] }));
+      const p = JSON.parse(body) as { target_type: string };
+      if (p.target_type === 'data_definition') {
+        return Promise.resolve(
+          ok({
+            target_type: 'data_definition',
+            object_name: 'ZC_VIEW',
+            language: 'DE',
+            texts: [
+              {
+                level: 'entity',
+                field_name: '',
+                attribute: 'endusertext_label',
+                value: 'X',
+                populated: true,
+                owner: 'data_definition',
+              },
+            ],
+          }),
+        );
+      }
+      // the DDLX read fails (e.g. the view has no metadata extension)
+      return Promise.resolve({
+        status: 400,
+        body: JSON.stringify({ success: false, error: { code: 'DDLX_MISSING', message: 'no DDLX' } }),
+      });
+    });
+
+    const res = await new I18nCore(transport).getCdsEntityTexts({ object_name: 'ZC_VIEW', language: 'DE' });
+
+    expect(res.texts).toHaveLength(1);
+    expect(res.texts[0].owner).toBe('data_definition');
+    expect(res.errors).toHaveLength(1);
+    expect(res.errors?.[0]).toMatchObject({ target_type: 'metadata_extension', owner: 'metadata_extension' });
+    expect(res.errors?.[0].error).toContain('DDLX_MISSING');
+  });
+
+  it('defaults a row’s owner from the producing call when the backend did not stamp it', async () => {
+    const { transport } = cdsReader({
+      data_definition: [
+        { level: 'entity', field_name: '', attribute: 'endusertext_label', value: 'X', populated: true },
+      ],
+      metadata_extension: [
+        { level: 'field', field_name: 'F', attribute: 'ui_facet_label[1]', value: 'Y', populated: true },
+      ],
+    });
+
+    const res = await new I18nCore(transport).getCdsEntityTexts({ object_name: 'ZC_VIEW' });
+
+    expect(res.texts.map((t) => t.owner)).toEqual(['data_definition', 'metadata_extension']);
+  });
+
+  it('throws when BOTH reads fail (no partial result to return)', async () => {
+    const { transport, post } = mockTransport();
+    post.mockImplementation((action: WireAction) => {
+      if (action === 'capabilities')
+        return Promise.resolve(ok({ list_texts: ['data_definition', 'metadata_extension'] }));
+      return Promise.resolve({
+        status: 400,
+        body: JSON.stringify({ success: false, error: { code: 'BOOM', message: 'no' } }),
+      });
+    });
+
+    await expect(new I18nCore(transport).getCdsEntityTexts({ object_name: 'ZC_VIEW' })).rejects.toThrow(
+      /cds_entity read failed/,
+    );
+  });
 });
 
-describe('owner-routed writer (setTextsByOwner)', () => {
-  function writer(): { transport: I18nTransport; post: PostMock } {
+describe('owner-routed writer (setCdsEntityTexts)', () => {
+  /** A transport whose set_translation echoes success, unless `failOwner` matches the call's target_type. */
+  function writer(failOwner?: string): { transport: I18nTransport; post: PostMock } {
     const { transport, post } = mockTransport();
     post.mockImplementation((action: WireAction, body: string) => {
       if (action === 'capabilities')
         return Promise.resolve(ok({ set_translation: ['data_element', 'data_definition', 'metadata_extension'] }));
       const p = JSON.parse(body) as Record<string, unknown>;
+      if (failOwner && p.target_type === failOwner) {
+        return Promise.resolve({
+          status: 400,
+          body: JSON.stringify({ success: false, error: { code: 'LOCKED', message: 'object locked' } }),
+        });
+      }
       return Promise.resolve(ok({ ...p, success: true }));
     });
     return { transport, post };
@@ -272,16 +351,15 @@ describe('owner-routed writer (setTextsByOwner)', () => {
   const setBodies = (post: PostMock) =>
     post.mock.calls.filter(([a]) => a === 'set_translation').map(([, b]) => JSON.parse(b));
 
-  it('routes each row to the target_type named by its owner, writing each physical object once', async () => {
+  it('groups rows by owner, writes each physical object once, and reports per-owner outcomes', async () => {
     const { transport, post } = writer();
 
-    const results = await new I18nCore(transport).setTextsByOwner({
-      target_type: 'cds_entity',
+    const res = await new I18nCore(transport).setCdsEntityTexts({
       object_name: 'ZC_VIEW',
       language: 'DE',
       transport: 'K900123',
       texts: [
-        { attribute: 'endusertext_label', value: 'Bestellung', owner: 'data_definition' },
+        { attribute: 'endusertext_label', value: 'Bestellung', field_name: '', owner: 'data_definition' },
         {
           attribute: 'ui_lineitem_label',
           position: '2',
@@ -293,61 +371,104 @@ describe('owner-routed writer (setTextsByOwner)', () => {
       ],
     });
 
-    // one result / one write per physical object (locked + transported once each)
-    expect(results).toHaveLength(2);
+    expect(res.success).toBe(true);
+    expect(res.results).toEqual([
+      { target_type: 'data_definition', owner: 'data_definition', written: 1, success: true },
+      { target_type: 'metadata_extension', owner: 'metadata_extension', written: 2, success: true },
+    ]);
+
     const bodies = setBodies(post);
     const dd = bodies.find((b) => b.target_type === 'data_definition');
     const me = bodies.find((b) => b.target_type === 'metadata_extension');
     expect(dd.texts).toHaveLength(1);
     expect(me.texts).toHaveLength(2);
+    // entity-level row goes out with an EMPTY field_name (never inherited) — the ENDUSERTEXT.LABEL fix
+    expect(dd.texts[0].field_name).toBe('');
     // owner is a routing key only — it must NOT appear on the wire
     expect(JSON.stringify(bodies)).not.toContain('owner');
-    // positional index passes through to the right slot (separate position field), incl. the bracketed form
+    // positional index passes through (separate position field), incl. the bracketed form, never renumbered
     expect(me.texts.find((t: { attribute: string }) => t.attribute === 'ui_lineitem_label').position).toBe('2');
     expect(me.texts.find((t: { attribute: string }) => t.attribute === 'ui_facet_label').position).toBe('1');
     // cds_entity itself is never sent — only the two physical target_types reach the backend
     expect(bodies.some((b) => b.target_type === 'cds_entity')).toBe(false);
   });
 
-  it('round-trips a read straight back to set, each slot routed purely by owner with its index intact', async () => {
+  it('rejects the whole call when any row is missing `owner` (never guesses)', async () => {
     const { transport, post } = writer();
 
-    // Rows shaped exactly as getCdsEntityTexts emits them (owner stamped, index decomposed).
-    const edited = [
-      { attribute: 'endusertext_label', value: 'Order', field_name: '', owner: 'data_definition' },
-      {
-        attribute: 'ui_lineitem_label',
-        position: '2',
-        value: 'Amount',
-        field_name: 'AMOUNT',
-        owner: 'metadata_extension',
-      },
-    ];
+    await expect(
+      new I18nCore(transport).setCdsEntityTexts({
+        object_name: 'ZC_VIEW',
+        language: 'DE',
+        transport: 'K900123',
+        texts: [
+          { attribute: 'endusertext_label', value: 'X', owner: 'data_definition' },
+          { attribute: 'ui_facet_label', position: '1', value: 'Y', field_name: 'F' }, // no owner
+        ],
+      }),
+    ).rejects.toThrow(/requires an 'owner' on every text row \(data_definition \| metadata_extension\)/);
 
-    await new I18nCore(transport).setTextsByOwner({
-      target_type: 'cds_entity',
-      object_name: 'ZC_VIEW',
-      language: 'EN',
-      transport: 'K900123',
-      texts: edited,
-    });
-
-    const bodies = setBodies(post);
-    expect(bodies.find((b) => b.target_type === 'data_definition').texts[0]).toMatchObject({
-      attribute: 'endusertext_label',
-      value: 'Order',
-    });
-    expect(bodies.find((b) => b.target_type === 'metadata_extension').texts[0]).toMatchObject({
-      attribute: 'ui_lineitem_label',
-      position: '2',
-      value: 'Amount',
-    });
+    // nothing was written — the call is rejected before any backend set
+    expect(setBodies(post)).toHaveLength(0);
   });
 
-  it('falls back to the call target_type for a row without owner (hand-built / single-object write)', async () => {
+  it('issues exactly ONE backend call when only one owner is present', async () => {
     const { transport, post } = writer();
 
-    const results = await new I18nCore(transport).setTextsByOwner({
+    const res = await new I18nCore(transport).setCdsEntityTexts({
+      object_name: 'ZC_VIEW',
+      language: 'DE',
+      transport: 'K900123',
+      texts: [{ attribute: 'endusertext_label', value: 'X', field_name: '', owner: 'data_definition' }],
+    });
+
+    expect(res.results).toEqual([
+      { target_type: 'data_definition', owner: 'data_definition', written: 1, success: true },
+    ]);
+    expect(setBodies(post)).toHaveLength(1);
+    expect(setBodies(post)[0].target_type).toBe('data_definition');
+  });
+
+  it('reports a partial write (success=false with both outcomes) when one owner fails', async () => {
+    const { transport } = writer('metadata_extension');
+
+    const res = await new I18nCore(transport).setCdsEntityTexts({
+      object_name: 'ZC_VIEW',
+      language: 'DE',
+      transport: 'K900123',
+      texts: [
+        { attribute: 'endusertext_label', value: 'X', field_name: '', owner: 'data_definition' },
+        { attribute: 'ui_facet_label', position: '1', value: 'Y', field_name: 'F', owner: 'metadata_extension' },
+      ],
+    });
+
+    expect(res.success).toBe(false);
+    expect(res.results[0]).toEqual({
+      target_type: 'data_definition',
+      owner: 'data_definition',
+      written: 1,
+      success: true,
+    });
+    expect(res.results[1]).toMatchObject({
+      target_type: 'metadata_extension',
+      owner: 'metadata_extension',
+      written: 0,
+      success: false,
+    });
+    expect(res.results[1].error).toContain('LOCKED');
+  });
+});
+
+describe('single-target setTranslation (backward compat)', () => {
+  it('writes one 1:1 backend call and returns the single result unchanged', async () => {
+    const { transport, post } = mockTransport();
+    post.mockImplementation((action: WireAction, body: string) => {
+      if (action === 'capabilities') return Promise.resolve(ok({ set_translation: ['data_element'] }));
+      const p = JSON.parse(body) as Record<string, unknown>;
+      return Promise.resolve(ok({ ...p, success: true }));
+    });
+
+    const res = await new I18nCore(transport).setTranslation({
       target_type: 'data_element',
       object_name: 'ZMY_DTEL',
       language: 'DE',
@@ -355,8 +476,9 @@ describe('owner-routed writer (setTextsByOwner)', () => {
       texts: [{ attribute: 'short_field_label', value: 'Betrag' }],
     });
 
-    expect(results).toHaveLength(1);
-    expect(setBodies(post)[0].target_type).toBe('data_element');
+    expect(res).toMatchObject({ target_type: 'data_element', success: true });
+    const setCalls = post.mock.calls.filter(([a]) => a === 'set_translation');
+    expect(setCalls).toHaveLength(1);
   });
 });
 

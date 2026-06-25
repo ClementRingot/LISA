@@ -8,19 +8,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Merged CDS entity translation surface (`cds_entity`).** A new `target_type` that treats a CDS
-  view and its metadata extension (DDLX) as **one** translation surface. `TranslateGetTexts` with
-  `target_type: "cds_entity"` issues both backend reads (`data_definition` **and**
-  `metadata_extension`) and concatenates them, so DDLX labels are returned automatically without a
-  second call. Every CDS row carries an **`owner`** (`"data_definition"` / `"metadata_extension"`)
-  — read from the row, stamped by the ABAP backend — identifying the physical object the slot lives
-  in. `TranslateSetTexts` **groups incoming rows by `owner`** and routes each group to the matching
-  backend object, so the view (DDLS) and the DDLX are each locked/transported exactly once. Rows are
-  not deduplicated across owners, and positional UI labels round-trip their 1-based index
-  (`attribute[index]`, e.g. `ui_lineitem_label[2]`) unchanged. The single-object `data_definition`
-  and `metadata_extension` targets keep working as before (single-owner, unmerged); a `set` row
-  without `owner` falls back to the call's `target_type`. Shared in `@lisa/core`, so the standalone
-  MCP server and the ARC-1 extension behave identically.
+- **Merged CDS entity translation surface (`cds_entity`).** A new **virtual, LISA-only** `target_type`
+  (not a backend type) that treats a CDS view and its metadata extension (DDLX) as **one** translation
+  surface, fanned out to the two real targets.
+  - **Read.** `TranslateGetTexts` with `target_type: "cds_entity"` issues both backend reads
+    (`data_definition` **and** `metadata_extension`), concatenates them (view first), and returns each
+    row carrying the **`owner`** the ABAP backend stamps (`"data_definition"` / `"metadata_extension"`)
+    — read from the row, never derived; defaulted from the producing call only if a row lacks it. DDLX
+    labels are included automatically (no second call). Rows are **not** deduplicated across owners.
+    Positional UI labels stay as the **bare** attribute plus a separate `position` (1-based) — never
+    bracketed. If one sub-read fails, the successful rows are still returned with the failure attached
+    under `errors` (partial success).
+  - **Write.** `TranslateSetTexts` with `target_type: "cds_entity"` **groups rows by `owner`** and
+    writes each group to its physical object in one backend call (each locked/transported once). Every
+    row **must** carry `owner` — a write with any row missing it is **rejected** (LISA never guesses).
+    Entity-level texts go out with an empty `field_name` (fixes the `ENDUSERTEXT.LABEL` error from an
+    inherited field_name). Writes are **not atomic** across the two objects: the result reports
+    per-owner `{ written, success, error? }`, and a partial write returns `success: false`.
+  - The single-object `data_definition` / `metadata_extension` (and all non-CDS) targets are
+    **unchanged** — one 1:1 backend call. Shared in `@lisa/core`, so the standalone MCP server and the
+    ARC-1 extension behave identically. Includes the coupled ABAP backend change (classic + cloud) that
+    stamps `owner` on every CDS `list_texts` row.
 
 ## [0.7.1] — 2026-06-23
 

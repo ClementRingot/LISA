@@ -36,11 +36,15 @@ export const TargetTypeSchema = z
       'data_definition (CDS DDLS entity/field labels), message_class (MSAG), ' +
       'text_pool (class/function-group text symbols), metadata_extension (DDLX UI labels), ' +
       'application_log_object (APLO), business_configuration_object (SMBC). ' +
-      'For a CDS entity prefer cds_entity: it is the MERGED translation surface of a view and its ' +
-      'metadata extension (DDLX) under one name — get returns both objects’ texts in a single call, ' +
-      'each CDS row carrying an `owner` ("data_definition" or "metadata_extension"), and set routes ' +
-      'each row back to the right physical object by that owner. data_definition and metadata_extension ' +
-      'remain available to address ONE physical object explicitly (single-owner, unmerged). ' +
+      'cds_entity (VIRTUAL, LISA-only): a convenience target that represents a CDS view as a whole. ' +
+      'It is NOT a backend type — LISA fans it out to the two real targets that hold a view’s texts: ' +
+      'data_definition (the view/DDLS) and metadata_extension (the DDLX). On read, LISA calls both and ' +
+      'returns the merged texts, each row carrying an `owner` field (data_definition | metadata_extension). ' +
+      'On write, LISA groups the provided texts by their `owner` and writes each group back to the ' +
+      'matching real target in its own call (so each physical object is locked once). Use cds_entity to ' +
+      'translate ALL of a view’s labels in one shot; the per-row `owner` returned by a read is what routes ' +
+      'the write, so pass the rows back unchanged. data_definition and metadata_extension remain available ' +
+      'to address ONE physical object explicitly (single-owner, unmerged). ' +
       'The object types actually available on the target system are stated per tool (see each tool description).',
   );
 
@@ -125,11 +129,13 @@ export const SetTranslationSchema = z.object({
           .string()
           .optional()
           .describe(
-            'Physical CDS object that owns this slot: "data_definition" (the view) or ' +
-              '"metadata_extension" (its DDLX). Pass through verbatim the `owner` that ' +
-              'TranslateGetTexts stamped on the row so a merged cds_entity write routes each slot back to ' +
-              'the right object. Omit for a non-CDS object or a single-target (data_definition / ' +
-              'metadata_extension) write — it then falls back to the call’s target_type.',
+            'Required when target_type=cds_entity: which physical object this text belongs to — ' +
+              '"data_definition" (view/DDLS) or "metadata_extension" (DDLX). LISA routes each row to the ' +
+              'matching backend target by this value (a cds_entity write with any row missing `owner` is ' +
+              'rejected — LISA never guesses). Pass through verbatim the `owner` that TranslateGetTexts ' +
+              'stamped on the row. For entity-level texts (the view’s own endusertext_label) leave ' +
+              'field_name empty. Positional UI labels must keep their `position` (string, 1-based). ' +
+              'Ignored for a single-target (data_definition / metadata_extension) or non-CDS write.',
           ),
       }),
     )
@@ -159,11 +165,12 @@ export const TOOLS = {
       'call it once per language and diff on (key, populated, value). ' +
       'For a CDS entity use target_type=cds_entity: this returns the FULL merged set — the view ' +
       '(data_definition) AND its metadata extension (DDLX) — in a single call, with the DDLX labels ' +
-      'included automatically (no second call needed). Each CDS row carries an `owner` ' +
-      '("data_definition" or "metadata_extension") identifying the physical object it lives in; ' +
-      'feed it back unchanged to TranslateSetTexts. Positional UI labels are keyed by a 1-based index ' +
-      'in the attribute, format `attribute[index]` (e.g. ui_lineitem_label[2]); that index round-trips ' +
-      'into set unchanged so the write lands in the right slot.',
+      'included automatically (no second call needed). Each cds_entity row always includes an `owner` ' +
+      '("data_definition" or "metadata_extension") identifying the physical object it lives in, and a ' +
+      '`position` (string, 1-based) for positional UI labels. Positional labels keep the BARE attribute ' +
+      '(e.g. "ui_lineitem_label") plus that separate `position` — they are NOT merged into ' +
+      '"ui_lineitem_label[1]". Pass `owner`, `position`, field_name and attribute back to ' +
+      'TranslateSetTexts(cds_entity) VERBATIM for a correct round-trip.',
     inputSchema: GetTextsSchema,
   },
   TranslateSetTexts: {
@@ -172,14 +179,18 @@ export const TOOLS = {
       'of { attribute, value } entries. Each entry may also carry its own field_name (and position) ' +
       'to target a specific CDS field — so all fields of one object (e.g. every ui_lineitem_label) ' +
       'can be written in a SINGLE call, locking the object only once. ' +
-      'For a CDS entity round-trip, each row carries the `owner` ("data_definition" or ' +
-      '"metadata_extension") that TranslateGetTexts stamped: pass it through and the rows are routed, ' +
-      'per owner, to the correct physical object (view vs DDLX), each locked/transported once. A row ' +
-      'without `owner` falls back to the call’s target_type, as today. A positional slot keeps its ' +
-      '1-based index — sent as `position`, or equivalently kept in the attribute as `attribute[index]`; ' +
-      'either way the index is passed through unchanged. ' +
-      'Entries without their own field_name/position fall back to the top-level field_name and ' +
-      '`position` from TranslateGetTexts.',
+      'For target_type=cds_entity, EVERY row must carry the `owner` ("data_definition" or ' +
+      '"metadata_extension") that TranslateGetTexts stamped: LISA groups the rows by `owner` and writes ' +
+      'each group back to the matching physical object (view vs DDLX) in its own call, each ' +
+      'locked/transported once. A cds_entity write with any row missing `owner` is REJECTED (LISA never ' +
+      'guesses the object). Entity-level texts (the view’s own endusertext_label) must go out with an ' +
+      'EMPTY field_name; positional UI labels keep the bare attribute plus their `position` (string, ' +
+      '1-based) — never renumber or bracket it. The result reports, per owner, how many texts were ' +
+      'written and the sub-call status; writes are not atomic across the two objects, so a partial write ' +
+      'returns success=false with both outcomes. ' +
+      'For the single targets (data_definition / metadata_extension and non-CDS types) nothing changes: ' +
+      'one 1:1 backend write, and entries without their own field_name/position fall back to the ' +
+      'top-level field_name and `position`.',
     inputSchema: SetTranslationSchema,
   },
 } as const;
