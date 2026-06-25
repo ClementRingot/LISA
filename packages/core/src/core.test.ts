@@ -118,6 +118,248 @@ describe('I18nCore wire contract', () => {
   });
 });
 
+describe('cds_entity merged reader (getCdsEntityTexts)', () => {
+  /** A transport whose capabilities allow both CDS objects, answering list_texts per target_type. */
+  function cdsReader(byTarget: Record<string, ListTextEntry[]>): { transport: I18nTransport; post: PostMock } {
+    const { transport, post } = mockTransport();
+    post.mockImplementation((action: WireAction, body: string) => {
+      if (action === 'capabilities')
+        return Promise.resolve(ok({ list_texts: ['data_definition', 'metadata_extension'] }));
+      const p = JSON.parse(body) as { target_type: string };
+      return Promise.resolve(
+        ok({
+          target_type: p.target_type,
+          object_name: 'ZC_VIEW',
+          language: 'DE',
+          texts: byTarget[p.target_type] ?? [],
+        }),
+      );
+    });
+    return { transport, post };
+  }
+
+  it('issues BOTH backend reads and concatenates, each row keeping the owner the backend stamped', async () => {
+    const { transport, post } = cdsReader({
+      data_definition: [
+        {
+          level: 'entity',
+          field_name: '',
+          attribute: 'endusertext_label',
+          value: 'Bestellung',
+          populated: true,
+          owner: 'data_definition',
+        },
+      ],
+      metadata_extension: [
+        {
+          level: 'field',
+          field_name: 'AMOUNT',
+          attribute: 'ui_lineitem_label[2]',
+          value: 'Betrag',
+          populated: true,
+          owner: 'metadata_extension',
+        },
+      ],
+    });
+
+    const res = await new I18nCore(transport).getCdsEntityTexts({ object_name: 'ZC_VIEW', language: 'DE' });
+
+    expect(res.target_type).toBe('cds_entity');
+    // owner is READ from each row, never derived from which call produced it
+    expect(res.texts[0]).toMatchObject({ owner: 'data_definition', attribute: 'endusertext_label' });
+    // DDLX row: owner from the row + positional index decomposed for the round-trip key
+    expect(res.texts[1]).toMatchObject({ owner: 'metadata_extension', attribute: 'ui_lineitem_label', position: '2' });
+
+    const listTargets = post.mock.calls.filter(([a]) => a === 'list_texts').map(([, b]) => JSON.parse(b).target_type);
+    expect(listTargets).toEqual(['data_definition', 'metadata_extension']);
+  });
+
+  it('a projection whose UI labels live in its DDLX surfaces them in the single call, owner=metadata_extension', async () => {
+    // The view itself contributes only its entity description; every UI label comes from the DDLX.
+    const { transport } = cdsReader({
+      data_definition: [
+        {
+          level: 'entity',
+          field_name: '',
+          attribute: 'endusertext_label',
+          value: 'Anomalies HU',
+          populated: true,
+          owner: 'data_definition',
+        },
+      ],
+      metadata_extension: [
+        {
+          level: 'field',
+          field_name: 'BUSINESSUNITID',
+          attribute: 'ui_facet_label[1]',
+          value: 'Anomalies HU',
+          populated: true,
+          owner: 'metadata_extension',
+        },
+        {
+          level: 'field',
+          field_name: 'BUSINESSUNITID',
+          attribute: 'ui_lineitem_label[1]',
+          value: 'HU',
+          populated: true,
+          owner: 'metadata_extension',
+        },
+      ],
+    });
+
+    const res = await new I18nCore(transport).getCdsEntityTexts({ object_name: 'ZC_ANOMALIESHU' });
+
+    const uiLabels = res.texts.filter((t) => t.level === 'field');
+    expect(uiLabels).toHaveLength(2);
+    expect(uiLabels.every((t) => t.owner === 'metadata_extension')).toBe(true);
+    expect(uiLabels.map((t) => t.position)).toEqual(['1', '1']);
+  });
+
+  it('a view with its own inline UI labels surfaces them with owner=data_definition', async () => {
+    const { transport } = cdsReader({
+      data_definition: [
+        {
+          level: 'field',
+          field_name: 'AMOUNT',
+          attribute: 'ui_lineitem_label[1]',
+          value: 'Betrag',
+          populated: true,
+          owner: 'data_definition',
+        },
+      ],
+      metadata_extension: [],
+    });
+
+    const res = await new I18nCore(transport).getCdsEntityTexts({ object_name: 'ZI_VIEW' });
+
+    expect(res.texts).toHaveLength(1);
+    expect(res.texts[0]).toMatchObject({ owner: 'data_definition', attribute: 'ui_lineitem_label', position: '1' });
+  });
+
+  it('does NOT deduplicate across owners — coinciding field_name/attribute stay two distinct slots', async () => {
+    const slot = (owner: string): ListTextEntry => ({
+      level: 'field',
+      field_name: 'AMOUNT',
+      attribute: 'ui_lineitem_label[1]',
+      value: 'Betrag',
+      populated: true,
+      owner,
+    });
+    const { transport } = cdsReader({
+      data_definition: [slot('data_definition')],
+      metadata_extension: [slot('metadata_extension')],
+    });
+
+    const res = await new I18nCore(transport).getCdsEntityTexts({ object_name: 'ZC_VIEW' });
+
+    expect(res.texts).toHaveLength(2);
+    expect(res.texts.map((t) => t.owner)).toEqual(['data_definition', 'metadata_extension']);
+  });
+});
+
+describe('owner-routed writer (setTextsByOwner)', () => {
+  function writer(): { transport: I18nTransport; post: PostMock } {
+    const { transport, post } = mockTransport();
+    post.mockImplementation((action: WireAction, body: string) => {
+      if (action === 'capabilities')
+        return Promise.resolve(ok({ set_translation: ['data_element', 'data_definition', 'metadata_extension'] }));
+      const p = JSON.parse(body) as Record<string, unknown>;
+      return Promise.resolve(ok({ ...p, success: true }));
+    });
+    return { transport, post };
+  }
+
+  const setBodies = (post: PostMock) =>
+    post.mock.calls.filter(([a]) => a === 'set_translation').map(([, b]) => JSON.parse(b));
+
+  it('routes each row to the target_type named by its owner, writing each physical object once', async () => {
+    const { transport, post } = writer();
+
+    const results = await new I18nCore(transport).setTextsByOwner({
+      target_type: 'cds_entity',
+      object_name: 'ZC_VIEW',
+      language: 'DE',
+      transport: 'K900123',
+      texts: [
+        { attribute: 'endusertext_label', value: 'Bestellung', owner: 'data_definition' },
+        {
+          attribute: 'ui_lineitem_label',
+          position: '2',
+          value: 'Betrag',
+          field_name: 'AMOUNT',
+          owner: 'metadata_extension',
+        },
+        { attribute: 'ui_facet_label[1]', value: 'Allgemein', field_name: 'AMOUNT', owner: 'metadata_extension' },
+      ],
+    });
+
+    // one result / one write per physical object (locked + transported once each)
+    expect(results).toHaveLength(2);
+    const bodies = setBodies(post);
+    const dd = bodies.find((b) => b.target_type === 'data_definition');
+    const me = bodies.find((b) => b.target_type === 'metadata_extension');
+    expect(dd.texts).toHaveLength(1);
+    expect(me.texts).toHaveLength(2);
+    // owner is a routing key only — it must NOT appear on the wire
+    expect(JSON.stringify(bodies)).not.toContain('owner');
+    // positional index passes through to the right slot (separate position field), incl. the bracketed form
+    expect(me.texts.find((t: { attribute: string }) => t.attribute === 'ui_lineitem_label').position).toBe('2');
+    expect(me.texts.find((t: { attribute: string }) => t.attribute === 'ui_facet_label').position).toBe('1');
+    // cds_entity itself is never sent — only the two physical target_types reach the backend
+    expect(bodies.some((b) => b.target_type === 'cds_entity')).toBe(false);
+  });
+
+  it('round-trips a read straight back to set, each slot routed purely by owner with its index intact', async () => {
+    const { transport, post } = writer();
+
+    // Rows shaped exactly as getCdsEntityTexts emits them (owner stamped, index decomposed).
+    const edited = [
+      { attribute: 'endusertext_label', value: 'Order', field_name: '', owner: 'data_definition' },
+      {
+        attribute: 'ui_lineitem_label',
+        position: '2',
+        value: 'Amount',
+        field_name: 'AMOUNT',
+        owner: 'metadata_extension',
+      },
+    ];
+
+    await new I18nCore(transport).setTextsByOwner({
+      target_type: 'cds_entity',
+      object_name: 'ZC_VIEW',
+      language: 'EN',
+      transport: 'K900123',
+      texts: edited,
+    });
+
+    const bodies = setBodies(post);
+    expect(bodies.find((b) => b.target_type === 'data_definition').texts[0]).toMatchObject({
+      attribute: 'endusertext_label',
+      value: 'Order',
+    });
+    expect(bodies.find((b) => b.target_type === 'metadata_extension').texts[0]).toMatchObject({
+      attribute: 'ui_lineitem_label',
+      position: '2',
+      value: 'Amount',
+    });
+  });
+
+  it('falls back to the call target_type for a row without owner (hand-built / single-object write)', async () => {
+    const { transport, post } = writer();
+
+    const results = await new I18nCore(transport).setTextsByOwner({
+      target_type: 'data_element',
+      object_name: 'ZMY_DTEL',
+      language: 'DE',
+      transport: 'K900123',
+      texts: [{ attribute: 'short_field_label', value: 'Betrag' }],
+    });
+
+    expect(results).toHaveLength(1);
+    expect(setBodies(post)[0].target_type).toBe('data_element');
+  });
+});
+
 describe('narrowListTexts', () => {
   const entry = (over: Partial<ListTextEntry>): ListTextEntry => ({
     attribute: 'label',

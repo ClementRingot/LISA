@@ -21,6 +21,7 @@ import type { Capabilities } from './wire.js';
  */
 export const TargetTypeSchema = z
   .enum([
+    'cds_entity',
     'data_element',
     'domain',
     'data_definition',
@@ -35,9 +36,11 @@ export const TargetTypeSchema = z
       'data_definition (CDS DDLS entity/field labels), message_class (MSAG), ' +
       'text_pool (class/function-group text symbols), metadata_extension (DDLX UI labels), ' +
       'application_log_object (APLO), business_configuration_object (SMBC). ' +
-      'NOTE: a CDS view (data_definition) often has its UI labels defined/overridden in a separate ' +
-      "metadata extension (DDLX). To translate ALL of a view's texts, also query the corresponding " +
-      'metadata_extension object (its own DDLX name, not the view name). ' +
+      'For a CDS entity prefer cds_entity: it is the MERGED translation surface of a view and its ' +
+      'metadata extension (DDLX) under one name — get returns both objects’ texts in a single call, ' +
+      'each CDS row carrying an `owner` ("data_definition" or "metadata_extension"), and set routes ' +
+      'each row back to the right physical object by that owner. data_definition and metadata_extension ' +
+      'remain available to address ONE physical object explicitly (single-owner, unmerged). ' +
       'The object types actually available on the target system are stated per tool (see each tool description).',
   );
 
@@ -114,7 +117,19 @@ export const SetTranslationSchema = z.object({
           .optional()
           .describe(
             'Per-entry 1-based position for repeatable UI annotations (e.g. ui_lineitem_label). Overrides ' +
-              'the top-level position for THIS entry. Sent as a string.',
+              'the top-level position for THIS entry. Sent as a string. Equivalently, the attribute may keep ' +
+              'the bracketed form it was read in (e.g. "ui_lineitem_label[2]") — the index round-trips either ' +
+              'way and is never renumbered.',
+          ),
+        owner: z
+          .string()
+          .optional()
+          .describe(
+            'Physical CDS object that owns this slot: "data_definition" (the view) or ' +
+              '"metadata_extension" (its DDLX). Pass through verbatim the `owner` that ' +
+              'TranslateGetTexts stamped on the row so a merged cds_entity write routes each slot back to ' +
+              'the right object. Omit for a non-CDS object or a single-target (data_definition / ' +
+              'metadata_extension) write — it then falls back to the call’s target_type.',
           ),
       }),
     )
@@ -138,21 +153,31 @@ export const TOOLS = {
     description:
       "Read all translatable texts of an SAP object in a given language, or in the object's " +
       'original language when none is specified. Returns every text slot with its full key ' +
-      '(level, field_name, position, attribute), its value, and a `populated` flag ' +
+      '(level, field_name, attribute), its value, and a `populated` flag ' +
       '(false = the slot exists but is empty in this language, i.e. still to translate). ' +
       'To list only filled texts, keep entries with populated=true; to compare two languages, ' +
       'call it once per language and diff on (key, populated, value). ' +
-      'When reading a CDS view (target_type=data_definition), remember its UI labels may live in a ' +
-      'separate metadata extension (DDLX): query the matching metadata_extension object as well to ' +
-      'cover every translatable text.',
+      'For a CDS entity use target_type=cds_entity: this returns the FULL merged set — the view ' +
+      '(data_definition) AND its metadata extension (DDLX) — in a single call, with the DDLX labels ' +
+      'included automatically (no second call needed). Each CDS row carries an `owner` ' +
+      '("data_definition" or "metadata_extension") identifying the physical object it lives in; ' +
+      'feed it back unchanged to TranslateSetTexts. Positional UI labels are keyed by a 1-based index ' +
+      'in the attribute, format `attribute[index]` (e.g. ui_lineitem_label[2]); that index round-trips ' +
+      'into set unchanged so the write lands in the right slot.',
     inputSchema: GetTextsSchema,
   },
   TranslateSetTexts: {
     description:
       'Write or update translations for an SAP object. Provide the transport request and an array ' +
       'of { attribute, value } entries. Each entry may also carry its own field_name (and position) ' +
-      'to target a specific CDS field — so all fields of one data_definition / metadata_extension ' +
-      '(e.g. every ui_lineitem_label) can be written in a SINGLE call, locking the object only once. ' +
+      'to target a specific CDS field — so all fields of one object (e.g. every ui_lineitem_label) ' +
+      'can be written in a SINGLE call, locking the object only once. ' +
+      'For a CDS entity round-trip, each row carries the `owner` ("data_definition" or ' +
+      '"metadata_extension") that TranslateGetTexts stamped: pass it through and the rows are routed, ' +
+      'per owner, to the correct physical object (view vs DDLX), each locked/transported once. A row ' +
+      'without `owner` falls back to the call’s target_type, as today. A positional slot keeps its ' +
+      '1-based index — sent as `position`, or equivalently kept in the attribute as `attribute[index]`; ' +
+      'either way the index is passed through unchanged. ' +
       'Entries without their own field_name/position fall back to the top-level field_name and ' +
       '`position` from TranslateGetTexts.',
     inputSchema: SetTranslationSchema,

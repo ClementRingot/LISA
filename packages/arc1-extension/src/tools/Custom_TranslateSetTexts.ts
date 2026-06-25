@@ -34,7 +34,9 @@ export default defineTool({
     };
     const core = new I18nCore(ctxHttpTransport(ctx.http));
 
-    const result = await core.setTranslation({
+    // Route each row to its physical object by `owner` (CDS round-trip); rows without one fall back
+    // to the call's target_type. Each object is locked/transported once; one result per object.
+    const results = await core.setTextsByOwner({
       target_type: a.target_type,
       object_name: a.object_name,
       language: a.language,
@@ -49,6 +51,6 @@ export default defineTool({
       position: a.position,
     });
 
-    return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
+    return { content: [{ type: 'text', text: JSON.stringify(results, null, 2) }] };
   },
 });

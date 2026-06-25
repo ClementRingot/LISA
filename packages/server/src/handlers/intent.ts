@@ -1,4 +1,5 @@
 import {
+  CDS_ENTITY_TARGET,
   GetTextsSchema,
   I18nCore,
   ListLanguagesSchema,
@@ -58,12 +59,17 @@ export async function registerTranslationTools(server: McpServer, config: Config
   // narrow the result here rather than asking the server to.
   server.tool('TranslateGetTexts', getTextsDescription, GetTextsSchema.shape, async (args) => {
     try {
-      const result = await client.getTexts({
-        target_type: args.target_type,
-        object_name: args.object_name,
-        language: args.language,
-        text_pool_owner_type: args.text_pool_owner_type,
-      });
+      // cds_entity = the merged CDS surface: fan out to the view AND its DDLX, concatenate, and
+      // let each row keep the `owner` the backend stamped. Any other target_type is a single read.
+      const result =
+        args.target_type === CDS_ENTITY_TARGET
+          ? await client.getCdsEntityTexts({ object_name: args.object_name, language: args.language })
+          : await client.getTexts({
+              target_type: args.target_type,
+              object_name: args.object_name,
+              language: args.language,
+              text_pool_owner_type: args.text_pool_owner_type,
+            });
 
       const texts = narrowListTexts(result.texts, {
         field_name: args.field_name,
@@ -80,7 +86,10 @@ export async function registerTranslationTools(server: McpServer, config: Config
   // ── TranslateSetTexts ─────────────────────────────────────────────────────
   server.tool('TranslateSetTexts', setTextsDescription, SetTranslationSchema.shape, async (args) => {
     try {
-      const result = await client.setTranslation({
+      // Route each row to a physical object by its `owner` (CDS round-trip), falling back to the
+      // call's target_type for rows that carry none. Each object is written — and locked — once;
+      // one result per object is returned.
+      const results = await client.setTextsByOwner({
         target_type: args.target_type,
         object_name: args.object_name,
         language: args.language,
@@ -94,7 +103,7 @@ export async function registerTranslationTools(server: McpServer, config: Config
         subobject_name: args.subobject_name,
         position: args.position,
       });
-      return { content: [{ type: 'text', text: json(result) }] };
+      return { content: [{ type: 'text', text: json(results) }] };
     } catch (e) {
       log.error('TranslateSetTexts failed', { err: (e as Error).message });
       return { content: [{ type: 'text', text: formatError(e) }], isError: true };

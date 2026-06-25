@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Merged CDS entity translation surface (`cds_entity`).** A new `target_type` that treats a CDS
+  view and its metadata extension (DDLX) as **one** translation surface. `TranslateGetTexts` with
+  `target_type: "cds_entity"` issues both backend reads (`data_definition` **and**
+  `metadata_extension`) and concatenates them, so DDLX labels are returned automatically without a
+  second call. Every CDS row carries an **`owner`** (`"data_definition"` / `"metadata_extension"`)
+  — read from the row, stamped by the ABAP backend — identifying the physical object the slot lives
+  in. `TranslateSetTexts` **groups incoming rows by `owner`** and routes each group to the matching
+  backend object, so the view (DDLS) and the DDLX are each locked/transported exactly once. Rows are
+  not deduplicated across owners, and positional UI labels round-trip their 1-based index
+  (`attribute[index]`, e.g. `ui_lineitem_label[2]`) unchanged. The single-object `data_definition`
+  and `metadata_extension` targets keep working as before (single-owner, unmerged); a `set` row
+  without `owner` falls back to the call's `target_type`. Shared in `@lisa/core`, so the standalone
+  MCP server and the ARC-1 extension behave identically.
+
 ## [0.7.1] — 2026-06-23
 
 ### Fixed
