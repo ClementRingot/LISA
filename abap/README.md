@@ -4,12 +4,20 @@ These are the ABAP objects you import into the **target SAP system** so that `LI
 
 ## Objects — pick **one** class
 
-Each handler class is **fully self-contained** (the JSON/parameter helpers are inlined), so you import exactly **one** file — there are no shared dependencies to import alongside it.
+Each handler class is **self-contained** (the JSON/parameter helpers are inlined) with **no global dependencies** to import alongside it. It does, however, use one **local class** (`lcl_slot_visitor`, an XCO CDS-annotation visitor that collects positional UI labels), which lives in the class's local-types includes — so each class object spans the main source **plus two local-types files**:
 
-| File | Object | Use when |
-|------|--------|----------|
-| `zcl_i18n_service.clas.abap` | `ZCL_I18N_SERVICE` | Classic ABAP stack (on-premise / private cloud — S/4HANA 2022+ / ABAP Platform). |
-| `zcl_i18n_service_cloud.clas.abap` | `ZCL_I18N_SERVICE_CLOUD` | ABAP Cloud (Steampunk / ABAP Environment) — Cloud-API-compliant variant. |
+| File | abapGit include | ADT section |
+|------|-----------------|-------------|
+| `zcl_i18n_service.clas.abap` | main | Global Class |
+| `zcl_i18n_service.clas.locals_def.abap` | CCDEF | Class-relevant Local Types |
+| `zcl_i18n_service.clas.locals_imp.abap` | CCIMP | Local Types |
+
+…and the same three files for the ABAP-Cloud variant (`zcl_i18n_service_cloud.clas.*`). All files of one class deserialize as the **single** CLAS object — there is still nothing else to import.
+
+| Object | Use when |
+|--------|----------|
+| `ZCL_I18N_SERVICE` | Classic ABAP stack (on-premise / private cloud — S/4HANA 2022+ / ABAP Platform). |
+| `ZCL_I18N_SERVICE_CLOUD` | ABAP Cloud (Steampunk / ABAP Environment) — Cloud-API-compliant variant. |
 
 Both implement `IF_HTTP_SERVICE_EXTENSION`, route actions from the URL path, and call the XCO i18n APIs. Same wire contract (see below) — just copy-paste the file that matches your stack.
 
@@ -23,11 +31,16 @@ Both implement `IF_HTTP_SERVICE_EXTENSION`, route actions from the URL path, and
 
 ### Option A — abapGit (recommended)
 
-These files use the **source-format** naming abapGit understands (`*.clas.abap`). Drop the one class for your stack into an abapGit-linked package and pull.
+These files use the **source-format** naming abapGit understands (`*.clas.abap`, `*.clas.locals_def.abap`, `*.clas.locals_imp.abap`). Drop the three files for your stack into an abapGit-linked package and pull — abapGit reassembles them into the one class.
 
 ### Option B — manual (ADT / SE24 / SE80)
 
-1. Create the class for your stack (`ZCL_I18N_SERVICE` or `ZCL_I18N_SERVICE_CLOUD`), paste the source, activate. That's it — nothing else to import.
+1. Create the class for your stack (`ZCL_I18N_SERVICE` or `ZCL_I18N_SERVICE_CLOUD`) and paste the **three** parts into their tabs before activating:
+   - `*.clas.abap` → the global class (Global Class tab)
+   - `*.clas.locals_def.abap` → **Class-relevant Local Types** tab (CCDEF)
+   - `*.clas.locals_imp.abap` → **Local Types** tab (CCIMP)
+
+   Then activate. Skipping the local-types parts leaves `lcl_slot_visitor` undefined and the class won't activate.
 
 ## Expose it as an HTTP service
 
