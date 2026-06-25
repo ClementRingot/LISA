@@ -70,10 +70,17 @@ export interface TextEntry {
  * THIS entry only, so one set_translation call can address several CDS fields of the same
  * object (the ABAP groups entries by field and writes each within a single change scenario,
  * locking the object once). Both are sent as strings to match the handler's parser.
+ *
+ * `owner` is the physical CDS object the slot belongs to ("data_definition" for a view-owned
+ * slot, "metadata_extension" for a DDLX-owned slot). It is the round-trip companion of the
+ * `owner` the reader stamps on each CDS row: `setCdsEntityTexts` groups entries by it and routes
+ * each group to the matching backend target_type, so each physical object (DDLS vs DDLX) is
+ * locked/transported exactly once. It is a LISA routing key only — it is NOT sent on the wire.
  */
 export interface SetTextEntry extends TextEntry {
   field_name?: string;
   position?: string;
+  owner?: string;
 }
 
 /**
@@ -90,6 +97,11 @@ export interface ListTextEntry extends TextEntry {
   field_name: string; // empty for entity-level texts
   position?: string; // 1-based position for repeatable annotations; absent when not positional
   populated: boolean; // true when the value is non-empty in the requested language
+  // For CDS rows the backend stamps the physical object that owns the slot: "data_definition"
+  // (the view/DDLS itself) or "metadata_extension" (its DDLX). Absent for non-CDS target_types.
+  // READ this from the row — never derive it from which backend call produced the row. It feeds
+  // set_translation routing so a merged CDS entity round-trips each slot to the right object.
+  owner?: string;
 }
 
 export interface ListTextsResult {
@@ -105,6 +117,35 @@ export interface SetTranslationResult {
   language: string;
   transport: string;
   success: boolean;
+}
+
+/** One sub-read of a `cds_entity` get that failed, attached to the partial result. */
+export interface CdsReadError {
+  target_type: string; // the real backend target that failed (data_definition | metadata_extension)
+  owner: string; // same value, as the routing key
+  error: string;
+}
+
+/** A `cds_entity` get result: the merged rows, plus any per-owner read error (partial success). */
+export type CdsEntityTextsResult = ListTextsResult & { errors?: CdsReadError[] };
+
+/** Outcome of the single backend set issued for one owner bucket of a `cds_entity` write. */
+export interface CdsOwnerSetOutcome {
+  target_type: string; // data_definition | metadata_extension
+  owner: string; // same value, the routing key the rows carried
+  written: number; // how many rows were sent to this physical object
+  success: boolean;
+  error?: string;
+}
+
+/**
+ * Aggregated result of a `cds_entity` set. `success` is true only when EVERY issued sub-call
+ * succeeded; writes are NOT atomic across the two physical objects, so a partial write reports
+ * success=false with both outcomes so the caller sees exactly what landed.
+ */
+export interface CdsEntitySetResult {
+  success: boolean;
+  results: CdsOwnerSetOutcome[];
 }
 
 /** Optional selectors the handler reads to disambiguate sub-objects within a target. */
@@ -160,6 +201,21 @@ async function callAction<T>(transport: I18nTransport, action: WireAction, body:
   return envelope.data;
 }
 
+// ─── Merged CDS entity surface ─────────────────────────────────────────────────
+// `data_definition` (the CDS view / DDLS) and `metadata_extension` (its DDLX) are two
+// PHYSICAL objects but one logical translation surface: a view often defines its UI labels
+// inline, a projection delegates them to a DDLX, and either may hold any given slot. LISA
+// exposes that surface under the synthetic target_type `cds_entity`: get fans out to BOTH
+// backend reads and concatenates, and the backend stamps every row with the `owner` that
+// tells set which physical object to write back to. `cds_entity` is a LISA concept — it is
+// never sent on the wire; only `data_definition` / `metadata_extension` reach the backend.
+
+/** Synthetic target_type for the merged CDS entity surface (view + its DDLX). */
+export const CDS_ENTITY_TARGET = 'cds_entity';
+
+/** The physical CDS objects a `cds_entity` fans out to, in output order (view first, DDLX second). */
+export const CDS_ENTITY_OWNERS = ['data_definition', 'metadata_extension'] as const;
+
 // ─── list_texts entry normalization ───────────────────────────────────────────
 
 /** Trailing 1-based position encoded by the ABAP as `name[n]` (e.g. ui_facet_label[1]). */
@@ -185,6 +241,28 @@ export function normalizeListTextEntry(entry: ListTextEntry): ListTextEntry {
     };
   }
   return { ...entry, populated };
+}
+
+/**
+ * Prepare one set_translation entry for the wire. The backend reads `attribute` and `position`
+ * as SEPARATE fields, so a positional slot must arrive split. A round-tripped read already comes
+ * decomposed (normalizeListTextEntry), but a hand-built entry may still carry the bracketed form
+ * `name[n]` the reader emits — accept it and move the index into `position` (an explicit `position`
+ * on the entry wins). The index is never renumbered or dropped; it just travels in its own field so
+ * set writes back to the exact slot. `owner` is a LISA routing key and is stripped here so it never
+ * reaches the backend parser.
+ */
+export function normalizeSetTextEntry(entry: SetTextEntry): SetTextEntry {
+  const { owner: _owner, ...rest } = entry;
+  const match = POSITION_SUFFIX.exec(rest.attribute);
+  if (match) {
+    return {
+      ...rest,
+      attribute: rest.attribute.slice(0, match.index),
+      position: rest.position ?? match[1],
+    };
+  }
+  return rest;
 }
 
 /**
@@ -317,6 +395,52 @@ export class I18nCore {
     return { ...data, texts: (data.texts ?? []).map(normalizeListTextEntry) };
   }
 
+  /**
+   * Merged reader for a CDS entity (target_type `cds_entity`): fan out to BOTH physical objects
+   * — the data_definition view AND its metadata_extension DDLX — and concatenate their texts into
+   * one set. Every CDS row keeps the `owner` the backend stamped (read from the row, NOT derived
+   * from which call produced it), so the caller gets the whole translation surface in one shot and
+   * DDLX labels are included automatically. Rows are NOT deduplicated across owners: a view-owned
+   * and a DDLX-owned slot are distinct targets even when field_name/attribute coincide.
+   */
+  async getCdsEntityTexts(params: {
+    object_name: string;
+    language?: string;
+  }): Promise<CdsEntityTextsResult> {
+    // Read each physical object in turn (view/DDLS first, DDLX second) and concatenate, in that
+    // order. Sequential, not parallel: the capabilities probe is a process-wide cache, so back-to-back
+    // reads share one probe and the merged order is deterministic.
+    const texts: ListTextEntry[] = [];
+    const errors: CdsReadError[] = [];
+    let language = params.language ?? '';
+    for (const owner of CDS_ENTITY_OWNERS) {
+      try {
+        const part = await this.getTexts({
+          target_type: owner,
+          object_name: params.object_name,
+          language: params.language,
+        });
+        if (part.language) language = part.language;
+        // Trust the backend's stamp; only default `owner` from the producing call if a row lacks it.
+        for (const t of part.texts) texts.push(t.owner ? t : { ...t, owner });
+      } catch (e) {
+        // Partial success: keep whatever the other call returned and attach this error.
+        errors.push({ target_type: owner, owner, error: e instanceof Error ? e.message : String(e) });
+      }
+    }
+    // Nothing came back AND something failed → there is no partial result to return; surface it.
+    if (texts.length === 0 && errors.length > 0) {
+      throw new Error(`cds_entity read failed: ${errors.map((e) => `${e.target_type}: ${e.error}`).join('; ')}`);
+    }
+    const result: CdsEntityTextsResult = {
+      target_type: CDS_ENTITY_TARGET,
+      object_name: params.object_name,
+      language,
+      texts,
+    };
+    return errors.length > 0 ? { ...result, errors } : result;
+  }
+
   async setTranslation(
     params: {
       target_type: string;
@@ -327,6 +451,61 @@ export class I18nCore {
     } & I18nSelectors,
   ): Promise<SetTranslationResult> {
     await this.assertActionSupported('set_translation', params.target_type);
-    return callAction<SetTranslationResult>(this.transport, 'set_translation', { ...params });
+    const texts = params.texts.map(normalizeSetTextEntry);
+    return callAction<SetTranslationResult>(this.transport, 'set_translation', { ...params, texts });
+  }
+
+  /**
+   * Owner-routed writer for a CDS entity (target_type `cds_entity`). Every row MUST carry an
+   * `owner` of "data_definition" or "metadata_extension" — the call is rejected outright if any row
+   * lacks one, because guessing would write a label to the wrong physical object. Rows are grouped by
+   * owner and each NON-EMPTY bucket is written with exactly ONE backend set_translation to the
+   * matching real target (so each physical object is locked/transported once). Each row keeps its own
+   * field_name (EMPTY for the view's entity-level endusertext_label — never inherited) and its
+   * positional index (normalizeSetTextEntry); `owner` is stripped before the wire. Buckets are
+   * isolated: a failure in one is recorded and the other is still attempted, since the two objects
+   * are not written atomically — `success` is true only when every issued sub-call succeeded.
+   */
+  async setCdsEntityTexts(params: {
+    object_name: string;
+    language: string;
+    transport: string;
+    texts: SetTextEntry[];
+  }): Promise<CdsEntitySetResult> {
+    const buckets = new Map<string, SetTextEntry[]>();
+    for (const entry of params.texts) {
+      if (entry.owner !== 'data_definition' && entry.owner !== 'metadata_extension') {
+        throw new Error("cds_entity set requires an 'owner' on every text row (data_definition | metadata_extension)");
+      }
+      const bucket = buckets.get(entry.owner);
+      if (bucket) bucket.push(entry);
+      else buckets.set(entry.owner, [entry]);
+    }
+
+    const results: CdsOwnerSetOutcome[] = [];
+    // Deterministic order: the view/DDLS first, then its DDLX.
+    for (const owner of CDS_ENTITY_OWNERS) {
+      const bucket = buckets.get(owner);
+      if (!bucket || bucket.length === 0) continue;
+      try {
+        const r = await this.setTranslation({
+          target_type: owner,
+          object_name: params.object_name,
+          language: params.language,
+          transport: params.transport,
+          texts: bucket,
+        });
+        results.push({ target_type: owner, owner, written: bucket.length, success: r.success !== false });
+      } catch (e) {
+        results.push({
+          target_type: owner,
+          owner,
+          written: 0,
+          success: false,
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
+    }
+    return { success: results.every((r) => r.success), results };
   }
 }

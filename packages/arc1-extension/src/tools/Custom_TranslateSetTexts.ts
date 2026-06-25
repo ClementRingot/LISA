@@ -1,4 +1,4 @@
-import { I18nCore, SetTranslationSchema, TOOLS } from '@lisa/core';
+import { CDS_ENTITY_TARGET, I18nCore, SetTranslationSchema, TOOLS } from '@lisa/core';
 import type { SetTextEntry } from '@lisa/core';
 import { OperationType, defineTool } from 'arc-1/public';
 import { ctxHttpTransport } from '../transport.js';
@@ -34,20 +34,30 @@ export default defineTool({
     };
     const core = new I18nCore(ctxHttpTransport(ctx.http));
 
-    const result = await core.setTranslation({
-      target_type: a.target_type,
-      object_name: a.object_name,
-      language: a.language,
-      transport: a.transport,
-      texts: a.texts,
-      field_name: a.field_name,
-      fixed_value: a.fixed_value,
-      message_number: a.message_number,
-      text_symbol_id: a.text_symbol_id,
-      text_pool_owner_type: a.text_pool_owner_type,
-      subobject_name: a.subobject_name,
-      position: a.position,
-    });
+    // cds_entity = the merged CDS surface: group rows by `owner` and write each group to its physical
+    // object (one backend call each). Any other target_type is a single 1:1 write.
+    const result =
+      a.target_type === CDS_ENTITY_TARGET
+        ? await core.setCdsEntityTexts({
+            object_name: a.object_name,
+            language: a.language,
+            transport: a.transport,
+            texts: a.texts,
+          })
+        : await core.setTranslation({
+            target_type: a.target_type,
+            object_name: a.object_name,
+            language: a.language,
+            transport: a.transport,
+            texts: a.texts,
+            field_name: a.field_name,
+            fixed_value: a.fixed_value,
+            message_number: a.message_number,
+            text_symbol_id: a.text_symbol_id,
+            text_pool_owner_type: a.text_pool_owner_type,
+            subobject_name: a.subobject_name,
+            position: a.position,
+          });
 
     return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
   },

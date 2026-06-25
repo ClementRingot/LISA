@@ -1,4 +1,4 @@
-import { GetTextsSchema, I18nCore, TOOLS, narrowListTexts } from '@lisa/core';
+import { CDS_ENTITY_TARGET, GetTextsSchema, I18nCore, TOOLS, narrowListTexts } from '@lisa/core';
 import { OperationType, defineTool } from 'arc-1/public';
 import { ctxHttpTransport } from '../transport.js';
 
@@ -26,12 +26,16 @@ export default defineTool({
     };
     const core = new I18nCore(ctxHttpTransport(ctx.http));
 
-    const result = await core.getTexts({
-      target_type: a.target_type,
-      object_name: a.object_name,
-      language: a.language,
-      text_pool_owner_type: a.text_pool_owner_type,
-    });
+    // cds_entity = the merged CDS surface (view + its DDLX), each row owner-stamped by the backend.
+    const result =
+      a.target_type === CDS_ENTITY_TARGET
+        ? await core.getCdsEntityTexts({ object_name: a.object_name, language: a.language })
+        : await core.getTexts({
+            target_type: a.target_type,
+            object_name: a.object_name,
+            language: a.language,
+            text_pool_owner_type: a.text_pool_owner_type,
+          });
 
     const texts = narrowListTexts(result.texts, { field_name: a.field_name, position: a.position });
 

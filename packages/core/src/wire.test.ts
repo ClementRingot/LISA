@@ -4,6 +4,7 @@ import {
   type ListTextEntry,
   isTargetTypeSupported,
   normalizeListTextEntry,
+  normalizeSetTextEntry,
   unsupportedTargetMessage,
 } from './wire.js';
 
@@ -64,6 +65,30 @@ describe('normalizeListTextEntry', () => {
     const empty = { level: 'entity', field_name: '', attribute: 'description', value: '' } as unknown as ListTextEntry;
     expect(normalizeListTextEntry(filled).populated).toBe(true);
     expect(normalizeListTextEntry(empty).populated).toBe(false);
+  });
+});
+
+describe('normalizeSetTextEntry', () => {
+  it('passes a plain entry through, dropping the owner routing key (not a wire field)', () => {
+    const out = normalizeSetTextEntry({ attribute: 'endusertext_label', value: 'Menge', owner: 'data_definition' });
+    expect(out).toEqual({ attribute: 'endusertext_label', value: 'Menge' });
+    expect(out).not.toHaveProperty('owner');
+  });
+
+  it('moves a bracketed index "name[n]" into a separate position field (index preserved, not stripped)', () => {
+    const out = normalizeSetTextEntry({ attribute: 'ui_lineitem_label[2]', value: 'Betrag', field_name: 'Amount' });
+    expect(out).toEqual({ attribute: 'ui_lineitem_label', position: '2', value: 'Betrag', field_name: 'Amount' });
+  });
+
+  it('keeps an already-decomposed entry (attribute + position) unchanged', () => {
+    const out = normalizeSetTextEntry({ attribute: 'ui_facet_label', position: '1', value: 'X' });
+    expect(out).toEqual({ attribute: 'ui_facet_label', position: '1', value: 'X' });
+  });
+
+  it('lets an explicit position win over a bracketed index', () => {
+    const out = normalizeSetTextEntry({ attribute: 'ui_lineitem_label[2]', position: '5', value: 'X' });
+    expect(out.position).toBe('5');
+    expect(out.attribute).toBe('ui_lineitem_label');
   });
 });
 

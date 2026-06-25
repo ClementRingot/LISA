@@ -24,6 +24,10 @@ describe('TargetTypeSchema', () => {
     }
   });
 
+  it('accepts the synthetic merged CDS entity target (cds_entity)', () => {
+    expect(TargetTypeSchema.safeParse('cds_entity').success).toBe(true);
+  });
+
   it('rejects DDIC short codes and unknown values', () => {
     for (const t of ['DTEL', 'CLAS', 'TABL', '', 'Data_Element']) {
       expect(TargetTypeSchema.safeParse(t).success).toBe(false);
@@ -74,6 +78,26 @@ describe('SetTranslationSchema', () => {
       texts: [
         { attribute: 'ui_lineitem_label', value: 'Menge', field_name: 'Quantity', position: '1' },
         { attribute: 'ui_lineitem_label', value: 'Betrag', field_name: 'Amount', position: '1' },
+      ],
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it('accepts a cds_entity round-trip write whose rows carry owner (routed per physical object)', () => {
+    const r = SetTranslationSchema.safeParse({
+      target_type: 'cds_entity',
+      object_name: 'ZC_MYVIEW',
+      language: 'DE',
+      transport: 'K900123',
+      texts: [
+        { attribute: 'endusertext_label', value: 'Bestellung', owner: 'data_definition' },
+        {
+          attribute: 'ui_lineitem_label',
+          value: 'Betrag',
+          field_name: 'Amount',
+          position: '2',
+          owner: 'metadata_extension',
+        },
       ],
     });
     expect(r.success).toBe(true);

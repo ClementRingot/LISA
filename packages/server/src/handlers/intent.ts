@@ -1,4 +1,5 @@
 import {
+  CDS_ENTITY_TARGET,
   GetTextsSchema,
   I18nCore,
   ListLanguagesSchema,
@@ -58,12 +59,17 @@ export async function registerTranslationTools(server: McpServer, config: Config
   // narrow the result here rather than asking the server to.
   server.tool('TranslateGetTexts', getTextsDescription, GetTextsSchema.shape, async (args) => {
     try {
-      const result = await client.getTexts({
-        target_type: args.target_type,
-        object_name: args.object_name,
-        language: args.language,
-        text_pool_owner_type: args.text_pool_owner_type,
-      });
+      // cds_entity = the merged CDS surface: fan out to the view AND its DDLX, concatenate, and
+      // let each row keep the `owner` the backend stamped. Any other target_type is a single read.
+      const result =
+        args.target_type === CDS_ENTITY_TARGET
+          ? await client.getCdsEntityTexts({ object_name: args.object_name, language: args.language })
+          : await client.getTexts({
+              target_type: args.target_type,
+              object_name: args.object_name,
+              language: args.language,
+              text_pool_owner_type: args.text_pool_owner_type,
+            });
 
       const texts = narrowListTexts(result.texts, {
         field_name: args.field_name,
@@ -80,20 +86,30 @@ export async function registerTranslationTools(server: McpServer, config: Config
   // ── TranslateSetTexts ─────────────────────────────────────────────────────
   server.tool('TranslateSetTexts', setTextsDescription, SetTranslationSchema.shape, async (args) => {
     try {
-      const result = await client.setTranslation({
-        target_type: args.target_type,
-        object_name: args.object_name,
-        language: args.language,
-        transport: args.transport,
-        texts: args.texts,
-        field_name: args.field_name,
-        fixed_value: args.fixed_value,
-        message_number: args.message_number,
-        text_symbol_id: args.text_symbol_id,
-        text_pool_owner_type: args.text_pool_owner_type,
-        subobject_name: args.subobject_name,
-        position: args.position,
-      });
+      // cds_entity = the merged CDS surface: group rows by their `owner` and write each group to the
+      // matching physical object (one backend call each). Any other target_type is a single 1:1 write.
+      const result =
+        args.target_type === CDS_ENTITY_TARGET
+          ? await client.setCdsEntityTexts({
+              object_name: args.object_name,
+              language: args.language,
+              transport: args.transport,
+              texts: args.texts,
+            })
+          : await client.setTranslation({
+              target_type: args.target_type,
+              object_name: args.object_name,
+              language: args.language,
+              transport: args.transport,
+              texts: args.texts,
+              field_name: args.field_name,
+              fixed_value: args.fixed_value,
+              message_number: args.message_number,
+              text_symbol_id: args.text_symbol_id,
+              text_pool_owner_type: args.text_pool_owner_type,
+              subobject_name: args.subobject_name,
+              position: args.position,
+            });
       return { content: [{ type: 'text', text: json(result) }] };
     } catch (e) {
       log.error('TranslateSetTexts failed', { err: (e as Error).message });

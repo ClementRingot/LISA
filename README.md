@@ -53,6 +53,7 @@ This is the **full catalog** of object types LISA understands — XCO **semantic
 
 | `target_type` | SAP object | Typical attributes |
 |---------------|-----------|--------------------|
+| `cds_entity` | **CDS entity — merged view + DDLX** | everything below for both objects, each row tagged `owner` |
 | `data_element` | Data element (DTEL) | `short_field_label`, `medium_field_label`, `long_field_label`, `heading_field_label` |
 | `domain` | Domain fixed-value texts (DOMA) | `fixed_value_description` |
 | `data_definition` | CDS view (DDLS) entity/field labels | `endusertext_label` |
@@ -62,7 +63,7 @@ This is the **full catalog** of object types LISA understands — XCO **semantic
 | `application_log_object` | Application log object (APLO) | object / sub-object texts |
 | `business_configuration_object` | Business configuration object (SMBC) | description texts |
 
-> **CDS views & metadata extensions:** a CDS view's UI labels are frequently defined (or overridden) in a separate **metadata extension** (DDLX). To translate *all* of a view's texts, read both `data_definition` (the view) **and** the matching `metadata_extension` object (its own DDLX name) — the tool descriptions surface this reminder to the assistant.
+> **CDS views & metadata extensions:** a CDS view's UI labels are frequently defined (or overridden) in a separate **metadata extension** (DDLX). Use **`cds_entity`** (a virtual, LISA-only target — not a backend type) to treat the two as one translation surface: a single `TranslateGetTexts` returns the view (`data_definition`) **and** its DDLX (`metadata_extension`) together — DDLX labels included automatically, no second call — and stamps every CDS row with an **`owner`** (`"data_definition"` or `"metadata_extension"`). On write, pass each row's `owner` back: LISA groups by it and writes each group to its physical object in one call (so the view and the DDLX are each locked/transported once); a `cds_entity` write with any row missing `owner` is rejected. Positional UI labels round-trip as the **bare** attribute (e.g. `ui_lineitem_label`) plus a separate `position` (1-based); the index is never renumbered. Writes are not atomic across the two objects, so the result reports per-owner outcomes. The single-object `data_definition` and `metadata_extension` targets remain available to address one object explicitly.
 
 ---
 
