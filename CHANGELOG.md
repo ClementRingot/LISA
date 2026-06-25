@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-06-25
+
 ### Added
 - **Merged CDS entity translation surface (`cds_entity`).** A new **virtual, LISA-only** `target_type`
   (not a backend type) that treats a CDS view and its metadata extension (DDLX) as **one** translation
