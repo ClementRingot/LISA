@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] — 2026-06-26
+
 ### Added
 - **`text_table` target_type.** Translate text tables (delivery-class C/S DB tables with one LANG key
   field, e.g. `T005T`) through the existing three tools. Adds two params: `language_key_field_name`

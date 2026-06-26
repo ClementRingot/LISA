@@ -1,6 +1,6 @@
 {
   "name": "lisa",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "LISA — SAP object translation. Workspaces: @lisa/core (shared wire contract), the standalone MCP server (deployable on BTP), and the ARC-1 extension.",
   "private": true,
   "license": "MIT",
