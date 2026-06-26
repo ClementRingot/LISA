@@ -92,14 +92,16 @@ Typical division of labour: the **ADT MCP** finds the object and a transport →
 
 ## Part 1 — Install the ABAP service
 
-The ABAP handler to copy into your **target SAP system** lives in [`abap/`](./abap). There are **two variants — pick the one class that matches your stack**. Each is **fully self-contained** (the JSON/parameter helpers are inlined), so you import exactly **one** file, with no shared interface or utility class to import alongside it.
+The ABAP handler to copy into your **target SAP system** lives in [`abap/`](./abap). There are **two variants — pick the one class that matches your stack**. Each class is **self-contained** (the JSON/parameter helpers are inlined, no external utility class to import alongside it), but each spans **three files** — the global class plus two local-types includes that define `lcl_slot_visitor` (an XCO CDS-annotation visitor used for positional UI labels):
 
-| File | Object | Use when |
-|------|--------|----------|
-| [`abap/zcl_i18n_service.clas.abap`](./abap/zcl_i18n_service.clas.abap) | `ZCL_I18N_SERVICE` | **On-premise / private cloud** — classic ABAP stack (S/4HANA 2022+ / ABAP Platform 2022+). |
-| [`abap/zcl_i18n_service_cloud.clas.abap`](./abap/zcl_i18n_service_cloud.clas.abap) | `ZCL_I18N_SERVICE_CLOUD` | **SAP BTP ABAP Environment / public cloud** (Steampunk) — Cloud-API-compliant variant. |
+| Files | Object | Use when |
+|-------|--------|----------|
+| [`zcl_i18n_service.clas.abap`](./abap/zcl_i18n_service.clas.abap) · [`…locals_def.abap`](./abap/zcl_i18n_service.clas.locals_def.abap) · [`…locals_imp.abap`](./abap/zcl_i18n_service.clas.locals_imp.abap) | `ZCL_I18N_SERVICE` | **On-premise / private cloud** — classic ABAP stack (S/4HANA 2022+ / ABAP Platform 2022+). |
+| [`zcl_i18n_service_cloud.clas.abap`](./abap/zcl_i18n_service_cloud.clas.abap) · [`…locals_def.abap`](./abap/zcl_i18n_service_cloud.clas.locals_def.abap) · [`…locals_imp.abap`](./abap/zcl_i18n_service_cloud.clas.locals_imp.abap) | `ZCL_I18N_SERVICE_CLOUD` | **SAP BTP ABAP Environment / public cloud** (Steampunk) — Cloud-API-compliant variant. |
 
-Both implement `IF_HTTP_SERVICE_EXTENSION`, route actions from the URL path, and speak the **same wire contract** — they only differ in the released/Cloud-compliant APIs the public-cloud stack allows. Import the one file for your stack (abapGit, or paste via ADT), create an ABAP **HTTP service** whose handler class is that class, and **enable** it (`UCON_HTTP_SERVICES` on-premise / private cloud; a communication scenario on ABAP Environment). Point the MCP at its URL (default `/sap/bc/http/sap/zi18n_service`).
+With **abapGit** the three files reassemble into the single class object automatically — drop them into a linked package and pull. With **ADT / SE24**, paste the three parts into their respective tabs before activating: `*.clas.abap` → Global Class, `*.clas.locals_def.abap` → Class-relevant Local Types (CCDEF), `*.clas.locals_imp.abap` → Local Types (CCIMP). Skipping the local-types parts leaves `lcl_slot_visitor` undefined and the class won't activate.
+
+Both implement `IF_HTTP_SERVICE_EXTENSION`, route actions from the URL path, and speak the **same wire contract** — they only differ in the released/Cloud-compliant APIs the public-cloud stack allows. Create an ABAP **HTTP service** whose handler class is that class, and **enable** it (`UCON_HTTP_SERVICES` on-premise / private cloud; a communication scenario on ABAP Environment). Point the MCP at its URL (default `/sap/bc/http/sap/zi18n_service`).
 
 👉 Full step-by-step instructions: **[docs: ABAP service setup](./docs_page/abap-service-setup.md)**.
 
@@ -286,9 +288,13 @@ Larger structural work lives in [`roadmap/`](./roadmap/README.md). Two tracks:
 
 ```
 LISA/
-├── abap/                 # ⬅ ABAP handler to import (pick one self-contained class)
-│   ├── zcl_i18n_service.clas.abap        # on-premise / private cloud
-│   └── zcl_i18n_service_cloud.clas.abap  # BTP ABAP Environment / public cloud
+├── abap/                 # ⬅ ABAP handler to import (pick the three files for your stack)
+│   ├── zcl_i18n_service.clas.abap               # on-premise / private cloud — global class
+│   ├── zcl_i18n_service.clas.locals_def.abap    # on-premise — CCDEF (local types definition)
+│   ├── zcl_i18n_service.clas.locals_imp.abap    # on-premise — CCIMP (local types implementation)
+│   ├── zcl_i18n_service_cloud.clas.abap          # BTP ABAP Environment / public cloud — global class
+│   ├── zcl_i18n_service_cloud.clas.locals_def.abap  # cloud — CCDEF
+│   └── zcl_i18n_service_cloud.clas.locals_imp.abap  # cloud — CCIMP
 ├── docs_page/            # long-form documentation
 ├── roadmap/              # forward-looking design docs (planned, not implemented)
 ├── packages/
