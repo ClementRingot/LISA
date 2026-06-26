@@ -19,6 +19,7 @@ describe('TargetTypeSchema', () => {
       'metadata_extension',
       'application_log_object',
       'business_configuration_object',
+      'text_table',
     ]) {
       expect(TargetTypeSchema.safeParse(t).success).toBe(true);
     }
@@ -43,6 +44,17 @@ describe('GetTextsSchema', () => {
 
   it('accepts an omitted language (read in original language)', () => {
     const r = GetTextsSchema.safeParse({ target_type: 'metadata_extension', object_name: 'ZC_ANOMALIESHU' });
+    expect(r.success).toBe(true);
+  });
+
+  it('accepts a text_table read with language_key_field_name and master_key_fields', () => {
+    const r = GetTextsSchema.safeParse({
+      target_type: 'text_table',
+      object_name: 'T005T',
+      language: 'EN',
+      language_key_field_name: 'SPRAS',
+      master_key_fields: [{ name: 'LAND1', value: 'DE' }],
+    });
     expect(r.success).toBe(true);
   });
 
@@ -101,6 +113,32 @@ describe('SetTranslationSchema', () => {
       ],
     });
     expect(r.success).toBe(true);
+  });
+
+  it('accepts a text_table write with language_key_field_name and master_key_fields', () => {
+    const r = SetTranslationSchema.safeParse({
+      target_type: 'text_table',
+      object_name: 'T005T',
+      language: 'DE',
+      transport: 'DS1K986972',
+      language_key_field_name: 'SPRAS',
+      master_key_fields: [{ name: 'LAND1', value: 'DE' }],
+      texts: [{ attribute: 'LANDX', value: 'Deutschland' }],
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it('rejects a text_table master_key_field with an empty name', () => {
+    const r = SetTranslationSchema.safeParse({
+      target_type: 'text_table',
+      object_name: 'T005T',
+      language: 'DE',
+      transport: 'DS1K986972',
+      language_key_field_name: 'SPRAS',
+      master_key_fields: [{ name: '', value: 'DE' }],
+      texts: [{ attribute: 'LANDX', value: 'Deutschland' }],
+    });
+    expect(r.success).toBe(false);
   });
 
   it('rejects an empty texts array', () => {

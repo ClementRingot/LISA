@@ -5,8 +5,8 @@
  *   - The ACTION is the last segment of the URL path (handler reads `~path_info`),
  *     lowercase. The wrapper drives list_languages | list_texts | set_translation, plus a
  *     `capabilities` probe (cached) used to reject stack-unsupported (action, target_type) calls
- *     up-front. (The handler also exposes get_translation and compare_translations, but the MCP
- *     surface no longer uses them — list_texts is the whole-object reader and the client diffs locally.)
+ *     up-front. list_texts is the whole-object reader (the client diffs its output locally to
+ *     "list" and "compare").
  *   - ALL parameters are sent in the JSON request BODY (handler reads `request->get_text()`
  *     and string-matches "name":"value"). We therefore POST every action with a JSON body.
  *   - Object kinds are the XCO semantic `target_type` literals (data_element, domain, …).
@@ -157,6 +157,9 @@ export interface I18nSelectors {
   text_pool_owner_type?: string;
   subobject_name?: string;
   position?: string;
+  // text_table only: the LANG key field (e.g. SPRAS) and the master key fields that pin one record.
+  language_key_field_name?: string;
+  master_key_fields?: Array<{ name: string; value: string }>;
 }
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
@@ -173,7 +176,7 @@ function compact(body: Record<string, unknown>): Record<string, unknown> {
 /**
  * POST an action to {servicePath}/{action} via the injected transport and unwrap the
  * { success, data, error } envelope. The ABAP action is the last path segment,
- * so it must be lowercase (list_languages, get_translation, …).
+ * so it must be lowercase (list_languages, list_texts, …).
  */
 async function callAction<T>(transport: I18nTransport, action: WireAction, body: Record<string, unknown>): Promise<T> {
   const { status, body: respBody } = await transport.post(action, JSON.stringify(compact(body)));
@@ -389,6 +392,9 @@ export class I18nCore {
     object_name: string;
     language?: string;
     text_pool_owner_type?: string;
+    // text_table only: the LANG key field and the master key fields that pin one record.
+    language_key_field_name?: string;
+    master_key_fields?: Array<{ name: string; value: string }>;
   }): Promise<ListTextsResult> {
     await this.assertActionSupported('list_texts', params.target_type);
     const data = await callAction<ListTextsResult>(this.transport, 'list_texts', { ...params });

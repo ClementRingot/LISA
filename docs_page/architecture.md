@@ -64,5 +64,8 @@ The XCO i18n APIs are ABAP-side generation APIs with no general REST surface. A 
 | Transport / OAuth router / callback proxy | `packages/server/src/server/http.ts` |
 | XSUAA proxy + verifier, DCR store, OAuth state codec | `@arc-mcp/xsuaa-auth` (wired in `packages/server/src/server/http.ts`) |
 | Logger → package adapter | `packages/server/src/server/logger.ts` (`toPackageLogger`) |
-| ABAP handler (on-premise / private cloud) | `abap/zcl_i18n_service.clas.abap` |
-| ABAP handler (BTP ABAP Environment / public cloud) | `abap/zcl_i18n_service_cloud.clas.abap` |
+| ABAP handler (on-premise / private cloud, ABAP Platform 2022) | `abap/ABAP_PLATFORM_2022/zcl_i18n_service.clas.abap` |
+| ABAP handler (on-premise / private cloud, ABAP Platform 2025+) | `abap/ABAP_PLATFORM_2025/zcl_i18n_service.clas.abap` |
+| ABAP handler (BTP ABAP Environment / public cloud) | `abap/CLOUD/zcl_i18n_service_cloud.clas.abap` |
+
+> **Why three ABAP handler classes, and how to evolve them** — why LISA stays one platform-agnostic MCP, why the `abap/` tree is split per platform, the compilation wall that keeps Cloud and on-premise separate, and how to grow the wire contract additively (with worked examples) without forking the MCP: see [`wire-contract-evolution.md`](./wire-contract-evolution.md).

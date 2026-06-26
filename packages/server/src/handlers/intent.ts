@@ -69,6 +69,8 @@ export async function registerTranslationTools(server: McpServer, config: Config
               object_name: args.object_name,
               language: args.language,
               text_pool_owner_type: args.text_pool_owner_type,
+              language_key_field_name: args.language_key_field_name,
+              master_key_fields: args.master_key_fields,
             });
 
       const texts = narrowListTexts(result.texts, {
@@ -109,6 +111,8 @@ export async function registerTranslationTools(server: McpServer, config: Config
               text_pool_owner_type: args.text_pool_owner_type,
               subobject_name: args.subobject_name,
               position: args.position,
+              language_key_field_name: args.language_key_field_name,
+              master_key_fields: args.master_key_fields,
             });
       return { content: [{ type: 'text', text: json(result) }] };
     } catch (e) {

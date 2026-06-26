@@ -1,4 +1,8 @@
 CLASS lcl_slot_visitor IMPLEMENTATION.
+  METHOD constructor.
+    mv_textkey = iv_textkey.
+  ENDMETHOD.
+
   METHOD if_xco_cds_ann_vt_visitor~enter_record.
     mv_rdepth = mv_rdepth + 1.
     IF mv_rdepth = 1.
@@ -19,7 +23,7 @@ CLASS lcl_slot_visitor IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD if_xco_cds_ann_vt_visitor~visit_string.
-    IF mv_rdepth = 1 AND mv_name = 'LABEL'.
+    IF mv_rdepth = 1 AND mv_name = mv_textkey.
       mv_label  = io_string->value.
       mv_haslbl = abap_true.
     ENDIF.
