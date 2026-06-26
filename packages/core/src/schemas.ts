@@ -30,21 +30,31 @@ export const TargetTypeSchema = z
     'metadata_extension',
     'application_log_object',
     'business_configuration_object',
+    'text_table',
   ])
   .describe(
     'XCO translation target type: data_element (DTEL), domain (DOMA fixed-value texts), ' +
       'data_definition (CDS DDLS entity/field labels), message_class (MSAG), ' +
       'text_pool (class/function-group text symbols), metadata_extension (DDLX UI labels), ' +
-      'application_log_object (APLO), business_configuration_object (SMBC). ' +
-      'cds_entity (VIRTUAL, LISA-only): a convenience target that represents a CDS view as a whole. ' +
-      'It is NOT a backend type — LISA fans it out to the two real targets that hold a view’s texts: ' +
-      'data_definition (the view/DDLS) and metadata_extension (the DDLX). On read, LISA calls both and ' +
-      'returns the merged texts, each row carrying an `owner` field (data_definition | metadata_extension). ' +
-      'On write, LISA groups the provided texts by their `owner` and writes each group back to the ' +
-      'matching real target in its own call (so each physical object is locked once). Use cds_entity to ' +
-      'translate ALL of a view’s labels in one shot; the per-row `owner` returned by a read is what routes ' +
-      'the write, so pass the rows back unchanged. data_definition and metadata_extension remain available ' +
-      'to address ONE physical object explicitly (single-owner, unmerged). ' +
+      'application_log_object (APLO), business_configuration_object (SMBC), ' +
+      'text_table (a translatable text table — a DB table with delivery class C/S and exactly one ' +
+      'LANG key field, e.g. T005T; its non-key character columns are the text attributes). ' +
+      'cds_entity (VIRTUAL, LISA-only): a convenience target that bundles the texts of ONE named CDS ' +
+      'entity. It is NOT a backend type — LISA fans it out to the two real targets that hold that ' +
+      'entity’s texts: data_definition (the view/DDLS itself) and metadata_extension (its DDLX). On read, ' +
+      'LISA calls both and returns the merged texts, each row carrying an `owner` field ' +
+      '(data_definition | metadata_extension). On write, LISA groups the provided texts by their `owner` ' +
+      'and writes each group back to the matching real target in its own call (so each physical object is ' +
+      'locked once); the per-row `owner` returned by a read routes the write, so pass the rows back unchanged. ' +
+      'SCOPE: cds_entity covers the NAMED entity and its OWN DDLX ONLY. It does NOT reach the ' +
+      'underlying/parent views of an `as projection on` chain — e.g. the interface view ZI_… behind a ' +
+      'projection ZC_… — each of which carries its OWN @EndUserText.label and needs its OWN cds_entity (or ' +
+      'data_definition) call. On a RAP stack, run ONE pass per distinct CDS entity (one view = one call), ' +
+      'cds_entity on each. cds_entity is valid WITH or WITHOUT a DDLX: when the entity has no metadata ' +
+      'extension the data_definition is still written and the DDLX sub-call simply finds 0 texts (the call ' +
+      'stays valid but may report a partial status) — for a single-object view with no DDLX, data_definition ' +
+      'direct is cleaner. data_definition and metadata_extension remain available to address ONE physical ' +
+      'object explicitly (single-owner, unmerged). ' +
       'The object types actually available on the target system are stated per tool (see each tool description).',
   );
 
@@ -75,6 +85,21 @@ const SelectorShape = {
     .string()
     .optional()
     .describe('1-based position for repeatable UI annotations (metadata_extension). Sent as a string.'),
+  language_key_field_name: z
+    .string()
+    .optional()
+    .describe(
+      'REQUIRED for target_type=text_table: the LANG key field of the text table (e.g. SPRAS). ' +
+        'Ignored by every other target_type.',
+    ),
+  master_key_fields: z
+    .array(z.object({ name: z.string().min(1), value: z.string() }))
+    .optional()
+    .describe(
+      'REQUIRED for target_type=text_table: the master key fields that pin ONE record — every key ' +
+        'field EXCEPT the language field — as [{ name, value }] (e.g. [{ "name": "LAND1", "value": "DE" }]). ' +
+        'Must fix all master keys so a single record is targeted. Ignored by every other target_type.',
+    ),
 } as const;
 
 // ─── Tool input schemas ───────────────────────────────────────────────────────
@@ -105,7 +130,8 @@ export const SetTranslationSchema = z.object({
           .describe(
             'XCO text attribute, e.g. short_field_label / medium_field_label / long_field_label / ' +
               'heading_field_label (data_element), endusertext_label (data_definition/metadata_extension), ' +
-              'message_short_text (message_class), fixed_value_description (domain)',
+              'message_short_text (message_class), fixed_value_description (domain), ' +
+              'or a text column name like LANDX (text_table)',
           ),
         value: z.string().describe('Translated text value'),
         field_name: z
@@ -163,9 +189,12 @@ export const TOOLS = {
       '(false = the slot exists but is empty in this language, i.e. still to translate). ' +
       'To list only filled texts, keep entries with populated=true; to compare two languages, ' +
       'call it once per language and diff on (key, populated, value). ' +
-      'For a CDS entity use target_type=cds_entity: this returns the FULL merged set — the view ' +
-      '(data_definition) AND its metadata extension (DDLX) — in a single call, with the DDLX labels ' +
-      'included automatically (no second call needed). Each cds_entity row always includes an `owner` ' +
+      'For a CDS entity use target_type=cds_entity: a single call returns the merged texts of ONE named ' +
+      'entity — the view itself (data_definition) AND its OWN metadata extension/DDLX (metadata_extension) ' +
+      'together, so the DDLX labels come back without a separate metadata_extension call. This covers the ' +
+      'NAMED entity ONLY: it does NOT read the underlying/parent views of an `as projection on` chain (e.g. ' +
+      'the interface view ZI_… behind a projection ZC_…), which carry their own labels — read EACH entity of ' +
+      'the stack with its own cds_entity call. Each cds_entity row always includes an `owner` ' +
       '("data_definition" or "metadata_extension") identifying the physical object it lives in, and a ' +
       '`position` (string, 1-based) for positional UI labels. Positional labels keep the BARE attribute ' +
       '(e.g. "ui_lineitem_label") plus that separate `position` — they are NOT merged into ' +
@@ -182,12 +211,16 @@ export const TOOLS = {
       'For target_type=cds_entity, EVERY row must carry the `owner` ("data_definition" or ' +
       '"metadata_extension") that TranslateGetTexts stamped: LISA groups the rows by `owner` and writes ' +
       'each group back to the matching physical object (view vs DDLX) in its own call, each ' +
-      'locked/transported once. A cds_entity write with any row missing `owner` is REJECTED (LISA never ' +
-      'guesses the object). Entity-level texts (the view’s own endusertext_label) must go out with an ' +
-      'EMPTY field_name; positional UI labels keep the bare attribute plus their `position` (string, ' +
-      '1-based) — never renumber or bracket it. The result reports, per owner, how many texts were ' +
-      'written and the sub-call status; writes are not atomic across the two objects, so a partial write ' +
-      'returns success=false with both outcomes. ' +
+      'locked/transported once. This writes the NAMED entity and its OWN DDLX ONLY — NOT the ' +
+      'underlying/parent views of an `as projection on` chain (e.g. the interface view ZI_… behind a ' +
+      'projection ZC_…); translate EACH entity of the stack with its own cds_entity call. A cds_entity ' +
+      'write with any row missing `owner` is REJECTED (LISA never guesses the object). Entity-level texts ' +
+      '(the view’s own endusertext_label) must go out with an EMPTY field_name; positional UI labels keep ' +
+      'the bare attribute plus their `position` (string, 1-based) — never renumber or bracket it. The result ' +
+      'reports, per owner, how many texts were written and the sub-call status; writes are not atomic across ' +
+      'the two objects, so a partial write returns success=false with both outcomes (a cds_entity write to a ' +
+      'view with no DDLX is still valid — the metadata_extension sub-call just finds nothing; for such ' +
+      'single-object views, data_definition direct avoids the empty DDLX sub-call). ' +
       'For the single targets (data_definition / metadata_extension and non-CDS types) nothing changes: ' +
       'one 1:1 backend write, and entries without their own field_name/position fall back to the ' +
       'top-level field_name and `position`.',

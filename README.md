@@ -62,8 +62,13 @@ This is the **full catalog** of object types LISA understands — XCO **semantic
 | `metadata_extension` | CDS metadata extension (DDLX) UI labels | `endusertext_label` |
 | `application_log_object` | Application log object (APLO) | object / sub-object texts |
 | `business_configuration_object` | Business configuration object (SMBC) | description texts |
+| `text_table` | Text table (delivery class C/S DB table with one LANG key field, e.g. `T005T`) | its non-key character columns, e.g. `LANDX` |
 
-> **CDS views & metadata extensions:** a CDS view's UI labels are frequently defined (or overridden) in a separate **metadata extension** (DDLX). Use **`cds_entity`** (a virtual, LISA-only target — not a backend type) to treat the two as one translation surface: a single `TranslateGetTexts` returns the view (`data_definition`) **and** its DDLX (`metadata_extension`) together — DDLX labels included automatically, no second call — and stamps every CDS row with an **`owner`** (`"data_definition"` or `"metadata_extension"`). On write, pass each row's `owner` back: LISA groups by it and writes each group to its physical object in one call (so the view and the DDLX are each locked/transported once); a `cds_entity` write with any row missing `owner` is rejected. Positional UI labels round-trip as the **bare** attribute (e.g. `ui_lineitem_label`) plus a separate `position` (1-based); the index is never renumbered. Writes are not atomic across the two objects, so the result reports per-owner outcomes. The single-object `data_definition` and `metadata_extension` targets remain available to address one object explicitly.
+> **Text tables (`text_table`):** a database table whose **delivery class is C or S** and that has **exactly one** language key field (LANG, e.g. `SPRAS`) is a translatable text table — its non-key character columns (e.g. `LANDX` on `T005T`) are the text attributes. Beyond the usual params it takes **`language_key_field_name`** (the LANG key field, e.g. `SPRAS`) and **`master_key_fields`** (`[{ name, value }]` fixing **all** master keys — every key except the language field — so a single record is targeted, e.g. `[{ "name": "LAND1", "value": "DE" }]`). On write, each `texts` entry's `attribute` is a **text column name** (e.g. `LANDX`), not a UI label. A table with no language field (e.g. delivery class W) is rejected by XCO.
+>
+> **CDS views & metadata extensions:** a CDS view's UI labels are frequently defined (or overridden) in a separate **metadata extension** (DDLX). Use **`cds_entity`** (a virtual, LISA-only target — not a backend type) to treat **one named entity and its own DDLX** as a single translation surface: a single `TranslateGetTexts` returns the view (`data_definition`) **and** its DDLX (`metadata_extension`) together — the DDLX labels come back without a separate `metadata_extension` call — and stamps every CDS row with an **`owner`** (`"data_definition"` or `"metadata_extension"`). On write, pass each row's `owner` back: LISA groups by it and writes each group to its physical object in one call (so the view and the DDLX are each locked/transported once); a `cds_entity` write with any row missing `owner` is rejected. Positional UI labels round-trip as the **bare** attribute (e.g. `ui_lineitem_label`) plus a separate `position` (1-based); the index is never renumbered. Writes are not atomic across the two objects, so the result reports per-owner outcomes. The single-object `data_definition` and `metadata_extension` targets remain available to address one object explicitly.
+>
+> **`cds_entity` is per-entity, not per-stack.** It covers the **named entity + its DDLX only** — it does **not** reach the underlying/parent views of an `as projection on` chain (e.g. the interface view `ZI_…` behind a projection `ZC_…`, which carries its own `@EndUserText.label`). Translate a RAP stack with **one `cds_entity` pass per distinct entity** (one view = one call). `cds_entity` works with or without a DDLX; for a single view with no DDLX, `data_definition` direct is cleaner (it skips the empty DDLX sub-call).
 
 ---
 
@@ -92,16 +97,17 @@ Typical division of labour: the **ADT MCP** finds the object and a transport →
 
 ## Part 1 — Install the ABAP service
 
-The ABAP handler to copy into your **target SAP system** lives in [`abap/`](./abap). There are **two variants — pick the one class that matches your stack**. Each class is **self-contained** (the JSON/parameter helpers are inlined, no external utility class to import alongside it), but each spans **three files** — the global class plus two local-types includes that define `lcl_slot_visitor` (an XCO CDS-annotation visitor used for positional UI labels):
+The ABAP handler to copy into your **target SAP system** lives in [`abap/`](./abap), in **three platform folders — pick the one that matches your stack**. Each class is **fully self-contained** (the JSON/parameter helpers are inlined, no external utility class to import alongside it), but spans **three files** — the global class plus two local-types includes that define `lcl_slot_visitor` (an XCO CDS-annotation visitor used for positional UI labels):
 
-| Files | Object | Use when |
-|-------|--------|----------|
-| [`zcl_i18n_service.clas.abap`](./abap/zcl_i18n_service.clas.abap) · [`…locals_def.abap`](./abap/zcl_i18n_service.clas.locals_def.abap) · [`…locals_imp.abap`](./abap/zcl_i18n_service.clas.locals_imp.abap) | `ZCL_I18N_SERVICE` | **On-premise / private cloud** — classic ABAP stack (S/4HANA 2022+ / ABAP Platform 2022+). |
-| [`zcl_i18n_service_cloud.clas.abap`](./abap/zcl_i18n_service_cloud.clas.abap) · [`…locals_def.abap`](./abap/zcl_i18n_service_cloud.clas.locals_def.abap) · [`…locals_imp.abap`](./abap/zcl_i18n_service_cloud.clas.locals_imp.abap) | `ZCL_I18N_SERVICE_CLOUD` | **SAP BTP ABAP Environment / public cloud** (Steampunk) — Cloud-API-compliant variant. |
+| Folder | Object | Use when |
+|--------|--------|----------|
+| [`abap/ABAP_PLATFORM_2022/`](./abap/ABAP_PLATFORM_2022) | `ZCL_I18N_SERVICE` | **On-premise / private cloud** on **ABAP Platform 2022 (7.57)** — original XCO i18n surface. |
+| [`abap/ABAP_PLATFORM_2025/`](./abap/ABAP_PLATFORM_2025) | `ZCL_I18N_SERVICE` | **On-premise / private cloud** on **ABAP Platform 2025** (newer releases) — newer XCO i18n surface (positional entity texts, Fiori launchpad targets). |
+| [`abap/CLOUD/`](./abap/CLOUD) | `ZCL_I18N_SERVICE_CLOUD` | **SAP BTP ABAP Environment / public cloud** (Steampunk) — Cloud-API-compliant variant. |
 
-With **abapGit** the three files reassemble into the single class object automatically — drop them into a linked package and pull. With **ADT / SE24**, paste the three parts into their respective tabs before activating: `*.clas.abap` → Global Class, `*.clas.locals_def.abap` → Class-relevant Local Types (CCDEF), `*.clas.locals_imp.abap` → Local Types (CCIMP). Skipping the local-types parts leaves `lcl_slot_visitor` undefined and the class won't activate.
+With **abapGit** the three files of the folder you pick reassemble into the single class object automatically — drop them into a linked package and pull. With **ADT / SE24**, paste the three parts into their respective tabs before activating: `*.clas.abap` → Global Class, `*.clas.locals_def.abap` → Class-relevant Local Types (CCDEF), `*.clas.locals_imp.abap` → Local Types (CCIMP). Skipping the local-types parts leaves `lcl_slot_visitor` undefined and the class won't activate.
 
-Both implement `IF_HTTP_SERVICE_EXTENSION`, route actions from the URL path, and speak the **same wire contract** — they only differ in the released/Cloud-compliant APIs the public-cloud stack allows. Create an ABAP **HTTP service** whose handler class is that class, and **enable** it (`UCON_HTTP_SERVICES` on-premise / private cloud; a communication scenario on ABAP Environment). Point the MCP at its URL (default `/sap/bc/http/sap/zi18n_service`).
+All three implement `IF_HTTP_SERVICE_EXTENSION`, route actions from the URL path, and speak the **same wire contract** — they differ only in the XCO i18n API surface available on each release. Import the class from the folder for your platform, create an ABAP **HTTP service** whose handler class is that class, and **enable** it (`UCON_HTTP_SERVICES` on-premise / private cloud; a communication scenario on ABAP Environment). Point the MCP at its URL (default `/sap/bc/http/sap/zi18n_service`).
 
 👉 Full step-by-step instructions: **[docs: ABAP service setup](./docs_page/abap-service-setup.md)**.
 
@@ -288,13 +294,10 @@ Larger structural work lives in [`roadmap/`](./roadmap/README.md). Two tracks:
 
 ```
 LISA/
-├── abap/                 # ⬅ ABAP handler to import (pick the three files for your stack)
-│   ├── zcl_i18n_service.clas.abap               # on-premise / private cloud — global class
-│   ├── zcl_i18n_service.clas.locals_def.abap    # on-premise — CCDEF (local types definition)
-│   ├── zcl_i18n_service.clas.locals_imp.abap    # on-premise — CCIMP (local types implementation)
-│   ├── zcl_i18n_service_cloud.clas.abap          # BTP ABAP Environment / public cloud — global class
-│   ├── zcl_i18n_service_cloud.clas.locals_def.abap  # cloud — CCDEF
-│   └── zcl_i18n_service_cloud.clas.locals_imp.abap  # cloud — CCIMP
+├── abap/                 # ⬅ ABAP handler to import (pick one folder for your platform; 3 files each)
+│   ├── ABAP_PLATFORM_2022/   # ZCL_I18N_SERVICE — on-premise / private cloud (ABAP Platform 2022 / 7.57)
+│   ├── ABAP_PLATFORM_2025/   # ZCL_I18N_SERVICE — on-premise / private cloud (ABAP Platform 2025+)
+│   └── CLOUD/                # ZCL_I18N_SERVICE_CLOUD — BTP ABAP Environment / public cloud
 ├── docs_page/            # long-form documentation
 ├── roadmap/              # forward-looking design docs (planned, not implemented)
 ├── packages/

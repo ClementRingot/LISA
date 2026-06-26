@@ -23,6 +23,8 @@ export default defineTool({
       text_pool_owner_type?: string;
       field_name?: string;
       position?: string;
+      language_key_field_name?: string;
+      master_key_fields?: Array<{ name: string; value: string }>;
     };
     const core = new I18nCore(ctxHttpTransport(ctx.http));
 
@@ -35,6 +37,8 @@ export default defineTool({
             object_name: a.object_name,
             language: a.language,
             text_pool_owner_type: a.text_pool_owner_type,
+            language_key_field_name: a.language_key_field_name,
+            master_key_fields: a.master_key_fields,
           });
 
     const texts = narrowListTexts(result.texts, { field_name: a.field_name, position: a.position });

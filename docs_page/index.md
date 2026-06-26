@@ -10,12 +10,14 @@
 1. **[Quickstart](./quickstart.md)** — the fastest path to a working setup.
 2. **[ABAP service setup](./abap-service-setup.md)** — import the class and publish/enable the HTTP service.
 3. **[MCP tools usage](./mcp-usage.md)** — the 3 tools, with examples.
+4. **[Text tables (`text_table`)](./text-table.md)** — translating delivery-class C/S tables (e.g. `T005T`).
 
 ## Reference
 
 - **[Configuration reference](./configuration-reference.md)** — every environment variable.
 - **[Authentication](./authentication.md)** — the auth model and the supported methods.
 - **[Architecture](./architecture.md)** — how the components fit together.
+- **[Wire-contract evolution & platform divergence](./wire-contract-evolution.md)** — why one MCP serves every platform, the per-platform ABAP split, and how to grow the contract / add a `target_type` or parameter as the XCO APIs diverge.
 
 ## Operations
 

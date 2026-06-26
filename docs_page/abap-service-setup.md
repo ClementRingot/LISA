@@ -13,26 +13,27 @@ The MCP server cannot translate anything on its own — it forwards requests to 
 - Developer authorization (create class/interface and an HTTP service) plus rights to expose the service: transaction **`UCON_HTTP_SERVICES`** (on-premise / private cloud) or a **communication scenario** (ABAP Environment / public cloud — see [Create and enable the HTTP service](#create-and-enable-the-http-service)).
 - A target package (any Z/local package works).
 
-## Pick the class for your stack
+## Pick the class for your platform
 
-There are **two variants of the handler**, and you import exactly **one**. Each class is **fully self-contained** — the JSON/parameter helpers are inlined — so there is no shared interface or utility class to import alongside it.
+The handler ships in **three platform variants**, one per folder, and you import exactly **one**. Each class is **fully self-contained** — the JSON/parameter helpers are inlined — so there is no shared interface or utility class to import alongside it.
 
-| File | Object | Use when |
-|------|--------|----------|
-| `abap/zcl_i18n_service.clas.abap` | `ZCL_I18N_SERVICE` | **On-premise / private cloud** — classic ABAP stack (S/4HANA 2022+ / ABAP Platform 2022+). |
-| `abap/zcl_i18n_service_cloud.clas.abap` | `ZCL_I18N_SERVICE_CLOUD` | **SAP BTP ABAP Environment / public cloud** (Steampunk) — Cloud-API-compliant variant. |
+| Folder | Object | Use when |
+|--------|--------|----------|
+| `abap/ABAP_PLATFORM_2022/` | `ZCL_I18N_SERVICE` | **On-premise / private cloud** on **ABAP Platform 2022 (7.57)** — original XCO i18n surface. |
+| `abap/ABAP_PLATFORM_2025/` | `ZCL_I18N_SERVICE` | **On-premise / private cloud** on **ABAP Platform 2025** (newer releases) — newer XCO i18n surface (positional entity texts, Fiori launchpad targets). |
+| `abap/CLOUD/` | `ZCL_I18N_SERVICE_CLOUD` | **SAP BTP ABAP Environment / public cloud** (Steampunk) — Cloud-API-compliant variant. |
 
-Both implement `IF_HTTP_SERVICE_EXTENSION`, route on the URL path, and expose the **same wire contract** (see [How routing works](#how-routing-works)). They differ only in that the public-cloud variant restricts itself to **released / Cloud-development-compliant** APIs (e.g. `I_Language` instead of unreleased DDIC reads). On the wrong stack the other variant simply won't activate — so just paste the one that matches.
+All three implement `IF_HTTP_SERVICE_EXTENSION`, route on the URL path, and expose the **same wire contract** (see [How routing works](#how-routing-works)). They differ only in the XCO i18n API surface available on each release: the public-cloud variant restricts itself to **released / Cloud-development-compliant** APIs (e.g. `I_Language` instead of unreleased DDIC reads), and the two on-premise variants track the XCO i18n surface of their ABAP Platform release. On the wrong stack a variant simply won't activate — so just paste the one that matches.
 
-> The rest of this page uses **`ZCL_I18N_SERVICE`** as the example name. If you are on ABAP Environment, read it as **`ZCL_I18N_SERVICE_CLOUD`** and import `zcl_i18n_service_cloud.clas.abap` instead — the steps are identical.
+> The rest of this page uses **`ZCL_I18N_SERVICE`** as the example name. If you are on ABAP Environment, read it as **`ZCL_I18N_SERVICE_CLOUD`** and import the class from `abap/CLOUD/` instead — the steps are identical.
 
 ### abapGit (recommended)
 
-The files use abapGit source-format names (`*.clas.abap`). Link a package to a repo containing the `abap/` folder and pull, or use "import file" — just the one class for your stack.
+The files use abapGit source-format names (`*.clas.abap`). Link a package to a repo containing your platform folder (`abap/ABAP_PLATFORM_2022/`, `abap/ABAP_PLATFORM_2025/`, or `abap/CLOUD/`) and pull, or use "import file" — just the one class for your stack.
 
 ### Manual (ADT)
 
-Create the handler class **via the HTTP service wizard** (next section), then paste the source from the file for your stack (`zcl_i18n_service.clas.abap` or `zcl_i18n_service_cloud.clas.abap`) into it → activate. That's it — nothing else to import.
+Create the handler class **via the HTTP service wizard** (next section), then paste the source from the three files in your platform folder (`*.clas.abap` plus the two local-types includes) into it → activate. That's it — nothing else to import.
 
 Assign it to a transportable package if you intend to move it to QA/Prod.
 
@@ -47,7 +48,7 @@ All HTTP services live under `/sap/bc/http`. The MCP server defaults to `/sap/bc
 1. In ADT, right-click your user (or the **Connectivity** node) → **New ▸ Other ABAP Repository Object**.
 2. Type `http` in the filter, select **HTTP service**, **Next**.
 3. Choose a **Package**, **Name** and **Description** → **Finish**. A new node appears under **`<User> ▸ Connectivity ▸ HTTP services`**.
-4. In the HTTP service editor, click the **Handler class** link and set/confirm it as **`ZCL_I18N_SERVICE`** (the wizard generates the class if it doesn't exist — then paste in the implementation from `abap/zcl_i18n_service.clas.abap`).
+4. In the HTTP service editor, click the **Handler class** link and set/confirm it as **`ZCL_I18N_SERVICE`** (the wizard generates the class if it doesn't exist — then paste in the implementation from your platform folder, e.g. `abap/ABAP_PLATFORM_2025/`).
 5. Optionally use **Maintain Authorization Default Values** to create authorization defaults.
 6. Note the **service URL** shown in the editor and set the MCP's `SAP_I18N_SERVICE_PATH` (env / `.env`, or the `mta.yaml` property on BTP) to exactly that path.
 
@@ -67,10 +68,9 @@ The handler then determines the **action** from the last path segment (e.g. `…
 
 ```
 POST  …/zi18n_service/list_languages        ← action = "list_languages"
-POST  …/zi18n_service/get_translation        ← action = "get_translation"
-POST  …/zi18n_service/set_translation        ← action = "set_translation"
 POST  …/zi18n_service/list_texts             ← action = "list_texts"
-POST  …/zi18n_service/compare_translations   ← action = "compare_translations"
+POST  …/zi18n_service/set_translation        ← action = "set_translation"
+POST  …/zi18n_service/capabilities           ← action = "capabilities"
 ```
 
 - The action is the **last URL path segment**, lowercase. `?action=…` query parameters are **ignored**.

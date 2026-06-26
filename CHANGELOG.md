@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`text_table` target_type.** Translate text tables (delivery-class C/S DB tables with one LANG key
+  field, e.g. `T005T`) through the existing three tools. Adds two params: `language_key_field_name`
+  (the LANG key field, e.g. `SPRAS`) and `master_key_fields` (`[{ name, value }]` pinning one record).
+  Each `texts` entry's `attribute` is a text **column** name (e.g. `LANDX`). Served on all three stacks
+  and advertised via `capabilities`. See [`docs_page/text-table.md`](./docs_page/text-table.md).
+
+### Changed
+- **ABAP handler split into per-platform folders.** `abap/ABAP_PLATFORM_2022/` and
+  `abap/ABAP_PLATFORM_2025/` (both `ZCL_I18N_SERVICE`, on-premise / private cloud) and `abap/CLOUD/`
+  (`ZCL_I18N_SERVICE_CLOUD`, BTP ABAP Environment) — pick the folder for your platform. Same wire
+  contract; they differ only in the XCO i18n API surface available on each release.
+- **`cds_entity` description scoped to one entity.** Clarified that `cds_entity` covers the **named
+  entity and its own DDLX only** and does **not** reach the underlying/parent views of an
+  `as projection on` chain (e.g. the `ZI_` interface view behind a `ZC_` projection) — a RAP stack
+  needs one `cds_entity` pass per distinct entity. No behavior change.
+
+### Removed
+- **Dead `get_translation` / `compare_translations` actions.** The ABAP handler no longer exposes them
+  (the MCP surface stopped using them — `list_texts` is the whole-object reader); their mentions are
+  dropped from the wire contract and docs.
+
 ## [0.8.0] — 2026-06-25
 
 ### Added
