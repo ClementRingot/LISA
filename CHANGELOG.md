@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **S/4HANA Public Cloud per-user auth (SAMLAssertion).** When `SAP_BTP_PP_DESTINATION` points at a
+  `SAMLAssertion` / `ProxyType=Internet` destination, the BTP transport now detects the
+  `samlAssertionAuthorization` token from the Destination Service and forwards it as
+  `Authorization: SAML2.0 …` with `x-sap-security-session: create`, routing directly over the internet
+  (no Cloud Connector). Reuses the existing PP env var — no new configuration. Mirrors ARC-1
+  (arc-mcp/arc-1#524). Requires `@arc-mcp/xsuaa-auth` ≥ 0.1.4.
+
+- **Per-landscape `.mtaext` templates per backend.** Added `mta-overrides-onpremise`,
+  `mta-overrides-btp-abap` and `mta-overrides-public-cloud` `.mtaext.example` files, plus a backend
+  matrix in `btp-deployment.md`. The SAP BTP ABAP Environment (Steampunk, `OAuth2SAMLBearerAssertion`
+  → Bearer token) was already supported by the existing `bearerToken` path — now documented.
+
+### Changed
+- Bumped `@arc-mcp/xsuaa-auth` to `^0.1.4`.
+
 ## [0.8.1] — 2026-06-26
 
 ### Added

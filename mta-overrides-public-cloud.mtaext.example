@@ -1,0 +1,61 @@
+# ──────────────────────────────────────────────────────────────────────
+# MTA Extension Descriptor — SCENARIO: S/4HANA Cloud Public Edition
+#
+# Use this when LISA talks to S/4HANA Cloud Public Edition. There is NO
+# Cloud Connector — calls go direct over the internet. Per-user requests
+# use a SAMLAssertion destination: the Destination Service mints a per-user
+# SAML assertion (NameID = the user's email from the JWT), which LISA sends
+# as `Authorization: SAML2.0 …` + `x-sap-security-session: create`. S/4HC
+# maps the email to a business user (per-user authorization + audit trail).
+#
+# This is a tracked template. Copy it to a real, per-landscape file (all
+# `mta-overrides*.mtaext` are gitignored, the `.example` suffix stays tracked):
+#
+#   cp mta-overrides-public-cloud.mtaext.example mta-overrides-dev.mtaext
+#   # edit mta-overrides-dev.mtaext
+#   npm run btp:build-deploy-dev
+#
+# Any property left commented uses the `mta.yaml` value unchanged.
+#
+# ── BTP destinations to create for this scenario ─────────────────────────
+#   S4HC_TECH_DEV   (technical / startup fallback, system-level calls)
+#     Type=HTTP  ProxyType=Internet  Authentication=OAuth2ClientCredentials
+#     (or BasicAuthentication with a communication user)
+#     URL=https://my<NNNNN>-api.s4hana.cloud.sap
+#   S4HC_SAML_DEV   (per-user SAMLAssertion)
+#     Type=HTTP  ProxyType=Internet  Authentication=SAMLAssertion
+#     URL=https://my<NNNNN>-api.s4hana.cloud.sap
+#     Audience=<S/4HC OAuth 2.0 SAML2 audience>
+#     AuthnContextClassRef=urn:oasis:names:tc:SAML:2.0:ac:classes:PreviousSession
+#     NameIdFormat=urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress
+#
+# S/4HC side: export the BTP subaccount signing certificate, upload it under
+# Communication Systems, and enable the SAML Bearer Assertion Provider. Each
+# user needs a business user whose EMAIL matches the JWT, with the developer
+# (extensibility) role. (The bound `connectivity` service is unused here —
+# no Cloud Connector — but harmless.)
+# ──────────────────────────────────────────────────────────────────────
+
+_schema-version: "3.1"
+ID: lisa-overrides
+extends: lisa
+
+modules:
+  - name: lisa-mcp
+    parameters:
+      host: lisa-${space}          # dev space -> lisa-dev (must be lowercase & globally free)
+    properties:
+      # ── Destinations (REQUIRED) ──────────────────────────────────────
+      SAP_BTP_DESTINATION: "S4HC_TECH_DEV"     # technical, ProxyType=Internet
+      SAP_BTP_PP_DESTINATION: "S4HC_SAML_DEV"  # SAMLAssertion, ProxyType=Internet
+
+      # ── SAP service path (REQUIRED) ──────────────────────────────────
+      # The ICF path of the zi18n_service handler on the S/4HC tenant.
+      SAP_I18N_SERVICE_PATH: "/sap/bc/http/sap/zi18n_service"
+
+      # ── Logging (optional) ───────────────────────────────────────────
+      # LOG_LEVEL: "info"          # debug | info | warn | error
+      # LOG_FORMAT: "json"         # text | json
+
+# A second instance in the SAME subaccount needs its own xsappname — see the
+# "XSUAA xsappname" block in mta-overrides.mtaext.example.
