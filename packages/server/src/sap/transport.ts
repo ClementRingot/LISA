@@ -79,6 +79,14 @@ async function resolveConnection(config: Config, userJwt?: string): Promise<Reso
         headers['SAP-Connectivity-Authentication'] = authTokens.sapConnectivityAuth;
       } else if (authTokens.bearerToken) {
         headers.Authorization = `Bearer ${authTokens.bearerToken}`;
+      } else if (authTokens.samlAssertionAuthorization) {
+        // SAMLAssertion flow (e.g. S/4HANA Public Cloud developer extensibility, the flow BAS uses):
+        // the Destination Service returns a ready-to-use Authorization value ("SAML2.0 <assertion>")
+        // mapping the user's email to a business user. Sent verbatim with `x-sap-security-session: create`.
+        // The destination is ProxyType=Internet, so getProxy() returns null and the request goes direct
+        // over the internet — no Cloud Connector. Mirrors ARC-1 (arc-mcp/arc-1#524).
+        headers.Authorization = authTokens.samlAssertionAuthorization;
+        headers['x-sap-security-session'] = 'create';
       } else if (destination.User && destination.Password) {
         headers.Authorization = basicAuth(destination.User, destination.Password);
       }

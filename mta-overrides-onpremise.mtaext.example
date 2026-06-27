@@ -1,0 +1,52 @@
+# ──────────────────────────────────────────────────────────────────────
+# MTA Extension Descriptor — SCENARIO: On-premise SAP via Cloud Connector
+#
+# Use this when LISA talks to an on-premise ABAP system (ECC / S/4HANA
+# on-premise / private cloud) reached through the BTP Cloud Connector.
+# Per-user calls use classic principal propagation (a SAML assertion the
+# Destination Service hands to the Cloud Connector via the
+# `SAP-Connectivity-Authentication` header).
+#
+# This is a tracked template. Copy it to a real, per-landscape file (all
+# `mta-overrides*.mtaext` are gitignored, the `.example` suffix stays tracked):
+#
+#   cp mta-overrides-onpremise.mtaext.example mta-overrides-dev.mtaext
+#   # edit mta-overrides-dev.mtaext
+#   npm run btp:build-deploy-dev
+#
+# Any property left commented uses the `mta.yaml` value unchanged.
+#
+# ── BTP destinations to create for this scenario ─────────────────────────
+#   SAP_SYSTEM_TECH_DEV   (technical / startup fallback, system-level calls)
+#     Type=HTTP  ProxyType=OnPremise  Authentication=BasicAuthentication
+#     URL=<virtual host:port mapped in the Cloud Connector>
+#     User/Password=<technical ABAP user>
+#     + CloudConnectorLocationId if several SCCs share the subaccount
+#   SAP_SYSTEM_SSO_DEV    (per-user principal propagation)
+#     Type=HTTP  ProxyType=OnPremise  Authentication=PrincipalPropagation
+#     URL=<same virtual host:port>
+#     + CloudConnectorLocationId (same as above)
+# ──────────────────────────────────────────────────────────────────────
+
+_schema-version: "3.1"
+ID: lisa-overrides
+extends: lisa
+
+modules:
+  - name: lisa-mcp
+    parameters:
+      host: lisa-${space}          # dev space -> lisa-dev (must be lowercase & globally free)
+    properties:
+      # ── Destinations (REQUIRED) ──────────────────────────────────────
+      SAP_BTP_DESTINATION: "SAP_SYSTEM_TECH_DEV"     # BasicAuth, ProxyType=OnPremise
+      SAP_BTP_PP_DESTINATION: "SAP_SYSTEM_SSO_DEV"   # PrincipalPropagation, ProxyType=OnPremise
+
+      # ── SAP service path (REQUIRED) ──────────────────────────────────
+      SAP_I18N_SERVICE_PATH: "/sap/bc/http/sap/zi18n_service"
+
+      # ── Logging (optional) ───────────────────────────────────────────
+      # LOG_LEVEL: "info"          # debug | info | warn | error
+      # LOG_FORMAT: "json"         # text | json
+
+# A second instance in the SAME subaccount needs its own xsappname — see the
+# "XSUAA xsappname" block in mta-overrides.mtaext.example.
