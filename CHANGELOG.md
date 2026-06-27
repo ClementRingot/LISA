@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.2] — 2026-06-27
+
 ### Added
 - **S/4HANA Public Cloud per-user auth (SAMLAssertion).** When `SAP_BTP_PP_DESTINATION` points at a
   `SAMLAssertion` / `ProxyType=Internet` destination, the BTP transport now detects the
