@@ -21,7 +21,7 @@
   },
   "devDependencies": {
     "arc-1": "^0.9.20",
-    "typescript": "^5.7.2",
+    "typescript": "^6.0.3",
     "vitest": "^4.1.9"
   }
 }
