@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **`cds_entity` is now advertised in the tool descriptions automatically.** `supportedTargetTypesNote()`
+  injects the synthetic `cds_entity` target into an action's advertised `target_type` list whenever both
+  physical owners (`data_definition` + `metadata_extension`) are in the handler's allow-list for that
+  action. Previously the backend allow-list never mentioned `cds_entity` (it's a LISA-only virtual target
+  the MCP fans out before reaching SAP), so an agent could wrongly conclude it was unsupported. This is
+  read/write-symmetric and works on any handler without each ABAP variant hardcoding the virtual type.
+
 ## [0.8.3] — 2026-06-30
 
 ### Added
