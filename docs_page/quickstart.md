@@ -4,7 +4,7 @@ Get from zero to translating in three steps. This assumes **local development** 
 
 ## 1. Install the ABAP service
 
-Import the **one** self-contained handler class from [`abap/`](../abap) that matches your stack — `ZCL_I18N_SERVICE` (on-premise / private cloud) or `ZCL_I18N_SERVICE_CLOUD` (BTP ABAP Environment / public cloud) — create the ABAP **HTTP service** with it as handler class, and **enable** it (`UCON_HTTP_SERVICES` on S/4HANA 2022+; a communication scenario on ABAP Environment). Full details: **[ABAP service setup](./abap-service-setup.md)**.
+Import the **one** self-contained handler class `ZCL_I18N_SERVICE` from the [`abap/`](../abap) folder that matches your stack — `abap/ABAP_PLATFORM_2022/` or `abap/ABAP_PLATFORM_2025/` (on-premise / private cloud) or `abap/CLOUD/` (BTP ABAP Environment / public cloud) — create the ABAP **HTTP service** with it as handler class, and **enable** it (`UCON_HTTP_SERVICES` on S/4HANA 2022+; on ABAP Environment the endpoint activates automatically when you activate the HTTP Service object — no communication scenario needed). Full details: **[ABAP service setup](./abap-service-setup.md)**.
 
 Smoke-test it:
 

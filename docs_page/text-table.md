@@ -2,9 +2,9 @@
 
 `text_table` is a `target_type` (not a new tool): it plugs into the three existing LISA
 tools — `TranslateListLanguages`, `TranslateGetTexts`, `TranslateSetTexts` — with a couple of
-extra parameters. It is served by the ABAP handler on all three stacks
-(`ZCL_I18N_SERVICE` on classic / on-premise & private cloud, `ZCL_I18N_SERVICE_CLOUD` on the
-BTP ABAP Environment).
+extra parameters. It is served by the ABAP handler `ZCL_I18N_SERVICE` on all three stacks
+(imported from `abap/ABAP_PLATFORM_2022|2025/` on classic / on-premise & private cloud, or
+`abap/CLOUD/` on the BTP ABAP Environment).
 
 ## What is a *text table*?
 

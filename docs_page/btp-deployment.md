@@ -73,11 +73,13 @@ The technical `SAP_BTP_DESTINATION` here only satisfies the startup check (see t
 
 For cross-subaccount (or cross-IdP) access, point `SAP_BTP_PP_DESTINATION` at an
 `OAuth2SAMLBearerAssertion` destination (`ProxyType=Internet`) whose `TokenServiceURL` is the **ABAP
-environment's own** OAuth token endpoint (`https://<host>.abap.<region>.hana.ondemand.com/sap/bc/sec/oauth2/token`)
-and whose audience/client come from a Communication Arrangement. You must establish SAML trust to the BTP
-subaccount IdP and register the OAuth 2.0 client on the ABAP side. The Destination Service exchanges the
-user JWT for a per-user Bearer token, which LISA forwards as `Authorization: Bearer …`. Each user needs a
-business user whose email matches the JWT.
+environment's own** OAuth token endpoint (`https://<host>.abap.<region>.hana.ondemand.com/sap/bc/sec/oauth2/token`).
+You must establish SAML trust to the BTP subaccount IdP and register an **OAuth 2.0 client** on the ABAP
+side; the destination's audience/client key are that registered client's ID. (No communication
+scenario/arrangement is needed to expose the `zi18n_service` endpoint — on ABAP Environment it is already
+active once the HTTP Service object is activated; this setup is purely the cross-subaccount *trust*.) The
+Destination Service exchanges the user JWT for a per-user Bearer token, which LISA forwards as
+`Authorization: Bearer …`. Each user needs a business user whose email matches the JWT.
 
 See [`mta-overrides-btp-abap.mtaext.example`](../mta-overrides-btp-abap.mtaext.example) for both option
 (A) and (B) destination property lists, including how to provision them as instance-level destinations

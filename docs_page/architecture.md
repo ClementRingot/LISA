@@ -16,7 +16,7 @@
 
 Two independently deployable halves:
 
-- **ABAP side** — a single, self-contained handler class exposed as an ABAP HTTP service (`IF_HTTP_SERVICE_EXTENSION`, enabled in `UCON_HTTP_SERVICES` on-premise / a communication scenario on ABAP Environment). Does the real translation work through the XCO i18n generation APIs. Two interchangeable variants share the same wire contract: **`ZCL_I18N_SERVICE`** (on-premise / private cloud) and **`ZCL_I18N_SERVICE_CLOUD`** (BTP ABAP Environment / public cloud, restricted to released/Cloud-compliant APIs).
+- **ABAP side** — a single, self-contained handler class exposed as an ABAP HTTP service (`IF_HTTP_SERVICE_EXTENSION`, enabled in `UCON_HTTP_SERVICES` on-premise; on ABAP Environment the endpoint activates automatically with the HTTP Service object — no communication scenario). Does the real translation work through the XCO i18n generation APIs. The class is always named **`ZCL_I18N_SERVICE`**; interchangeable variants live in separate folders and share the same wire contract — `abap/ABAP_PLATFORM_2022|2025/` (on-premise / private cloud) and `abap/CLOUD/` (BTP ABAP Environment / public cloud, restricted to released/Cloud-compliant APIs).
 - **Node side** — this repo. Authenticates the caller, propagates identity, and maps MCP tool calls to HTTP calls.
 
 ## Request lifecycle (BTP, http-streamable)
@@ -66,6 +66,6 @@ The XCO i18n APIs are ABAP-side generation APIs with no general REST surface. A 
 | Logger → package adapter | `packages/server/src/server/logger.ts` (`toPackageLogger`) |
 | ABAP handler (on-premise / private cloud, ABAP Platform 2022) | `abap/ABAP_PLATFORM_2022/zcl_i18n_service.clas.abap` |
 | ABAP handler (on-premise / private cloud, ABAP Platform 2025+) | `abap/ABAP_PLATFORM_2025/zcl_i18n_service.clas.abap` |
-| ABAP handler (BTP ABAP Environment / public cloud) | `abap/CLOUD/zcl_i18n_service_cloud.clas.abap` |
+| ABAP handler (BTP ABAP Environment / public cloud) | `abap/CLOUD/zcl_i18n_service.clas.abap` |
 
 > **Why three ABAP handler classes, and how to evolve them** — why LISA stays one platform-agnostic MCP, why the `abap/` tree is split per platform, the compilation wall that keeps Cloud and on-premise separate, and how to grow the wire contract additively (with worked examples) without forking the MCP: see [`wire-contract-evolution.md`](./wire-contract-evolution.md).

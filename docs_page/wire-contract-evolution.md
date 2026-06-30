@@ -44,9 +44,9 @@ single-build forever.
 
 ## Where divergence lives today
 
-- **`abap/` is split per platform**, one self-contained class per folder:
-  `ABAP_PLATFORM_2022/` and `ABAP_PLATFORM_2025/` (both `ZCL_I18N_SERVICE`, on-premise / private
-  cloud) and `CLOUD/` (`ZCL_I18N_SERVICE_CLOUD`, BTP ABAP Environment). See
+- **`abap/` is split per platform**, one self-contained class per folder, all named
+  **`ZCL_I18N_SERVICE`** (separated by folder, not class name): `ABAP_PLATFORM_2022/` and
+  `ABAP_PLATFORM_2025/` (on-premise / private cloud) and `CLOUD/` (BTP ABAP Environment). See
   [`abap/README.md`](../abap/README.md).
 - **`capabilities`** absorbs per-stack and per-version differences in *which object types* are
   available, dynamically. `supportedTargetTypesNote()` injects the connected system's concrete

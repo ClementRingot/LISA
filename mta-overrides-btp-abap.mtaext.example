@@ -67,18 +67,20 @@
 #
 # ── (B) Destinations for the DIFFERENT-subaccount / advanced case ─────────
 #   ABAP_TECH_DEV   (technical / startup check only)
-#     Type=HTTP  ProxyType=Internet  Authentication=BasicAuthentication
-#     (a Communication Arrangement comm user) or OAuth2ClientCredentials
+#     Type=HTTP  ProxyType=Internet  Authentication=OAuth2ClientCredentials
+#     (or BasicAuthentication with a technical/communication user)
 #     URL=https://<host>.abap.<region>.hana.ondemand.com
 #   ABAP_SSO_DEV    (per-user OAuth2 SAML bearer)
 #     Type=HTTP  ProxyType=Internet  Authentication=OAuth2SAMLBearerAssertion
 #     URL=https://<host>.abap.<region>.hana.ondemand.com
 #     TokenServiceURL=https://<host>.abap.<region>.hana.ondemand.com/sap/bc/sec/oauth2/token
-#     audience / ClientKey=<OAuth client ID from the Communication Arrangement>
+#     audience / ClientKey=<ID of the OAuth 2.0 client you registered on ABAP>
 #     nameIdFormat=urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress
-#   ABAP side: create a Communication System + Communication Arrangement
-#   exposing your service, establish SAML trust to the BTP subaccount IdP, and
-#   register the OAuth 2.0 client.
+#   ABAP side: establish SAML trust to the BTP subaccount IdP and register an
+#   OAuth 2.0 client. NOTE: no communication scenario/arrangement is needed to
+#   EXPOSE the zi18n_service endpoint — on ABAP Environment it is already active
+#   once the HTTP Service object is activated; this is purely the cross-
+#   subaccount trust setup.
 #
 # Both cases: each user needs a business user whose EMAIL matches the JWT, with
 # the required developer authorizations.
