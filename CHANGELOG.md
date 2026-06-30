@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.4] — 2026-06-30
+
 ### Fixed
 - **`cds_entity` is now advertised in the tool descriptions automatically.** `supportedTargetTypesNote()`
   injects the synthetic `cds_entity` target into an action's advertised `target_type` list whenever both
