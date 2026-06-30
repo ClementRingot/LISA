@@ -57,11 +57,20 @@ The handler runs under normal ABAP auth — use whatever the SAP system accepts:
 | Scenario | How to authenticate the direct call |
 |----------|-------------------------------------|
 | On-premise / private cloud, local testing | **HTTP Basic** with a SAP user: `curl -u USER:PASS …`. |
-| BTP ABAP Environment / S/4HANA Cloud | A **Bearer token** the system accepts (`Authorization: Bearer <token>`) — e.g. an OAuth token for a technical user. The MCP normally obtains a *per-user* token via the Destination Service (`OAuth2UserTokenExchange` / `SAMLAssertion`); calling raw means you supply your own. |
+| BTP ABAP Environment / S/4HANA Cloud — **technical call** | **HTTP Basic** (`-u USER:PASS`) — works once you've set up a **Communication Scenario + Communication Arrangement** that exposes this service and provisions a **communication user**. That arrangement is what enables Basic inbound for a *technical* (single-identity) caller. |
+| BTP ABAP Environment / S/4HANA Cloud — **per-user call** | A **Bearer**/**SAML** token carrying the end-user's identity. This is the MCP path: it obtains a per-user token via the Destination Service (`OAuth2UserTokenExchange` / `SAMLAssertion`) — **no communication arrangement needed** — so SAP acts as the real backend user. Calling raw, you'd supply your own per-user token. |
 | Whatever the MCP forwards | The MCP sets `Authorization` (Basic, `Bearer …`, or a `SAML2.0 …` value) plus, for SAMLAssertion, `x-sap-security-session: create`. See `packages/server/src/sap/transport.ts`. |
 
+> **Two distinct things on S/4HC / BTP ABAP — don't conflate them.** *Exposing* the service to a
+> **technical** caller (Basic / OAuth client credentials, one communication user) is done through a
+> **Communication Scenario + Arrangement**. *Per-user developer access* (principal propagation, the
+> MCP's path) needs **no** communication arrangement — the HTTP Service endpoint is already active and
+> the Destination Service mints the per-user token. So "no comm arrangement is needed" refers to the
+> per-user path; a direct Basic/OAuth technical script does set one up.
+
 The service is **disabled by default** (HTTP 403) until enabled — `UCON_HTTP_SERVICES` on-premise; on
-ABAP Environment it activates automatically with the HTTP Service object. See
+ABAP Environment the HTTP Service endpoint activates automatically with the HTTP Service object (and,
+for a technical caller, is published to it via the Communication Arrangement). See
 [`docs_page/abap-service-setup.md`](../../../docs_page/abap-service-setup.md).
 
 ---
