@@ -1,6 +1,6 @@
 ---
 name: zi18n-service-api
-description: How to call LISA's ABAP translation backend (zi18n_service) directly over HTTP/JSON, bypassing the MCP server. Use when someone wants to script translation reads/writes with curl/Postman/any HTTP client, debug what the MCP forwards to SAP, or integrate the i18n service without MCP. Covers routes, URL, auth, request bodies, response shapes, per-target_type parameters, error codes, and the differences from the MCP tool surface.
+description: How to call LISA's ABAP translation backend (zi18n_service) directly over HTTP/JSON, bypassing the MCP server. Use when someone wants to script translation reads/writes with curl/Postman/any HTTP client, debug what the MCP forwards to SAP, or integrate the i18n service without MCP. Covers routes, URL, auth, how to retrieve a per-user SAML2 assertion / Bearer token from the BTP Destination Service, request bodies, response shapes, per-target_type parameters, error codes, and the differences from the MCP tool surface.
 ---
 
 # Calling the `zi18n_service` API directly (without MCP)
@@ -62,7 +62,7 @@ The handler runs under normal ABAP auth — use whatever the SAP system accepts:
 | Whatever the MCP forwards | The MCP sets `Authorization` (Basic, `Bearer …`, or a `SAML2.0 …` value) plus, for SAMLAssertion, `x-sap-security-session: create`. See `packages/server/src/sap/transport.ts`. |
 
 > **Two distinct things on S/4HC / BTP ABAP — don't conflate them.** *Exposing* the service to a
-> **technical** caller (Basic / OAuth client credentials, one communication user) is done through a
+> **technical** caller (Basic, one communication user) is done through a
 > **Communication Scenario + Arrangement**. *Per-user developer access* (principal propagation, the
 > MCP's path) needs **no** communication arrangement — the HTTP Service endpoint is already active and
 > the Destination Service mints the per-user token. So "no comm arrangement is needed" refers to the
@@ -72,6 +72,84 @@ The service is **disabled by default** (HTTP 403) until enabled — `UCON_HTTP_S
 ABAP Environment the HTTP Service endpoint activates automatically with the HTTP Service object (and,
 for a technical caller, is published to it via the Communication Arrangement). See
 [`docs_page/abap-service-setup.md`](../../../docs_page/abap-service-setup.md).
+
+### Retrieving the per-user SAML2 assertion / Bearer token (BTP Destination Service)
+
+For the **per-user** path (S/4HANA Cloud SAMLAssertion, or BTP ABAP `OAuth2UserTokenExchange` /
+`OAuth2SAMLBearerAssertion`) the `Authorization` value LISA sends — `SAML2.0 <assertion>` or
+`Bearer <token>` — is **not something you craft yourself**: the **BTP Destination Service mints it**
+from the caller's user JWT. This is exactly what LISA does in
+[`packages/server/src/sap/transport.ts`](../../../packages/server/src/sap/transport.ts) via
+`lookupDestinationWithUserToken()` (which uses the SAP Cloud SDK's `getDestination({ jwt })`). To do it
+yourself without MCP/SDK, reproduce the Destination Service call below.
+
+**Prerequisites:** you must run **inside the BTP environment** (you need the `destination` service
+binding from `VCAP_SERVICES`) and have a **user JWT** — a 3-part XSUAA *user* access token (NOT an API
+key), the same token the MCP client gets after its XSUAA OAuth login. A script obtains one via its own
+OAuth flow against the subaccount XSUAA (`VCAP_SERVICES.xsuaa[0].credentials.url`).
+
+**Step 1 — read the `destination` binding** from `VCAP_SERVICES.destination[0].credentials`:
+`uri` (Destination Service API), `clientid`, `clientsecret`, and `token_service_url` (or `url`).
+
+**Step 2 — get a Destination Service token** (client credentials):
+
+```bash
+# token endpoint = <token_service_url>, or <url>/oauth/token
+curl -s -X POST "$DEST_TOKEN_URL" \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d "grant_type=client_credentials&client_id=$DEST_CLIENTID&client_secret=$DEST_CLIENTSECRET"
+# → { "access_token": "<svc-token>", … }
+```
+
+**Step 3 — fetch the destination *with the user token*.** The user JWT goes in the **`X-User-Token`**
+header — that header is what triggers principal propagation; the service's own token is the `Bearer`:
+
+```bash
+curl -s "$DEST_URI/destination-configuration/v1/destinations/$DEST_NAME" \
+  -H "Authorization: Bearer $SVC_TOKEN" \
+  -H "X-User-Token: $USER_JWT"
+```
+
+Response (SAMLAssertion destination):
+
+```jsonc
+{
+  "destinationConfiguration": { "Name": "S4HC_SAML_DEV", "URL": "https://my…-api.s4hana.cloud.sap",
+                                "Authentication": "SAMLAssertion", "ProxyType": "Internet" },
+  "authTokens": [
+    { "type": "SAML2.0",
+      "value": "…",
+      "http_header": { "key": "Authorization", "value": "SAML2.0 PHNhbWxw…" },  // ← the ready-to-use header
+      "expires_in": "3600", "error": null }
+  ]
+}
+```
+
+**Step 4 — extract & use it.** Take the **first `authTokens` entry with `error: null` and a non-empty
+`http_header.value`** — that value IS your `Authorization` header. Send it verbatim to the backend, and
+for SAMLAssertion also add `x-sap-security-session: create` (LISA does the same):
+
+```bash
+curl -H "Authorization: SAML2.0 PHNhbWxw…" \
+     -H "x-sap-security-session: create" \
+     -H 'Content-Type: application/json' \
+     -X POST "https://my…-api.s4hana.cloud.sap/sap/bc/http/sap/zi18n_service/list_languages?sap-client=080" \
+     -d '{}'
+```
+
+The **same call** yields the **Bearer** token for `OAuth2UserTokenExchange` / `OAuth2SAMLBearerAssertion`
+destinations — the SDK exposes it as an entry with `type: "bearer"` (token in `value` or
+`http_header.value`, stripped of the `Bearer ` prefix); use it as `Authorization: Bearer <token>` (no
+`x-sap-security-session`). LISA's extraction logic for all three cases is in
+`@arc-mcp/xsuaa-auth/dist/btp/destination.js` (`lookupDestinationWithUserToken`).
+
+**Caveats:**
+- The assertion/token is **per-user and short-lived** (`expires_in`) — fetch it per request, never cache
+  it across users.
+- **Without `X-User-Token`** you get the destination *config* but no per-user `authTokens` — that's the
+  startup/technical path (`lookupDestination`), not principal propagation.
+- An entry with a non-null `error` means the exchange failed (trust not established, no matching business
+  user, wrong `Authentication`) — surface it; don't fall through.
 
 ---
 
