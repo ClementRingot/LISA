@@ -10,7 +10,7 @@ The MCP server cannot translate anything on its own — it forwards requests to 
 
 - **XCO i18n APIs** available — S/4HANA 2022+ / ABAP Platform 2022+ / ABAP Cloud. Older releases do not have the `XCO_CP_I18N` generation APIs this handler relies on.
 - The **`IF_HTTP_SERVICE_EXTENSION`** programming model (ABAP Platform 1809 / 7.53+).
-- Developer authorization (create class/interface and an HTTP service) plus rights to expose the service: transaction **`UCON_HTTP_SERVICES`** (on-premise / private cloud) or a **communication scenario** (ABAP Environment / public cloud — see [Create and enable the HTTP service](#create-and-enable-the-http-service)).
+- Developer authorization (create class/interface and an HTTP service). On **on-premise / private cloud** you also need rights to enable the service in transaction **`UCON_HTTP_SERVICES`**; on **ABAP Environment / public cloud** no separate enablement step is required — the endpoint is activated automatically when the HTTP Service object is activated (see [Create and enable the HTTP service](#create-and-enable-the-http-service)).
 - A target package (any Z/local package works).
 
 ## Pick the class for your platform
@@ -21,11 +21,11 @@ The handler ships in **three platform variants**, one per folder, and you import
 |--------|--------|----------|
 | `abap/ABAP_PLATFORM_2022/` | `ZCL_I18N_SERVICE` | **On-premise / private cloud** on **ABAP Platform 2022 (7.57)** — original XCO i18n surface. |
 | `abap/ABAP_PLATFORM_2025/` | `ZCL_I18N_SERVICE` | **On-premise / private cloud** on **ABAP Platform 2025** (newer releases) — newer XCO i18n surface (positional entity texts, Fiori launchpad targets). |
-| `abap/CLOUD/` | `ZCL_I18N_SERVICE_CLOUD` | **SAP BTP ABAP Environment / public cloud** (Steampunk) — Cloud-API-compliant variant. |
+| `abap/CLOUD/` | `ZCL_I18N_SERVICE` | **SAP BTP ABAP Environment / public cloud** (Steampunk) — Cloud-API-compliant variant. |
 
-All three implement `IF_HTTP_SERVICE_EXTENSION`, route on the URL path, and expose the **same wire contract** (see [How routing works](#how-routing-works)). They differ only in the XCO i18n API surface available on each release: the public-cloud variant restricts itself to **released / Cloud-development-compliant** APIs (e.g. `I_Language` instead of unreleased DDIC reads), and the two on-premise variants track the XCO i18n surface of their ABAP Platform release. On the wrong stack a variant simply won't activate — so just paste the one that matches.
+All three are named **`ZCL_I18N_SERVICE`** — they are separated **by folder**, not by class name — and all implement `IF_HTTP_SERVICE_EXTENSION`, route on the URL path, and expose the **same wire contract** (see [How routing works](#how-routing-works)). They differ only in the XCO i18n API surface available on each release: the public-cloud variant restricts itself to **released / Cloud-development-compliant** APIs (e.g. `I_Language` instead of unreleased DDIC reads), and the two on-premise variants track the XCO i18n surface of their ABAP Platform release. On the wrong stack a variant simply won't activate — so just paste the one that matches.
 
-> The rest of this page uses **`ZCL_I18N_SERVICE`** as the example name. If you are on ABAP Environment, read it as **`ZCL_I18N_SERVICE_CLOUD`** and import the class from `abap/CLOUD/` instead — the steps are identical.
+> The rest of this page uses **`ZCL_I18N_SERVICE`** throughout. The only thing that changes between platforms is **which folder you import the class from** (`abap/ABAP_PLATFORM_2022/`, `abap/ABAP_PLATFORM_2025/`, or `abap/CLOUD/`) — the class name and the steps are identical.
 
 ### abapGit (recommended)
 
@@ -60,7 +60,7 @@ HTTP services are **disabled by default**; calling one returns **HTTP 403** unti
 
 - **On-premise / private cloud, S/4HANA 2022+:** transaction **`UCON_HTTP_SERVICES`** → search for your service → mark it → **Enable** (multi-select supported). No ICF/SICF node is involved. See SAP note **3211278**.
 - **On-premise / private cloud, before S/4HANA 2022:** the framework creates a matching SICF node — open **SICF**, find it by the service's URL path, right-click ▸ **Activate**.
-- **ABAP Cloud (ABAP environment):** the underlying SICF node is activated automatically once the service is assigned to a **communication scenario** (inbound).
+- **ABAP Cloud (ABAP environment):** **no separate enablement step.** Activating the HTTP Service object activates its endpoint in the background automatically — the service is immediately active and callable in the system. No `UCON_HTTP_SERVICES`, and **no communication scenario/arrangement** is needed to expose it.
 
 The handler then determines the **action** from the last path segment (e.g. `…/zi18n_service/list_languages`), so it must sit at the fixed path you configured.
 
@@ -103,5 +103,5 @@ A **403** means the HTTP service exists but is not enabled — enable it in `UCO
 | 401 Unauthorized | Supplied credentials rejected / logon procedure mismatch. |
 | `UNKNOWN_ACTION` | Path segment misspelled, or a trailing slash dropped the action. |
 | `I18N_GET_ERROR` / `I18N_SET_ERROR` | XCO i18n call failed — object doesn't exist, language not installed, or no translation authorization for the user. |
-| Class won't activate (e.g. unreleased API / DDIC read not allowed) | Wrong variant for the stack — use `ZCL_I18N_SERVICE_CLOUD` on ABAP Environment / public cloud, `ZCL_I18N_SERVICE` on-premise / private cloud. |
+| Class won't activate (e.g. unreleased API / DDIC read not allowed) | Wrong variant for the stack — import `ZCL_I18N_SERVICE` from `abap/CLOUD/` on ABAP Environment / public cloud, from `abap/ABAP_PLATFORM_2022|2025/` on-premise / private cloud. |
 | Invalid handler class | The handler class was created/renamed outside the HTTP service wizard — recreate it through the wizard. |

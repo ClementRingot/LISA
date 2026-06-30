@@ -10,7 +10,7 @@ The handler class ships in **three platform variants**, one per folder. Pick the
 |--------|-------|----------|
 | [`ABAP_PLATFORM_2022/`](./ABAP_PLATFORM_2022) | `ZCL_I18N_SERVICE` | On-premise / private cloud on **ABAP Platform 2022 (7.57)** — the original XCO i18n surface (e.g. `iv_language_field_name` for text tables). |
 | [`ABAP_PLATFORM_2025/`](./ABAP_PLATFORM_2025) | `ZCL_I18N_SERVICE` | On-premise / private cloud on **ABAP Platform 2025** (newer releases) — the newer XCO i18n surface (`iv_language_key_field_name`, positional entity texts, Fiori launchpad page/space targets). |
-| [`CLOUD/`](./CLOUD) | `ZCL_I18N_SERVICE_CLOUD` | **SAP BTP ABAP Environment / public cloud** (Steampunk) — Cloud-API-compliant variant. |
+| [`CLOUD/`](./CLOUD) | `ZCL_I18N_SERVICE` | **SAP BTP ABAP Environment / public cloud** (Steampunk) — Cloud-API-compliant variant. |
 
 Each handler class is **self-contained** (the JSON/parameter helpers are inlined) with **no global dependencies** to import alongside it. It does, however, use one **local class** (`lcl_slot_visitor`, an XCO CDS-annotation visitor that collects positional UI labels), which lives in the class's local-types includes — so each class object spans the main source **plus two local-types files**:
 
@@ -24,7 +24,7 @@ All three files of the folder you picked deserialize as the **single** CLAS obje
 
 All variants implement `IF_HTTP_SERVICE_EXTENSION`, route actions from the URL path, and call the XCO i18n APIs. Same wire contract (see below) — just copy-paste the files from the folder that matches your platform.
 
-> **This `abap/` tree is reference source — import ONE folder, do not clone it whole.** It is **not** a single abapGit-clonable package: the two on-premise folders both contain a class named `ZCL_I18N_SERVICE`, so linking the whole `abap/` tree (or its parent repo) to one package would collide on that object name. There is deliberately no `.abapgit.xml`. Point abapGit (or a manual copy) at the **one** platform folder you need, into its own package.
+> **This `abap/` tree is reference source — import ONE folder, do not clone it whole.** It is **not** a single abapGit-clonable package: all three folders contain a class named `ZCL_I18N_SERVICE` (the variants are separated by folder, not class name), so linking the whole `abap/` tree (or its parent repo) to one package would collide on that object name. There is deliberately no `.abapgit.xml`. Point abapGit (or a manual copy) at the **one** platform folder you need, into its own package.
 
 > **Keep the three variants in sync on shared logic.** Each class is self-contained (helpers inlined, no shared includes), so the JSON/parameter helpers, `capabilities` allow-list, and other common code are **duplicated** across the three files. A fix to that shared logic must be applied in **all three** (`ABAP_PLATFORM_2022/`, `ABAP_PLATFORM_2025/`, `CLOUD/`) — they only legitimately differ in the XCO i18n API surface per release.
 
@@ -44,7 +44,7 @@ These files use the **source-format** naming abapGit understands (`*.clas.abap`,
 
 ### Option B — manual (ADT / SE24 / SE80)
 
-1. Create the class for your stack (`ZCL_I18N_SERVICE` or `ZCL_I18N_SERVICE_CLOUD`) and paste the **three** parts into their tabs before activating:
+1. Create the class `ZCL_I18N_SERVICE` (from the folder for your stack) and paste the **three** parts into their tabs before activating:
    - `*.clas.abap` → the global class (Global Class tab)
    - `*.clas.locals_def.abap` → **Class-relevant Local Types** tab (CCDEF)
    - `*.clas.locals_imp.abap` → **Local Types** tab (CCIMP)
@@ -56,11 +56,11 @@ These files use the **source-format** naming abapGit understands (`*.clas.abap`,
 This is an ABAP **HTTP service** (`IF_HTTP_SERVICE_EXTENSION`), **not** a hand-made SICF node. On S/4HANA 2022+ (on-premise / private cloud) you create it in ADT and enable it in `UCON_HTTP_SERVICES` — no ICF node is created. The handler reads the **action from the last segment of the URL path** (e.g. `…/zi18n_service/list_languages`) and all parameters from the **JSON request body**.
 
 1. In ADT: **New ▸ Other ABAP Repository Object ▸ HTTP service**. Give it a package/name/description.
-2. Set its **Handler class** to the class for your stack — **`ZCL_I18N_SERVICE`** (classic) or **`ZCL_I18N_SERVICE_CLOUD`** (ABAP Cloud) — letting the wizard generate the class, then paste in the implementation (see "Manual" above).
+2. Set its **Handler class** to **`ZCL_I18N_SERVICE`** (from the folder for your stack), letting the wizard generate the class, then paste in the implementation (see "Manual" above).
 3. **Enable** it:
    - On-premise / private cloud **S/4HANA 2022+** → transaction **`UCON_HTTP_SERVICES`** → find the service → **Enable** (disabled by default → HTTP 403 until enabled).
    - On-premise / private cloud **pre-2022** → activate the generated node in **SICF**.
-   - **ABAP Cloud** → assign the service to a communication scenario (activates automatically).
+   - **ABAP Cloud** → nothing to do: activating the HTTP Service object activates its endpoint automatically in the background — no `UCON_HTTP_SERVICES`, no communication scenario.
    - After an abapGit import → click **Publish Locally** in the HTTP service editor.
 4. Note the service URL and set the MCP server's `SAP_I18N_SERVICE_PATH` (or the `mta.yaml` property) to match — default `/sap/bc/http/sap/zi18n_service`.
 

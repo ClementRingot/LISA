@@ -57,10 +57,10 @@ function basicAuth(user: string, password: string): string {
 }
 
 async function resolveConnection(config: Config, userJwt?: string): Promise<ResolvedConnection> {
-  if (config.btpDestination) {
+  if (config.btpDestination || config.btpPpDestination) {
     const btpConfig = getBtpConfig();
     if (!btpConfig) {
-      throw new Error('SAP_BTP_DESTINATION is set but VCAP_SERVICES is unavailable. Running on BTP CF?');
+      throw new Error('A BTP destination is set but VCAP_SERVICES is unavailable. Running on BTP CF?');
     }
 
     const headers: Record<string, string> = { Accept: 'application/json' };
@@ -98,6 +98,15 @@ async function resolveConnection(config: Config, userJwt?: string): Promise<Reso
       };
     }
 
+    // System-level / stdio / API-key call (no user JWT, or no PP destination): use the technical
+    // destination. A pure principal-propagation backend may not have one configured — those calls
+    // genuinely need a technical destination, so fail with a clear message rather than a vague lookup.
+    if (!config.btpDestination) {
+      throw new Error(
+        'No SAP_BTP_DESTINATION configured: a system-level call (no user JWT) needs the technical destination. ' +
+          'Set SAP_BTP_DESTINATION, or ensure the request carries a user token so SAP_BTP_PP_DESTINATION is used.',
+      );
+    }
     const dest = await lookupDestination(btpConfig, config.btpDestination, btpLogger);
     if (dest.User && dest.Password) {
       headers.Authorization = basicAuth(dest.User, dest.Password);

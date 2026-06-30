@@ -1,12 +1,14 @@
 # ──────────────────────────────────────────────────────────────────────
 # MTA Extension Descriptor — SCENARIO: S/4HANA Cloud Public Edition
 #
-# Use this when LISA talks to S/4HANA Cloud Public Edition. There is NO
-# Cloud Connector — calls go direct over the internet. Per-user requests
-# use a SAMLAssertion destination: the Destination Service mints a per-user
-# SAML assertion (NameID = the user's email from the JWT), which LISA sends
-# as `Authorization: SAML2.0 …` + `x-sap-security-session: create`. S/4HC
-# maps the email to a business user (per-user authorization + audit trail).
+# Use this when LISA talks to S/4HANA Cloud Public Edition (developer
+# extensibility / ABAP Cloud). There is NO Cloud Connector — calls go direct
+# over the internet. PRINCIPAL PROPAGATION via a SAMLAssertion destination is
+# the ONLY supported path for developer access (there is no technical-user /
+# Basic path for ADT-style calls). The Destination Service mints a per-user
+# SAML assertion (NameID = the user's email from the JWT), which LISA sends as
+# `Authorization: SAML2.0 …` + `x-sap-security-session: create`. S/4HC maps the
+# email to a business user (per-user authorization + audit trail).
 #
 # This is a tracked template. Copy it to a real, per-landscape file (all
 # `mta-overrides*.mtaext` are gitignored, the `.example` suffix stays tracked):
@@ -17,23 +19,50 @@
 #
 # Any property left commented uses the `mta.yaml` value unchanged.
 #
-# ── BTP destinations to create for this scenario ─────────────────────────
-#   S4HC_TECH_DEV   (technical / startup fallback, system-level calls)
-#     Type=HTTP  ProxyType=Internet  Authentication=OAuth2ClientCredentials
-#     (or BasicAuthentication with a communication user)
+# ── REUSE YOUR BAS DESTINATION ────────────────────────────────────────────
+# The SAMLAssertion destination is the SAME one SAP Business Application Studio
+# uses (typically named `<SYSTEM_ID>_SAML_ASSERTION`). If you already connect
+# BAS to this system, just point SAP_BTP_PP_DESTINATION at that destination —
+# no new destination needed. (SAP tutorial: "Connect SAP Business Application
+# Studio and SAP S/4HANA Cloud System".)
+#
+# ── BTP destination to create for this scenario ───────────────────────────
+#   S4HC_SAML_DEV   (per-user SAMLAssertion — the ONLY destination that matters)
+#     Type=HTTP
+#     ProxyType=Internet
+#     Authentication=SAMLAssertion
 #     URL=https://my<NNNNN>-api.s4hana.cloud.sap
-#   S4HC_SAML_DEV   (per-user SAMLAssertion)
-#     Type=HTTP  ProxyType=Internet  Authentication=SAMLAssertion
-#     URL=https://my<NNNNN>-api.s4hana.cloud.sap
-#     Audience=<S/4HC OAuth 2.0 SAML2 audience>
+#     Audience=<S/4HC OAuth 2.0 SAML2 audience / SAML2 local provider name>
 #     AuthnContextClassRef=urn:oasis:names:tc:SAML:2.0:ac:classes:PreviousSession
 #     NameIdFormat=urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress
+#     Client Key = (leave empty / "set empty")
+#     + enable "Use default JDK truststore" so the public S/4HC TLS cert is trusted
+#   Harmless BAS hint properties to KEEP if you reuse the BAS destination:
+#     HTML5.DynamicDestination=true   HTML5.Timeout=60000
+#     WebIDEEnabled=true              WebIDEUsage=odata_abap,dev_abap
 #
-# S/4HC side: export the BTP subaccount signing certificate, upload it under
-# Communication Systems, and enable the SAML Bearer Assertion Provider. Each
-# user needs a business user whose EMAIL matches the JWT, with the developer
-# (extensibility) role. (The bound `connectivity` service is unused here —
-# no Cloud Connector — but harmless.)
+#   S4HC_TECH_DEV   (technical — OPTIONAL, startup check only)
+#     Only there to satisfy the "SAP_BTP_DESTINATION or SAP_URL required" check
+#     in packages/server/src/server/config.ts; it is NOT used for developer
+#     calls (those all carry a JWT and flow through the SAMLAssertion dest). A
+#     minimal OAuth2ClientCredentials destination at the same S/4HC API host is
+#     enough. See "Relaxing the technical-destination requirement" in
+#     docs_page/btp-deployment.md to drop it entirely.
+#     Type=HTTP  ProxyType=Internet  Authentication=OAuth2ClientCredentials
+#     URL=https://my<NNNNN>-api.s4hana.cloud.sap
+#
+# ── SAML trust setup (S/4HC side) ─────────────────────────────────────────
+#   1. BTP subaccount -> Connectivity -> Destination Trust -> Generate Trust,
+#      then EXPORT the subaccount signing certificate (PEM).
+#   2. S/4HC -> Communication Systems -> New: enable "Inbound Only", set
+#      "SAML Bearer Assertion Provider" = ON, UPLOAD the BTP certificate, and
+#      set the SAML Bearer Issuer to the certificate's Subject CN.
+#   No communication arrangement / communication user is needed for the
+#   developer connection. Each user needs an S/4HC business user whose EMAIL
+#   matches the JWT, holding a developer (extensibility) business role.
+#
+# (The bound `connectivity` service is OFF by default in mta.yaml — not needed
+# here, no Cloud Connector. Internet destinations must connect direct.)
 # ──────────────────────────────────────────────────────────────────────
 
 _schema-version: "3.1"
@@ -45,9 +74,14 @@ modules:
     parameters:
       host: lisa-${space}          # dev space -> lisa-dev (must be lowercase & globally free)
     properties:
-      # ── Destinations (REQUIRED) ──────────────────────────────────────
-      SAP_BTP_DESTINATION: "S4HC_TECH_DEV"     # technical, ProxyType=Internet
+      # ── Destinations ─────────────────────────────────────────────────
+      # PP SAMLAssertion destination — the real per-user path (REQUIRED, and on
+      # a pure-PP backend like this one it is the ONLY destination you need).
       SAP_BTP_PP_DESTINATION: "S4HC_SAML_DEV"  # SAMLAssertion, ProxyType=Internet
+      # Technical destination — OPTIONAL. Only used for non-JWT (stdio / API-key
+      # / system-level) calls; omit it for a JWT-only deployment. Uncomment to
+      # enable system-level calls:
+      # SAP_BTP_DESTINATION: "S4HC_TECH_DEV"   # OAuth2ClientCredentials, ProxyType=Internet
 
       # ── SAP service path (REQUIRED) ──────────────────────────────────
       # The ICF path of the zi18n_service handler on the S/4HC tenant.

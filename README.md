@@ -89,7 +89,7 @@ Typical division of labour: the **ADT MCP** finds the object and a transport →
 ## Prerequisites
 
 - An SAP system with the **XCO i18n APIs** available (S/4HANA 2022+ / ABAP Platform 2022+ / ABAP Cloud) and the new HTTP handler model (`IF_HTTP_SERVICE_EXTENSION`). XCO i18n docs per landscape: [ABAP Platform](https://help.sap.com/docs/ABAP_PLATFORM_NEW/b5670aaaa2364a29935f40b16499972d/f22992e198f04e559c468e81e3f7a55e.html?locale=en-US) (on-premise / private cloud) · [S/4HANA Public Cloud](https://help.sap.com/docs/SAP_S4HANA_CLOUD/6aa39f1ac05441e5a23f484f31e477e7/f22992e198f04e559c468e81e3f7a55e.html?locale=en-US) · [SAP BTP ABAP Environment](https://help.sap.com/docs/btp/sap-business-technology-platform/i18n-apis?locale=en-US).
-- Authorization to import a class and create an ABAP **HTTP service** (ADT), plus rights to expose it: via `UCON_HTTP_SERVICES` (on-premise / private cloud) or a **communication scenario** (BTP ABAP Environment / public cloud).
+- Authorization to import a class and create an ABAP **HTTP service** (ADT). On-premise / private cloud also needs rights to enable it via `UCON_HTTP_SERVICES`; on BTP ABAP Environment / public cloud the endpoint activates automatically with the HTTP Service object — no communication scenario needed.
 - **Node.js 22.x** to run the MCP server.
 - For production: an **SAP BTP** subaccount (Cloud Foundry) with XSUAA, Destination and Connectivity services.
 
@@ -103,11 +103,11 @@ The ABAP handler to copy into your **target SAP system** lives in [`abap/`](./ab
 |--------|--------|----------|
 | [`abap/ABAP_PLATFORM_2022/`](./abap/ABAP_PLATFORM_2022) | `ZCL_I18N_SERVICE` | **On-premise / private cloud** on **ABAP Platform 2022 (7.57)** — original XCO i18n surface. |
 | [`abap/ABAP_PLATFORM_2025/`](./abap/ABAP_PLATFORM_2025) | `ZCL_I18N_SERVICE` | **On-premise / private cloud** on **ABAP Platform 2025** (newer releases) — newer XCO i18n surface (positional entity texts, Fiori launchpad targets). |
-| [`abap/CLOUD/`](./abap/CLOUD) | `ZCL_I18N_SERVICE_CLOUD` | **SAP BTP ABAP Environment / public cloud** (Steampunk) — Cloud-API-compliant variant. |
+| [`abap/CLOUD/`](./abap/CLOUD) | `ZCL_I18N_SERVICE` | **SAP BTP ABAP Environment / public cloud** (Steampunk) — Cloud-API-compliant variant. |
 
 With **abapGit** the three files of the folder you pick reassemble into the single class object automatically — drop them into a linked package and pull. With **ADT / SE24**, paste the three parts into their respective tabs before activating: `*.clas.abap` → Global Class, `*.clas.locals_def.abap` → Class-relevant Local Types (CCDEF), `*.clas.locals_imp.abap` → Local Types (CCIMP). Skipping the local-types parts leaves `lcl_slot_visitor` undefined and the class won't activate.
 
-All three implement `IF_HTTP_SERVICE_EXTENSION`, route actions from the URL path, and speak the **same wire contract** — they differ only in the XCO i18n API surface available on each release. Import the class from the folder for your platform, create an ABAP **HTTP service** whose handler class is that class, and **enable** it (`UCON_HTTP_SERVICES` on-premise / private cloud; a communication scenario on ABAP Environment). Point the MCP at its URL (default `/sap/bc/http/sap/zi18n_service`).
+All three are named **`ZCL_I18N_SERVICE`** (separated by folder, not class name), implement `IF_HTTP_SERVICE_EXTENSION`, route actions from the URL path, and speak the **same wire contract** — they differ only in the XCO i18n API surface available on each release. Import the class from the folder for your platform, create an ABAP **HTTP service** whose handler class is that class, and **enable** it (`UCON_HTTP_SERVICES` on-premise / private cloud; on ABAP Environment the endpoint activates automatically with the HTTP Service object — no communication scenario). Point the MCP at its URL (default `/sap/bc/http/sap/zi18n_service`).
 
 👉 Full step-by-step instructions: **[docs: ABAP service setup](./docs_page/abap-service-setup.md)**.
 
@@ -297,7 +297,7 @@ LISA/
 ├── abap/                 # ⬅ ABAP handler to import (pick one folder for your platform; 3 files each)
 │   ├── ABAP_PLATFORM_2022/   # ZCL_I18N_SERVICE — on-premise / private cloud (ABAP Platform 2022 / 7.57)
 │   ├── ABAP_PLATFORM_2025/   # ZCL_I18N_SERVICE — on-premise / private cloud (ABAP Platform 2025+)
-│   └── CLOUD/                # ZCL_I18N_SERVICE_CLOUD — BTP ABAP Environment / public cloud
+│   └── CLOUD/                # ZCL_I18N_SERVICE — BTP ABAP Environment / public cloud
 ├── docs_page/            # long-form documentation
 ├── roadmap/              # forward-looking design docs (planned, not implemented)
 ├── packages/

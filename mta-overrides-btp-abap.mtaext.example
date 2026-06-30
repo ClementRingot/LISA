@@ -3,10 +3,26 @@
 #
 # Use this when LISA talks to the SAP BTP ABAP Environment ("Steampunk" /
 # ABAP Cloud). There is NO Cloud Connector — calls go direct over the
-# internet. Per-user requests use an OAuth2SAMLBearerAssertion destination:
-# the Destination Service exchanges the user's JWT for a per-user OAuth
-# Bearer token (via SAML bearer assertion against the ABAP environment's
-# token service), which LISA sends as `Authorization: Bearer …`.
+# internet. There are TWO ways to wire the per-user destination; pick one:
+#
+#   (A) RECOMMENDED — SAME subaccount: OAuth2UserTokenExchange
+#       When LISA and the ABAP Environment live in the SAME BTP subaccount,
+#       the per-user destination uses Authentication=OAuth2UserTokenExchange.
+#       The Destination Service exchanges the caller's XSUAA JWT for a per-user
+#       Bearer token against the ABAP instance's own XSUAA, which LISA forwards
+#       as `Authorization: Bearer …`. No Communication Arrangement, no SAML
+#       trust, no OAuth client registration on the ABAP side — every value comes
+#       straight from the ABAP instance's SERVICE KEY (`uaa` section).
+#       WARNING: OAuth2UserTokenExchange is an XSUAA→XSUAA token exchange scoped
+#       to ONE subaccount. If LISA and the ABAP env are in DIFFERENT subaccounts
+#       it does NOT work — use option (B).
+#
+#   (B) DIFFERENT subaccounts / advanced: OAuth2SAMLBearerAssertion
+#       Cross-subaccount (or cross-IdP) per-user access. Needs a Communication
+#       Arrangement + SAML trust + a registered OAuth client on the ABAP side.
+#
+# Either way LISA forwards the per-user Bearer token verbatim — no code change,
+# this path already exists in packages/server/src/sap/transport.ts.
 #
 # This is a tracked template. Copy it to a real, per-landscape file (all
 # `mta-overrides*.mtaext` are gitignored, the `.example` suffix stays tracked):
@@ -17,24 +33,84 @@
 #
 # Any property left commented uses the `mta.yaml` value unchanged.
 #
-# ── BTP destinations to create for this scenario ─────────────────────────
-#   ABAP_TECH_DEV   (technical / startup fallback, system-level calls)
-#     Type=HTTP  ProxyType=Internet  Authentication=BasicAuthentication
-#     (a Communication Arrangement comm user) or OAuth2ClientCredentials
+# ── Token endpoints: READ THIS (common mistake) ──────────────────────────
+# For OAuth2UserTokenExchange AND OAuth2ClientCredentials the token endpoint is
+# the XSUAA one from the SERVICE KEY (`uaa.url` + `/oauth/token`), NOT the ABAP
+# application host. The ABAP host's own `/sap/bc/sec/oauth2/token` endpoint is
+# only correct for the OAuth2SAMLBearerAssertion (SAML-bearer) flow in option
+# (B). Don't copy the SAML-bearer TokenServiceURL into the (A) destinations.
+#
+# ── (A) Destinations for the RECOMMENDED same-subaccount case ─────────────
+#   Take a service key of the ABAP instance (cf create-service-key <abap>; then
+#   cf service-key <abap> <key>). It contains `url` (the ABAP system) and a
+#   `uaa` block with `url`, `clientid`, `clientsecret`.
+#
+#   ABAP_TECH_DEV   (technical / startup check only — see note below)
+#     Type=HTTP  ProxyType=Internet  Authentication=OAuth2ClientCredentials
+#     URL=<service-key url>
+#     tokenServiceURL=<service-key uaa.url>/oauth/token
+#     tokenServiceURLType=Dedicated
+#     clientId=<service-key uaa.clientid>   clientSecret=<service-key uaa.clientsecret>
+#   ABAP_SSO_DEV    (per-user — the destination that does the real work)
+#     Type=HTTP  ProxyType=Internet  Authentication=OAuth2UserTokenExchange
+#     URL=<service-key url>
+#     tokenServiceURL=<service-key uaa.url>/oauth/token
+#     tokenServiceURLType=Dedicated
+#     clientId=<service-key uaa.clientid>   clientSecret=<service-key uaa.clientsecret>
+#
+#   NOTE: SAP_BTP_DESTINATION (the "technical" ABAP_TECH_DEV) exists ONLY to
+#   satisfy the "SAP_BTP_DESTINATION or SAP_URL required" startup check in
+#   packages/server/src/server/config.ts. Real per-user work goes through
+#   SAP_BTP_PP_DESTINATION (ABAP_SSO_DEV). The technical destination is never
+#   used while a user JWT is present; a minimal OAuth2ClientCredentials
+#   destination at the same ABAP system (same uaa token endpoint) is enough.
+#
+# ── (B) Destinations for the DIFFERENT-subaccount / advanced case ─────────
+#   ABAP_TECH_DEV   (technical / startup check only)
+#     Type=HTTP  ProxyType=Internet  Authentication=OAuth2ClientCredentials
+#     (or BasicAuthentication with a technical/communication user)
 #     URL=https://<host>.abap.<region>.hana.ondemand.com
 #   ABAP_SSO_DEV    (per-user OAuth2 SAML bearer)
 #     Type=HTTP  ProxyType=Internet  Authentication=OAuth2SAMLBearerAssertion
 #     URL=https://<host>.abap.<region>.hana.ondemand.com
 #     TokenServiceURL=https://<host>.abap.<region>.hana.ondemand.com/sap/bc/sec/oauth2/token
-#     audience / ClientKey=<OAuth client ID from the Communication Arrangement>
+#     audience / ClientKey=<ID of the OAuth 2.0 client you registered on ABAP>
 #     nameIdFormat=urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress
+#   ABAP side: establish SAML trust to the BTP subaccount IdP and register an
+#   OAuth 2.0 client. NOTE: no communication scenario/arrangement is needed to
+#   EXPOSE the zi18n_service endpoint — on ABAP Environment it is already active
+#   once the HTTP Service object is activated; this is purely the cross-
+#   subaccount trust setup.
 #
-# ABAP environment side: create a Communication System + Communication
-# Arrangement exposing your service, establish SAML trust to the BTP
-# subaccount IdP, and register the OAuth 2.0 client. Each user needs a
-# business user whose EMAIL matches the JWT, with the required developer
-# authorizations. (The bound `connectivity` service is unused here — no
-# Cloud Connector — but harmless.)
+# Both cases: each user needs a business user whose EMAIL matches the JWT, with
+# the required developer authorizations.
+#
+# ── Provisioning these as INSTANCE-LEVEL destinations (init_data) ─────────
+# Destinations bound to the app via the destination service `init_data` do NOT
+# appear under cockpit → subaccount → Connectivity → Destinations (those are
+# SUBACCOUNT-level). Put them in a JSON file and create the instance:
+#
+#   # dest.json — same-subaccount (A) example
+#   {
+#     "init_data": { "instance": { "destinations": [
+#       { "Name": "ABAP_TECH_DEV", "Type": "HTTP", "ProxyType": "Internet",
+#         "Authentication": "OAuth2ClientCredentials",
+#         "URL": "<service-key url>",
+#         "tokenServiceURL": "<service-key uaa.url>/oauth/token",
+#         "tokenServiceURLType": "Dedicated",
+#         "clientId": "<uaa.clientid>", "clientSecret": "<uaa.clientsecret>" },
+#       { "Name": "ABAP_SSO_DEV", "Type": "HTTP", "ProxyType": "Internet",
+#         "Authentication": "OAuth2UserTokenExchange",
+#         "URL": "<service-key url>",
+#         "tokenServiceURL": "<service-key uaa.url>/oauth/token",
+#         "tokenServiceURLType": "Dedicated",
+#         "clientId": "<uaa.clientid>", "clientSecret": "<uaa.clientsecret>" }
+#     ] } }
+#   }
+#   cf create-service destination lite lisa-destination -c dest.json
+#
+# (The bound `connectivity` service is OFF by default in mta.yaml — not needed
+# here, no Cloud Connector.)
 # ──────────────────────────────────────────────────────────────────────
 
 _schema-version: "3.1"
@@ -46,12 +122,15 @@ modules:
     parameters:
       host: lisa-${space}          # dev space -> lisa-dev (must be lowercase & globally free)
     properties:
-      # ── Destinations (REQUIRED) ──────────────────────────────────────
+      # ── Destinations ─────────────────────────────────────────────────
+      # Per-user destination — REQUIRED, the real work goes through this.
+      SAP_BTP_PP_DESTINATION: "ABAP_SSO_DEV"   # (A) OAuth2UserTokenExchange or (B) OAuth2SAMLBearerAssertion
+      # Technical destination — OPTIONAL. Only used for non-JWT (stdio /
+      # API-key / system-level) calls; omit it for a JWT-only deployment.
       SAP_BTP_DESTINATION: "ABAP_TECH_DEV"     # technical, ProxyType=Internet
-      SAP_BTP_PP_DESTINATION: "ABAP_SSO_DEV"   # OAuth2SAMLBearerAssertion, ProxyType=Internet
 
       # ── SAP service path (REQUIRED) ──────────────────────────────────
-      # The path of the zi18n_service exposed via your Communication Arrangement.
+      # The path of the zi18n_service exposed on the ABAP Environment.
       SAP_I18N_SERVICE_PATH: "/sap/bc/http/sap/zi18n_service"
 
       # ── Logging (optional) ───────────────────────────────────────────

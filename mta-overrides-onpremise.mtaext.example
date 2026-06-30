@@ -26,6 +26,12 @@
 #     Type=HTTP  ProxyType=OnPremise  Authentication=PrincipalPropagation
 #     URL=<same virtual host:port>
 #     + CloudConnectorLocationId (same as above)
+#
+# Connectivity service: this is the ONLY scenario that needs it. `mta.yaml`
+# ships `lisa-connectivity` as `active: false` (the Internet-facing cloud
+# backends don't use the Cloud Connector), so this template RE-ACTIVATES it in
+# the `resources:` block below — without it the principal-propagation proxy has
+# no connectivity binding and on-premise calls fail.
 # ──────────────────────────────────────────────────────────────────────
 
 _schema-version: "3.1"
@@ -47,6 +53,12 @@ modules:
       # ── Logging (optional) ───────────────────────────────────────────
       # LOG_LEVEL: "info"          # debug | info | warn | error
       # LOG_FORMAT: "json"         # text | json
+
+# ── Connectivity service (REQUIRED for on-premise) ────────────────────
+# Re-activate the Cloud Connector binding that mta.yaml deactivates by default.
+resources:
+  - name: lisa-connectivity
+    active: true
 
 # A second instance in the SAME subaccount needs its own xsappname — see the
 # "XSUAA xsappname" block in mta-overrides.mtaext.example.

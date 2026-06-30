@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`SAP_BTP_PP_DESTINATION` alone is now a valid startup configuration.** For a pure
+  principal-propagation backend (S/4HANA Public Cloud, or the same-subaccount BTP ABAP path) the
+  technical `SAP_BTP_DESTINATION` is no longer required — `resolveConfig()` accepts
+  `SAP_BTP_DESTINATION` *or* `SAP_BTP_PP_DESTINATION` *or* `SAP_URL`, and the BTP transport enters the
+  per-user branch on either destination. Non-JWT (stdio / API-key / system-level) calls still need
+  `SAP_BTP_DESTINATION` and now fail with an explicit message when it's absent. Matches ARC-1, which
+  needs only its PP destination for this case. Covered by a new `config.test.ts` case.
+
+### Changed
+- **CLOUD ABAP handler renamed `ZCL_I18N_SERVICE_CLOUD` → `ZCL_I18N_SERVICE`.** All three platform
+  variants now share the class name `ZCL_I18N_SERVICE` and are separated **by folder** only
+  (`abap/ABAP_PLATFORM_2022/`, `abap/ABAP_PLATFORM_2025/`, `abap/CLOUD/`). Renamed the `abap/CLOUD/`
+  source files to match and updated all docs.
+- **BTP ABAP Environment docs: added the same-subaccount `OAuth2UserTokenExchange` path** as the
+  recommended option (XSUAA→XSUAA, no Communication Arrangement / SAML trust / OAuth client
+  registration — values come from the ABAP service key `uaa` section), with
+  `OAuth2SAMLBearerAssertion` reframed as the different-subaccount / advanced case. Fixed the
+  token-endpoint guidance (XSUAA `uaa.url/oauth/token` for UserTokenExchange/ClientCredentials vs.
+  the ABAP host only for SAML-bearer) and documented instance-level destination `init_data`.
+- **S/4HANA Cloud Public Edition docs:** stated SAMLAssertion principal propagation is the only
+  supported developer path, added the SAML trust setup steps, BAS destination reuse, the full
+  destination property set (default JDK truststore, BAS hint properties), and a
+  verification/troubleshooting block.
+- **Clarified ABAP Cloud service exposure:** on ABAP Environment the `zi18n_service` HTTP endpoint
+  activates automatically when the HTTP Service object is activated — **no communication
+  scenario/arrangement** is needed (corrected across the ABAP setup docs).
+- **`mta.yaml`: `lisa-logs` and `lisa-connectivity` now ship `active: false` by default.** Application
+  Logging hard-fails deploys where SAP retired the service (Note 3557260; LISA logs to stderr
+  regardless), and Connectivity is only needed for the on-premise Cloud Connector path (the
+  on-premise template re-activates it).
+- **DCR:** documented `SAP_OAUTH_DCR_TTL_SECONDS=0` for clients that don't auto-re-register
+  (Eclipse Copilot, Cursor), matching ARC-1's `ARC1_OAUTH_DCR_TTL_SECONDS=0` guidance.
+
 ## [0.8.2] — 2026-06-27
 
 ### Added

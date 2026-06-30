@@ -31,6 +31,7 @@ function parseXsuaaBinding(): XsuaaBinding | undefined {
 export function resolveConfig(): Config {
   const transport = (env('MCP_TRANSPORT') ?? 'http-streamable') as McpTransport;
   const btpDestination = env('SAP_BTP_DESTINATION');
+  const btpPpDestination = env('SAP_BTP_PP_DESTINATION');
 
   // When a BTP destination is configured, direct SAP creds are optional.
   // For local dev, SAP_URL + credentials are required.
@@ -38,9 +39,13 @@ export function resolveConfig(): Config {
   const sapUsername = env('SAP_USERNAME');
   const sapPassword = env('SAP_PASSWORD');
 
-  if (!btpDestination && !sapUrl) {
+  // A pure principal-propagation cloud backend (e.g. S/4HANA Public Cloud, or
+  // the same-subaccount BTP ABAP path) needs no technical destination: every
+  // call carries a user JWT and flows through SAP_BTP_PP_DESTINATION. So either
+  // BTP destination — technical OR per-user — is a valid startup configuration.
+  if (!btpDestination && !btpPpDestination && !sapUrl) {
     throw new Error(
-      'Either SAP_BTP_DESTINATION (BTP deployment) or SAP_URL + SAP_USERNAME + SAP_PASSWORD (local dev) must be configured.',
+      'Either SAP_BTP_DESTINATION / SAP_BTP_PP_DESTINATION (BTP deployment) or SAP_URL + SAP_USERNAME + SAP_PASSWORD (local dev) must be configured.',
     );
   }
 
@@ -50,7 +55,7 @@ export function resolveConfig(): Config {
     sapPassword,
     sapClient: env('SAP_CLIENT') ?? '000',
     btpDestination,
-    btpPpDestination: env('SAP_BTP_PP_DESTINATION'),
+    btpPpDestination,
 
     i18nServicePath: env('SAP_I18N_SERVICE_PATH') ?? '/sap/bc/http/sap/zi18n_service',
 

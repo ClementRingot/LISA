@@ -58,6 +58,14 @@ describe('resolveConfig', () => {
     expect(() => resolveConfig()).not.toThrow();
   });
 
+  it('accepts a PP destination alone (pure principal-propagation backend, no technical destination)', () => {
+    process.env.SAP_BTP_PP_DESTINATION = 'PP_ONLY';
+    expect(() => resolveConfig()).not.toThrow();
+    const c = resolveConfig();
+    expect(c.btpPpDestination).toBe('PP_ONLY');
+    expect(c.btpDestination).toBeUndefined();
+  });
+
   describe('parseApiKeys (via resolveConfig)', () => {
     it('keeps valid key:profile pairs and drops invalid profiles / malformed entries', () => {
       process.env.SAP_URL = 'https://sap.example.com';

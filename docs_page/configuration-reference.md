@@ -12,14 +12,14 @@ All configuration is via environment variables (read in `src/server/config.ts`).
 | `SAP_PASSWORD` | — | SAP password for local dev. |
 | `SAP_CLIENT` | `000` | `sap-client` query parameter. |
 
-> Either `SAP_BTP_DESTINATION` **or** `SAP_URL` must be set, otherwise startup fails.
+> At least one of `SAP_BTP_DESTINATION`, `SAP_BTP_PP_DESTINATION` **or** `SAP_URL` must be set, otherwise startup fails. For a pure principal-propagation backend (S/4HC, same-subaccount BTP ABAP) `SAP_BTP_PP_DESTINATION` alone is enough — no technical destination required.
 
 ## BTP
 
 | Variable | Purpose |
 |----------|---------|
-| `SAP_BTP_DESTINATION` | BasicAuth Destination — used for system-level calls and as a fallback when no user JWT is present (stdio / API key). |
-| `SAP_BTP_PP_DESTINATION` | PrincipalPropagation Destination — used per-user when a JWT is available, so SAP authenticates as the actual backend user. |
+| `SAP_BTP_DESTINATION` | Technical Destination — used for system-level calls and as a fallback when no user JWT is present (stdio / API key). **Optional** for pure principal-propagation backends (omit it to require a JWT for every call). |
+| `SAP_BTP_PP_DESTINATION` | Per-user Destination (PrincipalPropagation / OAuth2* / SAMLAssertion) — used when a JWT is available, so SAP authenticates as the actual backend user. Valid as the **sole** destination on a pure-PP backend. |
 | `VCAP_SERVICES` | Injected by Cloud Foundry; carries the XSUAA, Destination and Connectivity bindings. |
 
 ## Transport
@@ -53,7 +53,16 @@ Authentication is **active only when at least one** of the following is configur
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `LISA_DCR_SIGNING_SECRET` | falls back to XSUAA `clientsecret` | Stable secret for signing dynamic client registrations and OAuth state. **Set this via `cf set-env`** — otherwise every `cf deploy` rotates the secret and invalidates cached client registrations. Startup logs `dcrSigningSource: "env"` when active. |
-| `SAP_OAUTH_DCR_TTL_SECONDS` | — | TTL for DCR registrations. `0` = never expire. |
+| `SAP_OAUTH_DCR_TTL_SECONDS` | — | TTL (seconds) for dynamic client registrations. `0` = **never expire**. |
+
+**Non-expiring DCR for clients that don't auto-re-register.** Some MCP clients (e.g. **Eclipse SAP
+Copilot**, **Cursor**) cache their dynamic client registration and do **not** transparently re-register
+when it expires — once the registration ages out they fail with `invalid_client` and the user has to
+clear the cached registration by hand. To avoid that, set `SAP_OAUTH_DCR_TTL_SECONDS=0` so registrations
+never expire (it's not a secret — safe to pin in your `mtaext`, see the "OAuth DCR" block in
+`mta-overrides.mtaext.example`). This mirrors ARC-1's `ARC1_OAUTH_DCR_TTL_SECONDS=0` guidance. If you
+hit `invalid_client` on a client that was registered before you set this, the cached registration still
+needs a **one-time manual cleanup** on that client.
 
 ## Rate limiting
 

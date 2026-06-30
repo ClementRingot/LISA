@@ -1,4 +1,4 @@
-CLASS zcl_i18n_service_cloud DEFINITION PUBLIC FINAL CREATE PUBLIC.
+CLASS zcl_i18n_service DEFINITION PUBLIC FINAL CREATE PUBLIC.
   PUBLIC SECTION.
     INTERFACES if_http_service_extension.
   PRIVATE SECTION.
@@ -93,7 +93,7 @@ METHODS get_me_entity_attr IMPORTING iv_name TYPE string iv_position TYPE i DEFA
 METHODS handle_list_text_table IMPORTING iv_params TYPE string RETURNING VALUE(rs_response) TYPE ty_response.
 ENDCLASS.
 
-CLASS zcl_i18n_service_cloud IMPLEMENTATION.
+CLASS zcl_i18n_service IMPLEMENTATION.
 
   METHOD if_http_service_extension~handle_request.
 
