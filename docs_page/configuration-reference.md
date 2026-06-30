@@ -53,7 +53,16 @@ Authentication is **active only when at least one** of the following is configur
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `LISA_DCR_SIGNING_SECRET` | falls back to XSUAA `clientsecret` | Stable secret for signing dynamic client registrations and OAuth state. **Set this via `cf set-env`** — otherwise every `cf deploy` rotates the secret and invalidates cached client registrations. Startup logs `dcrSigningSource: "env"` when active. |
-| `SAP_OAUTH_DCR_TTL_SECONDS` | — | TTL for DCR registrations. `0` = never expire. |
+| `SAP_OAUTH_DCR_TTL_SECONDS` | — | TTL (seconds) for dynamic client registrations. `0` = **never expire**. |
+
+**Non-expiring DCR for clients that don't auto-re-register.** Some MCP clients (e.g. **Eclipse SAP
+Copilot**, **Cursor**) cache their dynamic client registration and do **not** transparently re-register
+when it expires — once the registration ages out they fail with `invalid_client` and the user has to
+clear the cached registration by hand. To avoid that, set `SAP_OAUTH_DCR_TTL_SECONDS=0` so registrations
+never expire (it's not a secret — safe to pin in your `mtaext`, see the "OAuth DCR" block in
+`mta-overrides.mtaext.example`). This mirrors ARC-1's `ARC1_OAUTH_DCR_TTL_SECONDS=0` guidance. If you
+hit `invalid_client` on a client that was registered before you set this, the cached registration still
+needs a **one-time manual cleanup** on that client.
 
 ## Rate limiting
 

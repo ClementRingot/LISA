@@ -32,6 +32,11 @@ modules:
     requires:
       - name: lisa-xsuaa
       - name: lisa-destination
+      # lisa-connectivity and lisa-logs are declared `active: false` below, so
+      # these two `requires` are IGNORED by the deploy service by default (an
+      # inactive resource silently drops every `requires` that points at it).
+      # Re-activate the resource in an mtaext to re-enable the binding — the
+      # on-premise template turns `lisa-connectivity` back on (Cloud Connector).
       - name: lisa-connectivity
       - name: lisa-logs
     build-parameters:
@@ -71,12 +76,27 @@ resources:
       service-plan: lite
 
   - name: lisa-connectivity
+    # OFF by default: the Connectivity service is only needed for the ON-PREMISE
+    # (Cloud Connector) scenario. The BTP ABAP Environment and S/4HANA Cloud
+    # Public Edition are Internet-facing (ProxyType=Internet) and never touch it
+    # — binding it there is dead weight. The on-premise template re-activates it
+    # (`resources: - name: lisa-connectivity / active: true`).
+    active: false
     type: org.cloudfoundry.managed-service
     parameters:
       service: connectivity
       service-plan: lite
 
   - name: lisa-logs
+    # OFF by default: SAP removed Application Logging from the eligible services
+    # on 2025-07-31 (SAP Note 3557260). On subaccounts that no longer offer the
+    # `application-logs` service, binding it HARD-FAILS the deploy. LISA logs to
+    # stderr regardless, so `cf logs lisa-mcp` keeps working without it. Re-enable
+    # it on subaccounts that still have the service via an mtaext:
+    #   resources:
+    #     - name: lisa-logs
+    #       active: true
+    active: false
     type: org.cloudfoundry.managed-service
     parameters:
       service: application-logs
