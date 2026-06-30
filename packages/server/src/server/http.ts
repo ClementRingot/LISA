@@ -271,12 +271,13 @@ export function createHttpServer(config: Config): express.Application {
     ? createXsuaaTokenVerifier(config.xsuaaBinding, { acceptedScopes: [], logger: authLogger })
     : undefined;
 
-  // `config.oidcAudience` may be undefined (OIDC_AUDIENCE unset). jose treats an
-  // undefined audience as "do not validate the audience" — LISA's historical
-  // behaviour — so we pass it through; the open-audience warning fires below.
+  // OIDC_AUDIENCE is mandatory when OIDC is enabled — resolveConfig() fails fast
+  // otherwise. The only way to reach here with an issuer and no audience is the
+  // explicit OIDC_ALLOW_ANY_AUDIENCE opt-out: jose then treats the undefined
+  // audience as "do not validate", so warn loudly that validation is disabled.
   if (config.oidcIssuer && !config.oidcAudience) {
     log.warn(
-      'OIDC_AUDIENCE is not set — JWT audience is NOT validated. Any token from the configured issuer will be accepted regardless of its intended audience. Set OIDC_AUDIENCE to restrict tokens to this server.',
+      'OIDC_ALLOW_ANY_AUDIENCE=true — JWT audience validation is DISABLED. Any token from the configured issuer is accepted regardless of its intended audience (token-confusion risk). Set OIDC_AUDIENCE and remove the opt-out as soon as possible.',
     );
   }
   const oidcVerifier = config.oidcIssuer

@@ -43,7 +43,7 @@ Best practices:
 
 Set `OIDC_ISSUER` and `OIDC_AUDIENCE`. The verifier validates per the OAuth 2.0 protected-resource model — JWKS signature, issuer match, audience match, expiry — and extracts **no scopes** (authentication only).
 
-> **Always set `OIDC_AUDIENCE`.** Unlike the issuer, LISA does **not** require it: left unset, the server logs a warning and then accepts **any** token from the configured issuer regardless of its intended audience (a token-confusion risk). Set it to bind tokens to this server.
+> **`OIDC_AUDIENCE` is mandatory when OIDC is enabled.** Without it the verifier would accept **any** token signed by the issuer — including one minted for a *different* app on a **shared issuer** (e.g. another Entra application in the same tenant), a token-confusion / confused-deputy risk ([RFC 9700](https://www.rfc-editor.org/rfc/rfc9700)). So if `OIDC_ISSUER` is set without `OIDC_AUDIENCE`, **the server refuses to start**. The only way to run without audience validation is the explicit, discouraged opt-out `OIDC_ALLOW_ANY_AUDIENCE=true` (the server then logs a loud warning at every start).
 
 Verification checklist when sign-in fails:
 
