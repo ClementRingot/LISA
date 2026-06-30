@@ -206,6 +206,27 @@ describe('supportedTargetTypesNote', () => {
       expect(note).toContain('rejected up-front');
     }
   });
+
+  it('advertises the synthetic cds_entity when BOTH physical owners are supported (read and write)', () => {
+    const full = {
+      list_texts: ['data_definition', 'metadata_extension'],
+      set_translation: ['data_definition', 'metadata_extension'],
+    };
+    expect(supportedTargetTypesNote('list_texts', full)).toContain('cds_entity');
+    expect(supportedTargetTypesNote('set_translation', full)).toContain('cds_entity');
+  });
+
+  it('does NOT advertise cds_entity when only one CDS owner is supported', () => {
+    expect(supportedTargetTypesNote('list_texts', { list_texts: ['data_definition'] })).not.toContain('cds_entity');
+    expect(supportedTargetTypesNote('list_texts', { list_texts: ['metadata_extension'] })).not.toContain('cds_entity');
+  });
+
+  it('does not duplicate cds_entity when the handler already lists it', () => {
+    const note = supportedTargetTypesNote('list_texts', {
+      list_texts: ['data_definition', 'metadata_extension', 'cds_entity'],
+    });
+    expect(note.match(/cds_entity/g)).toHaveLength(1);
+  });
 });
 
 describe('TOOLS registry', () => {

@@ -11,7 +11,7 @@
  */
 
 import { z } from 'zod';
-import type { Capabilities } from './wire.js';
+import { CDS_ENTITY_OWNERS, CDS_ENTITY_TARGET, type Capabilities } from './wire.js';
 
 // ─── Shared argument schemas ──────────────────────────────────────────────────
 
@@ -239,7 +239,17 @@ export type ToolName = keyof typeof TOOLS;
 export function supportedTargetTypesNote(action: string, capabilities: Capabilities | null): string {
   const allowed = capabilities?.[action];
   if (allowed && allowed.length > 0) {
-    return `On THIS SAP system, '${action}' supports these target_type values: ${allowed.join(', ')}. Any other target_type is rejected before reaching SAP.`;
+    // `cds_entity` is a LISA-synthesized target: it never reaches the backend (the MCP fans it out to
+    // data_definition + metadata_extension — see intent.ts), so the handler's allow-list won't contain
+    // it. Advertise it ourselves whenever BOTH physical owners are supported for this action, so the
+    // agent knows the merged CDS surface is available for this operation (read AND write) without each
+    // ABAP variant having to hardcode the virtual type. Guarded against duplication if a handler does
+    // list it.
+    const types = [...allowed];
+    if (CDS_ENTITY_OWNERS.every((owner) => allowed.includes(owner)) && !types.includes(CDS_ENTITY_TARGET)) {
+      types.push(CDS_ENTITY_TARGET);
+    }
+    return `On THIS SAP system, '${action}' supports these target_type values: ${types.join(', ')}. Any other target_type is rejected before reaching SAP.`;
   }
   return 'STACK DIFFERENCES: public cloud / BTP ABAP Environment and on-premise / private cloud support DIFFERENT object types per operation, and the supported set can also differ by system version. A target_type the target system does not support for this operation is rejected up-front.';
 }
