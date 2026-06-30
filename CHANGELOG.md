@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`SAP_BTP_PP_DESTINATION` alone is now a valid startup configuration.** For a pure
+  principal-propagation backend (S/4HANA Public Cloud, or the same-subaccount BTP ABAP path) the
+  technical `SAP_BTP_DESTINATION` is no longer required — `resolveConfig()` accepts
+  `SAP_BTP_DESTINATION` *or* `SAP_BTP_PP_DESTINATION` *or* `SAP_URL`, and the BTP transport enters the
+  per-user branch on either destination. Non-JWT (stdio / API-key / system-level) calls still need
+  `SAP_BTP_DESTINATION` and now fail with an explicit message when it's absent. Matches ARC-1, which
+  needs only its PP destination for this case. Covered by a new `config.test.ts` case.
+
 ### Changed
 - **CLOUD ABAP handler renamed `ZCL_I18N_SERVICE_CLOUD` → `ZCL_I18N_SERVICE`.** All three platform
   variants now share the class name `ZCL_I18N_SERVICE` and are separated **by folder** only

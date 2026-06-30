@@ -75,10 +75,13 @@ modules:
       host: lisa-${space}          # dev space -> lisa-dev (must be lowercase & globally free)
     properties:
       # ── Destinations ─────────────────────────────────────────────────
-      # PP SAMLAssertion destination — the real per-user path (REQUIRED).
+      # PP SAMLAssertion destination — the real per-user path (REQUIRED, and on
+      # a pure-PP backend like this one it is the ONLY destination you need).
       SAP_BTP_PP_DESTINATION: "S4HC_SAML_DEV"  # SAMLAssertion, ProxyType=Internet
-      # Technical destination — startup check only, OPTIONAL/vestigial.
-      SAP_BTP_DESTINATION: "S4HC_TECH_DEV"     # OAuth2ClientCredentials, ProxyType=Internet
+      # Technical destination — OPTIONAL. Only used for non-JWT (stdio / API-key
+      # / system-level) calls; omit it for a JWT-only deployment. Uncomment to
+      # enable system-level calls:
+      # SAP_BTP_DESTINATION: "S4HC_TECH_DEV"   # OAuth2ClientCredentials, ProxyType=Internet
 
       # ── SAP service path (REQUIRED) ──────────────────────────────────
       # The ICF path of the zi18n_service handler on the S/4HC tenant.

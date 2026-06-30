@@ -22,7 +22,7 @@ Create two BTP destinations pointing at your SAP system. The MCP picks between t
 
 Set the two property values in `mta.yaml` to the destination **names** you created. For on-premise systems set `ProxyType=OnPremise` and the Cloud Connector location ID on the destination.
 
-> **The "technical" `SAP_BTP_DESTINATION` is mostly a startup formality.** Config validation requires `SAP_BTP_DESTINATION` *or* `SAP_URL` to be set (`packages/server/src/server/config.ts`), and it is only ever used when **no** user JWT is present (stdio / API-key calls). For the Internet-facing cloud backends below, every interactive MCP call carries a JWT and therefore flows through `SAP_BTP_PP_DESTINATION` — so a minimal technical destination (e.g. `OAuth2ClientCredentials` pointing at the same system, reusing the same token endpoint) is enough to satisfy the check. **All real per-user work goes through `SAP_BTP_PP_DESTINATION`.**
+> **The "technical" `SAP_BTP_DESTINATION` is optional for pure principal-propagation backends.** Config validation requires `SAP_BTP_DESTINATION` *or* `SAP_BTP_PP_DESTINATION` *or* `SAP_URL` to be set (`packages/server/src/server/config.ts`), and the technical destination is only ever used when **no** user JWT is present (stdio / API-key / system-level calls). For the Internet-facing cloud backends below, every interactive MCP call carries a JWT and flows through `SAP_BTP_PP_DESTINATION` — so you can either give a minimal technical destination (e.g. `OAuth2ClientCredentials` pointing at the same system) or [omit it entirely](#dropping-the-technical-destination-pp-only-backends). **All real per-user work goes through `SAP_BTP_PP_DESTINATION`.**
 
 The MCP picks the per-user auth automatically based on what the Destination Service returns, so the only
 thing that changes between backends is **how you configure the `SAP_BTP_PP_DESTINATION`**:
@@ -94,11 +94,11 @@ ADT-style developer access. There is no Cloud Connector either: calls go direct 
 automatically, sending it verbatim as `Authorization: SAML2.0 …` with `x-sap-security-session: create`
 (`packages/server/src/sap/transport.ts`) — **no extra env var, no code change**.
 
-Because pure principal propagation is the only path, the technical `SAP_BTP_DESTINATION` here is **only**
-there to satisfy the startup config check (`packages/server/src/server/config.ts`) and is otherwise
-**unused** for developer calls. Point it at the same S/4HC API host with `OAuth2ClientCredentials` — or
-see [Relaxing the technical-destination requirement](#relaxing-the-technical-destination-requirement-pp-only-backends)
-to drop it entirely.
+Because pure principal propagation is the only path, the technical `SAP_BTP_DESTINATION` here is
+**optional** — it is otherwise **unused** for developer calls. You can either point it at the same S/4HC
+API host with `OAuth2ClientCredentials`, or
+[drop it entirely](#dropping-the-technical-destination-pp-only-backends) and configure only
+`SAP_BTP_PP_DESTINATION`.
 
 **Reuse your existing BAS destination.** The SAMLAssertion destination is the *same one* SAP Business
 Application Studio uses (typically named `<SYSTEM_ID>_SAML_ASSERTION`). If you already connect BAS to
@@ -137,20 +137,27 @@ No communication arrangement or communication user is needed for the developer c
 > (extensibility) business role.** Without it the call fails even though the SAML assertion is accepted
 > (see Troubleshooting).
 
-#### Relaxing the technical-destination requirement (PP-only backends)
+#### Dropping the technical destination (PP-only backends)
 
-> **Proposed — not yet implemented.** For a pure principal-propagation cloud backend (S/4HC, or the
-> same-subaccount BTP ABAP path) the technical `SAP_BTP_DESTINATION` is vestigial: it exists only to
-> pass the `SAP_BTP_DESTINATION` *or* `SAP_URL` startup check in
-> [`packages/server/src/server/config.ts`](../packages/server/src/server/config.ts), yet every
-> interactive call carries a JWT and goes through `SAP_BTP_PP_DESTINATION`. ARC-1 requires only its PP
-> destination for this case. To match it, `resolveConfig()` should accept `SAP_BTP_PP_DESTINATION`
-> **alone** as a valid startup configuration, and `resolveConnection()` in
-> [`transport.ts`](../packages/server/src/sap/transport.ts) should enter the BTP branch on
-> `btpDestination || btpPpDestination` (throwing a clear error only on a *non-JWT* call when no
-> technical destination is configured, since system-level/stdio calls genuinely need one). This is a
-> behaviour change to the request path, so it should land behind review **with a `config.test.ts` case**
-> covering "PP destination only" — until then, keep the minimal technical `SAP_BTP_DESTINATION`.
+For a pure principal-propagation cloud backend (S/4HC, or the same-subaccount BTP ABAP path) the
+technical `SAP_BTP_DESTINATION` is vestigial — every interactive call carries a JWT and goes through
+`SAP_BTP_PP_DESTINATION`. As of this version you can **omit `SAP_BTP_DESTINATION` entirely**: setting
+`SAP_BTP_PP_DESTINATION` alone is a valid startup configuration (matching ARC-1, which needs only its PP
+destination for this case).
+
+```yaml
+properties:
+  SAP_BTP_PP_DESTINATION: "S4HC_SAML_DEV"   # the only destination required
+  # SAP_BTP_DESTINATION intentionally omitted — no technical destination needed
+```
+
+The startup check in [`config.ts`](../packages/server/src/server/config.ts) accepts
+`SAP_BTP_DESTINATION` **or** `SAP_BTP_PP_DESTINATION` **or** `SAP_URL`, and `resolveConnection()` in
+[`transport.ts`](../packages/server/src/sap/transport.ts) enters the BTP branch on either destination.
+The **only** thing you lose without a technical destination is **non-JWT** access (stdio / API-key /
+system-level calls) — those still need `SAP_BTP_DESTINATION` and now fail with an explicit message
+telling you so, instead of a vague destination lookup error. Interactive MCP traffic (which always
+carries a JWT) is unaffected.
 
 ## 2. Review `mta.yaml` and `xs-security.json`
 

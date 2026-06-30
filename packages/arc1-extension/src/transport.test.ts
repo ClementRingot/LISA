@@ -22,13 +22,13 @@ describe('ctxHttpTransport', () => {
   });
 
   it('honors SAP_I18N_SERVICE_PATH and strips a trailing slash', async () => {
-    process.env.SAP_I18N_SERVICE_PATH = '/sap/bc/http/sap/zi18n_service_cloud/';
+    process.env.SAP_I18N_SERVICE_PATH = '/sap/bc/http/sap/zi18n_service_custom/';
     const post = vi.fn().mockResolvedValue({ statusCode: 200, body: '{"success":true,"data":{}}' });
     const http = { get: vi.fn(), head: vi.fn(), post } as unknown as SafeHttpClient;
 
     await ctxHttpTransport(http).post('capabilities', '{}');
 
-    expect(post).toHaveBeenCalledWith('/sap/bc/http/sap/zi18n_service_cloud/capabilities', '{}', 'application/json', {
+    expect(post).toHaveBeenCalledWith('/sap/bc/http/sap/zi18n_service_custom/capabilities', '{}', 'application/json', {
       Accept: 'application/json',
     });
   });

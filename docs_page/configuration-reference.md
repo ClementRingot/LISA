@@ -12,14 +12,14 @@ All configuration is via environment variables (read in `src/server/config.ts`).
 | `SAP_PASSWORD` | — | SAP password for local dev. |
 | `SAP_CLIENT` | `000` | `sap-client` query parameter. |
 
-> Either `SAP_BTP_DESTINATION` **or** `SAP_URL` must be set, otherwise startup fails.
+> At least one of `SAP_BTP_DESTINATION`, `SAP_BTP_PP_DESTINATION` **or** `SAP_URL` must be set, otherwise startup fails. For a pure principal-propagation backend (S/4HC, same-subaccount BTP ABAP) `SAP_BTP_PP_DESTINATION` alone is enough — no technical destination required.
 
 ## BTP
 
 | Variable | Purpose |
 |----------|---------|
-| `SAP_BTP_DESTINATION` | BasicAuth Destination — used for system-level calls and as a fallback when no user JWT is present (stdio / API key). |
-| `SAP_BTP_PP_DESTINATION` | PrincipalPropagation Destination — used per-user when a JWT is available, so SAP authenticates as the actual backend user. |
+| `SAP_BTP_DESTINATION` | Technical Destination — used for system-level calls and as a fallback when no user JWT is present (stdio / API key). **Optional** for pure principal-propagation backends (omit it to require a JWT for every call). |
+| `SAP_BTP_PP_DESTINATION` | Per-user Destination (PrincipalPropagation / OAuth2* / SAMLAssertion) — used when a JWT is available, so SAP authenticates as the actual backend user. Valid as the **sole** destination on a pure-PP backend. |
 | `VCAP_SERVICES` | Injected by Cloud Foundry; carries the XSUAA, Destination and Connectivity bindings. |
 
 ## Transport

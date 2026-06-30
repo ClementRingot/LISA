@@ -122,9 +122,12 @@ modules:
     parameters:
       host: lisa-${space}          # dev space -> lisa-dev (must be lowercase & globally free)
     properties:
-      # ── Destinations (REQUIRED) ──────────────────────────────────────
-      SAP_BTP_DESTINATION: "ABAP_TECH_DEV"     # technical / startup-only, ProxyType=Internet
+      # ── Destinations ─────────────────────────────────────────────────
+      # Per-user destination — REQUIRED, the real work goes through this.
       SAP_BTP_PP_DESTINATION: "ABAP_SSO_DEV"   # (A) OAuth2UserTokenExchange or (B) OAuth2SAMLBearerAssertion
+      # Technical destination — OPTIONAL. Only used for non-JWT (stdio /
+      # API-key / system-level) calls; omit it for a JWT-only deployment.
+      SAP_BTP_DESTINATION: "ABAP_TECH_DEV"     # technical, ProxyType=Internet
 
       # ── SAP service path (REQUIRED) ──────────────────────────────────
       # The path of the zi18n_service exposed on the ABAP Environment.
