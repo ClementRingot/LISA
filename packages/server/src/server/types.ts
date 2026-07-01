@@ -41,6 +41,10 @@ export interface Config {
   apiKeys: ApiKeyProfile[];
   oidcIssuer: string | undefined;
   oidcAudience: string | undefined;
+  // When OIDC is enabled, OIDC_AUDIENCE is mandatory (enforced at startup).
+  // OIDC_ALLOW_ANY_AUDIENCE=true is an explicit, discouraged opt-out that lets
+  // the server start with audience validation disabled.
+  oidcAllowAnyAudience: boolean;
   xsuaaBinding: XsuaaBinding | undefined;
   // Dedicated DCR signing secret — survives `cf deploy` (which rotates the XSUAA
   // clientsecret). When unset, the DCR store falls back to the clientsecret.

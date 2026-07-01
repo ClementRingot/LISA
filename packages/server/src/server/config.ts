@@ -49,6 +49,21 @@ export function resolveConfig(): Config {
     );
   }
 
+  const oidcIssuer = env('OIDC_ISSUER');
+  const oidcAudience = env('OIDC_AUDIENCE');
+  const oidcAllowAnyAudience = env('OIDC_ALLOW_ANY_AUDIENCE') === 'true';
+
+  // Audience validation is mandatory whenever OIDC is enabled. Without it the
+  // verifier accepts ANY token signed by the issuer, so a token minted for a
+  // different app on a SHARED issuer (e.g. another Entra application in the same
+  // tenant) would authenticate here — a token-confusion / confused-deputy risk
+  // (RFC 9700). Fail fast unless the operator explicitly opts out.
+  if (oidcIssuer && !oidcAudience && !oidcAllowAnyAudience) {
+    throw new Error(
+      'OIDC_ISSUER is set but OIDC_AUDIENCE is not. Audience validation is required to prevent token-confusion attacks: without it any token from the issuer is accepted regardless of its intended audience. Set OIDC_AUDIENCE to this server’s expected audience, or set OIDC_ALLOW_ANY_AUDIENCE=true to opt out explicitly (not recommended).',
+    );
+  }
+
   return {
     sapUrl,
     sapUsername,
@@ -66,8 +81,9 @@ export function resolveConfig(): Config {
     logFormat: (env('LOG_FORMAT') ?? (transport === 'http-streamable' ? 'json' : 'text')) as LogFormat,
 
     apiKeys: parseApiKeys(env('SAP_API_KEYS')),
-    oidcIssuer: env('OIDC_ISSUER'),
-    oidcAudience: env('OIDC_AUDIENCE'),
+    oidcIssuer,
+    oidcAudience,
+    oidcAllowAnyAudience,
     xsuaaBinding: parseXsuaaBinding(),
     dcrSigningSecret: env('LISA_DCR_SIGNING_SECRET'),
     oauthDcrTtlSeconds: env('SAP_OAUTH_DCR_TTL_SECONDS') ? Number(env('SAP_OAUTH_DCR_TTL_SECONDS')) : undefined,

@@ -45,7 +45,8 @@ Authentication is **active only when at least one** of the following is configur
 |----------|---------|
 | `SAP_API_KEYS` | `key:profile,key2:profile2` CSV. Profiles: `viewer`, `developer`, `admin`. |
 | `OIDC_ISSUER` | OIDC issuer URL (e.g. Entra ID `…/v2.0`). |
-| `OIDC_AUDIENCE` | Expected token audience (e.g. `api://<app-id>`). |
+| `OIDC_AUDIENCE` | Expected token audience (e.g. `api://<app-id>`). **Required** when `OIDC_ISSUER` is set — the server refuses to start without it (prevents token-confusion on shared issuers). |
+| `OIDC_ALLOW_ANY_AUDIENCE` | Set `true` to **opt out** of the mandatory audience check and start with an issuer but no `OIDC_AUDIENCE` (audience then **not** validated — discouraged; logged loudly at startup). |
 | `VCAP_SERVICES` (xsuaa) | Enables XSUAA validation on BTP. |
 
 ### OAuth / DCR (BTP)

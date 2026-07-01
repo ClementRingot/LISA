@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **OIDC audience validation is now mandatory.** When `OIDC_ISSUER` is set, `OIDC_AUDIENCE` must
+  also be set or the server **refuses to start** (it previously warned and accepted any audience).
+  Without an audience check the verifier accepts any token signed by the issuer — including one
+  minted for a different app on a **shared issuer** (e.g. another Entra application in the same
+  tenant), a token-confusion / confused-deputy risk ([RFC 9700](https://www.rfc-editor.org/rfc/rfc9700)).
+  The prior permissive behavior is still reachable, but only via the new explicit
+  `OIDC_ALLOW_ANY_AUDIENCE=true` opt-out (logged loudly at every start). Covered by new
+  `config.test.ts` cases. **Action:** OIDC deployments without `OIDC_AUDIENCE` must add it (or the
+  opt-out) before upgrading.
+
 ## [0.8.4] — 2026-06-30
 
 ### Fixed

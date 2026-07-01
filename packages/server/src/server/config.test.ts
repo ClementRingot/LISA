@@ -15,6 +15,7 @@ const TOUCHED = [
   'SAP_API_KEYS',
   'OIDC_ISSUER',
   'OIDC_AUDIENCE',
+  'OIDC_ALLOW_ANY_AUDIENCE',
   'VCAP_SERVICES',
   'CORS_ORIGINS',
   'MCP_RATE_LIMIT',
@@ -104,6 +105,40 @@ describe('resolveConfig', () => {
       process.env.VCAP_SERVICES = '{not json';
       expect(() => resolveConfig()).not.toThrow();
       expect(resolveConfig().xsuaaBinding).toBeUndefined();
+    });
+  });
+
+  describe('OIDC audience enforcement', () => {
+    it('throws when OIDC_ISSUER is set without OIDC_AUDIENCE', () => {
+      process.env.SAP_URL = 'https://sap.example.com';
+      process.env.OIDC_ISSUER = 'https://issuer.example.com/v2.0';
+      expect(() => resolveConfig()).toThrow(/OIDC_AUDIENCE/);
+    });
+
+    it('accepts OIDC_ISSUER together with OIDC_AUDIENCE', () => {
+      process.env.SAP_URL = 'https://sap.example.com';
+      process.env.OIDC_ISSUER = 'https://issuer.example.com/v2.0';
+      process.env.OIDC_AUDIENCE = 'api://lisa';
+      const c = resolveConfig();
+      expect(c.oidcIssuer).toBe('https://issuer.example.com/v2.0');
+      expect(c.oidcAudience).toBe('api://lisa');
+      expect(c.oidcAllowAnyAudience).toBe(false);
+    });
+
+    it('starts without audience only via the explicit OIDC_ALLOW_ANY_AUDIENCE opt-out', () => {
+      process.env.SAP_URL = 'https://sap.example.com';
+      process.env.OIDC_ISSUER = 'https://issuer.example.com/v2.0';
+      process.env.OIDC_ALLOW_ANY_AUDIENCE = 'true';
+      const c = resolveConfig();
+      expect(c.oidcAllowAnyAudience).toBe(true);
+      expect(c.oidcAudience).toBeUndefined();
+    });
+
+    it('does not require audience when OIDC is disabled', () => {
+      process.env.SAP_URL = 'https://sap.example.com';
+      const c = resolveConfig();
+      expect(c.oidcIssuer).toBeUndefined();
+      expect(c.oidcAllowAnyAudience).toBe(false);
     });
   });
 
