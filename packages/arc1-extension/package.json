@@ -20,7 +20,7 @@
     "arc-1": ">=0.9.20"
   },
   "devDependencies": {
-    "arc-1": "^0.9.20",
+    "arc-1": "^0.9.24",
     "typescript": "^5.7.2",
     "vitest": "^4.1.9"
   }
