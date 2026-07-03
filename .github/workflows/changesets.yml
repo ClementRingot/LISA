@@ -1,0 +1,55 @@
+name: Changesets
+
+# Fully automated release train (changesets/action), on every push to main:
+#
+#   - Pending changesets?  → opens/updates the "Version Packages" PR, which runs
+#     `npm run changeset:version` (bumps + CHANGELOGs + mirrors mta.yaml /
+#     root package.json / plugin.version + lockfile + sync check).
+#   - No pending changesets? → runs scripts/tag-missing-releases.mjs, which
+#     creates + pushes the CANONICAL tags (vX.Y.Z / arc1-extension-vX.Y.Z) for
+#     any committed version not yet tagged on origin. The pushed tags then
+#     trigger the existing publish pipelines (release-product.yml /
+#     publish-extension.yml → npm publish + GitHub release).
+#
+# So the only human step left is MERGING the Version Packages PR.
+#
+# ⚠ REQUIRES the CHANGESETS_PAT repository secret — a token with Contents:RW +
+# Pull requests:RW on this repo. Events created with the default GITHUB_TOKEN
+# do not trigger other workflows (GitHub's recursive-workflow prevention), so
+# without the PAT:
+#   - the Version PR gets NO CI runs (blocked by branch protection), and
+#   - the pushed tags do NOT trigger the publish pipelines.
+# Fallback if a tag ends up pushed without its pipeline run: manually dispatch
+# release-product.yml / publish-extension.yml on the tag ref.
+
+on:
+  push:
+    branches: [main]
+
+concurrency: changesets-main
+
+permissions:
+  contents: write # push the version branch + tags
+  pull-requests: write # open the Version Packages PR
+
+jobs:
+  changesets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          # PAT so the pushed tags / Version PR trigger the downstream workflows.
+          token: ${{ secrets.CHANGESETS_PAT || github.token }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - run: npm ci
+      - uses: changesets/action@v1
+        with:
+          version: npm run changeset:version
+          publish: node scripts/tag-missing-releases.mjs
+          commit: 'chore(release): version packages'
+          title: 'chore(release): version packages'
+        env:
+          GITHUB_TOKEN: ${{ secrets.CHANGESETS_PAT || github.token }}

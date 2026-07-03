@@ -9,6 +9,10 @@ name: Publish extension
 on:
   push:
     tags: ['arc1-extension-v*']
+  # Manual fallback: dispatch on the TAG ref (pick the tag in the Run-workflow
+  # dropdown) — e.g. when a tag was pushed with the default GITHUB_TOKEN, which
+  # does not trigger `push` workflows.
+  workflow_dispatch:
 
 permissions:
   contents: write # create the GitHub release
@@ -32,8 +36,14 @@ jobs:
         run: |
           npm run build --workspace packages/core
           npm run build --workspace packages/arc1-extension
-      - name: Publish to npm
-        run: npm publish --workspace packages/arc1-extension
+      - name: Publish to npm (skipped if the version is already published)
+        run: |
+          VERSION="${GITHUB_REF_NAME#arc1-extension-v}"
+          if npm view "@lisa-mcp/arc1-extension@${VERSION}" version >/dev/null 2>&1; then
+            echo "@lisa-mcp/arc1-extension@${VERSION} is already on npm — skipping publish."
+          else
+            npm publish --workspace packages/arc1-extension
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Create GitHub release
