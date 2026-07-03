@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **`lisa-arc1-extension` `0.1.0` → `0.2.0`.** First version bump of the ARC-1 extension since its
+  introduction, catching up its `plugin.version` (the value ARC-1 reads at load and surfaces to its
+  host/audit) with the tool-behaviour changes accumulated at `0.1.0`: the merged owner-routed
+  `cds_entity` surface (view + DDLX), strict owner routing with partial-success reads and a
+  structured set result, the `text_table` target type, and PP-only backends
+  (`SAP_BTP_PP_DESTINATION` alone). Released independently as `arc1-extension-v0.2.0`.
 - **`lisa-arc1-extension` build now emits a single self-contained ESM bundle.**
   `npm run build --workspace packages/arc1-extension` type-checks with `tsc --noEmit`, then esbuild
   bundles the plugin to `dist/index.js` with `@lisa/core` inlined and only `arc-1/public` + `zod`
