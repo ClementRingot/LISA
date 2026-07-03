@@ -55,14 +55,11 @@ perl -i -pe 's/^version:\s*.+$/version: '"$NEW"'/ if $. < 10 && /^version:/' mta
 
 node scripts/check-version-sync.mjs || err "version-sync check failed after bump"
 
-# ── 3. Roll the CHANGELOG: [Unreleased] → [X.Y.Z] — DATE, add fresh Unreleased
-DATE="$(date +%Y-%m-%d)"
-if grep -q '^## \[Unreleased\]' CHANGELOG.md; then
-  perl -i -pe 's/^## \[Unreleased\].*$/## [Unreleased]\n\n## ['"$NEW"'] — '"$DATE"'/ if !$done && /^## \[Unreleased\]/ and ($done=1)' CHANGELOG.md
-  ok "CHANGELOG: rolled [Unreleased] → [$NEW] — $DATE"
-else
-  info "no [Unreleased] section in CHANGELOG.md — add the [$NEW] section by hand"
-fi
+# ── 3. CHANGELOG: nothing to roll here anymore. The root CHANGELOG.md was
+# frozen at v0.9.0 and deleted; changelogs are generated per package by
+# Changesets (npm run changeset:version) — see docs_page/releasing.md.
+info "CHANGELOG: root file retired — per-package CHANGELOGs are rolled by Changesets"
+
 
 # ── 4. Verify the build is releasable (server + core only) ──────────────────
 info "lint / test / build (core + server)…"
@@ -72,7 +69,7 @@ npm run build --workspace packages/core --workspace packages/server
 ok "build green"
 
 # ── 5. Stage commit + annotated tag (local only — no push) ──────────────────
-git add package.json packages/server/package.json mta.yaml CHANGELOG.md
+git add package.json packages/server/package.json mta.yaml
 git commit -m "chore(release): v$NEW"
 git tag -a "v$NEW" -m "v$NEW"
 ok "committed + tagged v$NEW (local)"

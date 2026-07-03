@@ -202,9 +202,10 @@ works), the **MTA deploy template** (`templates/mta/` — deploy LISA to BTP fro
 > independent identities — only the npm name is the public distribution name.
 
 > **Legacy path — `scripts/release.sh <version>`.** Predates Changesets: it hand-bumps the three
-> product-version files and rolls the root `CHANGELOG.md`. Still usable for a **manual product-only**
-> release, but it **bypasses** the changeset flow and ignores the extension. Prefer
-> `npm run changeset:version`; never run both for the same release (they double-bump).
+> product-version files and used to roll the root `CHANGELOG.md` (deleted since — the script just
+> skips that step). Still usable for a **manual product-only** release, but it **bypasses** the
+> changeset flow and ignores the extension. Prefer `npm run changeset:version`; never run both for
+> the same release (they double-bump).
 
 ## Building a released artifact
 
@@ -269,5 +270,8 @@ still say the old version (the label would lie). `check:version` guarantees the
 Changelogs are generated from changesets, per package
 (`packages/server/CHANGELOG.md`, `packages/arc1-extension/CHANGELOG.md`) — you don't hand-edit
 them. Just make sure the **changeset summary** you write on each PR reads as a real changelog
-line, because that text is what lands verbatim. The root `CHANGELOG.md` holds the pre-Changesets
-history; new entries flow through the per-package files.
+line, because that text is what lands verbatim. Each GitHub release links to the CHANGELOG of the
+package it ships. There is no root `CHANGELOG.md` anymore: the pre-Changesets history (0.1.0 →
+0.9.0) is preserved in the
+[frozen file at the v0.9.0 tag](https://github.com/ClementRingot/LISA/blob/v0.9.0/CHANGELOG.md),
+and both per-package CHANGELOGs link to it in their footer.

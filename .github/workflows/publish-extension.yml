@@ -72,5 +72,5 @@ jobs:
           npm install @lisa-mcp/arc1-extension@${VERSION}
           \`\`\`
 
-          See [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/CHANGELOG.md) for details."
+          See the [extension CHANGELOG](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/packages/arc1-extension/CHANGELOG.md) for details."
           fi

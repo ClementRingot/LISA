@@ -16,3 +16,8 @@
 - First public npm release under `@lisa-mcp/arc1-extension`. The ARC-1 extension is now installable
   via `npm install @lisa-mcp/arc1-extension` (single self-contained ESM bundle; `arc-1` and `zod` are
   host-provided peer dependencies). Publication is automated on `arc1-extension-v*` tags.
+
+---
+
+_The extension's earlier history (0.1.0 → 0.2.0, released from the product tree) is preserved in the
+[frozen root CHANGELOG at the v0.9.0 tag](https://github.com/ClementRingot/LISA/blob/v0.9.0/CHANGELOG.md)._

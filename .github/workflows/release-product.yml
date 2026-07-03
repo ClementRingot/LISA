@@ -78,5 +78,5 @@ jobs:
           npm install @lisa-mcp/server    # or deploy to BTP from npm (templates/mta)
           \`\`\`
 
-          See [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/CHANGELOG.md) for details."
+          See the [server CHANGELOG](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/packages/server/CHANGELOG.md) for details."
           fi

@@ -11,3 +11,8 @@
   `npm install`s the published package, provisions the same XSUAA/Destination resources, and
   upgrading LISA becomes a version bump. Publication is automated: pushing a product tag `vX.Y.Z`
   now `npm publish`es the server (with provenance) before cutting the GitHub release.
+
+---
+
+_History before 0.9.0 (the pre-Changesets product changelog, 0.1.0 → 0.9.0) is preserved in the
+[frozen root CHANGELOG at the v0.9.0 tag](https://github.com/ClementRingot/LISA/blob/v0.9.0/CHANGELOG.md)._
