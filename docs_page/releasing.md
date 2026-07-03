@@ -128,6 +128,31 @@ tag can only ever point at a committed, self-consistent version.
 If you create a release by hand instead of `--release`, title it **exactly** as the table above
 (the CI release-guard fails otherwise).
 
+### Publishing the extension to npm
+
+The extension is published publicly as **`@lisa/arc1-extension`** (the product server and
+`@lisa/core` stay `private` and are never published). Publication is **fully automated**: pushing an
+`arc1-extension-vX.Y.Z` tag triggers `.github/workflows/publish-extension.yml`, which validates the
+tag↔version match, builds the bundle, and runs `npm publish` with the `NPM_TOKEN` repo secret. So the
+normal flow is simply:
+
+```bash
+npm run tag extension -- --push        # push arc1-extension-vX.Y.Z → CI publishes to npm
+```
+
+- The published tarball is the single bundled `dist/index.js` (+ map), `README.md`, `LICENSE`,
+  `package.json` — `@lisa/core` is inlined, `arc-1` and `zod` are peer deps (host-provided).
+- `npm publish` fails if the version already exists on npm, so a tag is only ever published once.
+- **Prerequisites (one-time):** the `@lisa` npm org must exist and be owned by the publisher, and the
+  `NPM_TOKEN` repository secret must be set (a granular token scoped to `@lisa/arc1-extension`,
+  *Read and write*). If the `@lisa` scope is unavailable, rename to a scope you own (e.g.
+  `@clementringot/arc1-extension`) in `packages/arc1-extension/package.json` and update
+  `EXTENSION` in `scripts/require-changeset.mjs` to match.
+
+> The **npm name** (`@lisa/arc1-extension`), the **git tag** (`arc1-extension-vX.Y.Z`), and the
+> **runtime plugin name** (`lisa-arc1-extension`, what ARC-1 registers) are three deliberately
+> independent identities — only the npm name is the public distribution name.
+
 > **Legacy path — `scripts/release.sh <version>`.** Predates Changesets: it hand-bumps the three
 > product-version files and rolls the root `CHANGELOG.md`. Still usable for a **manual product-only**
 > release, but it **bypasses** the changeset flow and ignores the extension. Prefer

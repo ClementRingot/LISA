@@ -160,12 +160,16 @@ auth stack and no second URL to operate.
 | **Standalone server** (Part 2) | You want LISA reachable as its own MCP endpoint/URL, with its own XSUAA login, independent of any ARC-1 deployment. |
 | **ARC-1 extension** (this Part) | You already run ARC-1 and want LISA's tools to appear **inside** it — reusing ARC-1's authenticated SAP client, safety ceiling, scope policy, audit, and per-user principal propagation. Two CF apps (arc1 + lisa) become **one**. |
 
+Install it from npm, or build from source:
+
 ```bash
+npm install @lisa/arc1-extension                    # → node_modules/@lisa/arc1-extension/dist/index.js
+# — or build from source —
 npm ci
 npm run build --workspace packages/arc1-extension   # → packages/arc1-extension/dist/index.js
 ```
 
-`npm run build` now bundles the plugin into a **single self-contained ESM file**
+`npm run build` bundles the plugin into a **single self-contained ESM file**
 (`packages/arc1-extension/dist/index.js`, ~24 KB) via esbuild — `@lisa/core` is inlined and only
 `arc-1/public` and `zod` stay external (both provided by the host ARC-1 process). That file is
 ready to load as-is; no manual bundling step is needed.
@@ -314,7 +318,7 @@ LISA/
 │   │       ├── handlers/ # tool registration (intent.ts), built on @lisa/core
 │   │       ├── sap/      # transport.ts (HTTP to ABAP; BTP via @arc-mcp/xsuaa-auth/btp)
 │   │       └── server/   # transport, config, logging (XSUAA OAuth via @arc-mcp/xsuaa-auth)
-│   └── arc1-extension/   # lisa-arc1-extension — the same 3 tools as an in-process ARC-1 plugin
+│   └── arc1-extension/   # @lisa/arc1-extension — the same 3 tools as an in-process ARC-1 plugin (published to npm)
 │       └── src/          # Custom_* tool defs + index.ts (loaded via ARC1_PLUGINS)
 ├── mta.yaml              # BTP MTA descriptor
 ├── xs-security.json      # XSUAA config (authentication only)

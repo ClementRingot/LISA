@@ -5,7 +5,7 @@ LISA ships in **two distributions** from the same monorepo, sharing one wire con
 
 - the **standalone MCP server** (`packages/server`) — its own Cloud Foundry app, its own XSUAA.
   See **[BTP deployment](./btp-deployment.md)**.
-- the **ARC-1 extension** (`packages/arc1-extension`, `lisa-arc1-extension`) — the same three
+- the **ARC-1 extension** (`packages/arc1-extension`, published as **`@lisa/arc1-extension`**) — the same three
   tools loaded **in-process** by an existing ARC-1 instance via `ARC1_PLUGINS`. **This page.**
 
 > **Tools.** `Custom_TranslateListLanguages`, `Custom_TranslateGetTexts`, `Custom_TranslateSetTexts`
@@ -31,18 +31,32 @@ way (see [ABAP service setup](./abap-service-setup.md)).
   ARC-1's own SAP connection (destination / Cloud Connector) must reach it.
 - Node 22 + this repo, to build the plugin bundle.
 
-## 1. Build the extension
+## 1. Get the extension bundle
+
+The extension ships as a **single self-contained ESM file** (`dist/index.js`, ~24 KB) — `@lisa/core`
+is inlined; only `arc-1/public` and `zod` stay external (both provided by the host ARC-1 process at
+runtime). Get it one of two ways:
+
+### A. From npm (recommended for consumers)
+
+```bash
+npm install @lisa/arc1-extension
+# bundle at: node_modules/@lisa/arc1-extension/dist/index.js
+```
+
+`arc-1` and `zod` are **peer dependencies** — they come from the ARC-1 host, so a standalone
+`npm install` will warn they're unmet; that's expected (ARC-1 provides them at load time).
+
+### B. Build from source (for development / pinning to a commit)
 
 ```bash
 npm ci
 npm run build --workspace packages/arc1-extension   # → packages/arc1-extension/dist/index.js
 ```
 
-`npm run build` type-checks with `tsc --noEmit`, then esbuild bundles the plugin into a **single
-self-contained ESM file** at `packages/arc1-extension/dist/index.js` (~24 KB, plus its
-`index.js.map`). `@lisa/core` is inlined into that file; only `arc-1/public` and `zod` stay external
-(both provided by the host ARC-1 process at runtime). `dist/index.js` is the sole artifact ARC-1
-loads — no separate manual bundling step is required.
+`npm run build` type-checks with `tsc --noEmit`, then esbuild bundles the plugin into `dist/index.js`
+(plus its `index.js.map`). `dist/index.js` is the sole artifact ARC-1 loads — no separate manual
+bundling step is required.
 
 ## 2. Point ARC-1 at the plugin
 

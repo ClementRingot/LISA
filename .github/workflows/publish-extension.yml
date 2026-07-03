@@ -1,0 +1,35 @@
+name: Publish extension
+
+# Publishes @lisa/arc1-extension to the public npm registry when an extension
+# release tag (arc1-extension-vX.Y.Z) is pushed. The version is validated against
+# the tag (scripts/check-release-naming.mjs) before publishing, so a mistagged or
+# drifted version can never reach npm. Requires the NPM_TOKEN repository secret.
+
+on:
+  push:
+    tags: ['arc1-extension-v*']
+
+permissions:
+  contents: read
+  id-token: write # npm provenance
+
+jobs:
+  npm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+      - run: npm ci
+      - name: Validate tag ↔ version
+        run: node scripts/check-release-naming.mjs tag "$GITHUB_REF_NAME"
+      - name: Build the bundle
+        run: npm run build --workspace packages/arc1-extension
+      - name: Publish to npm
+        run: npm publish --workspace packages/arc1-extension
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

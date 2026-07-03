@@ -1,28 +1,50 @@
 {
-  "name": "lisa-arc1-extension",
+  "name": "@lisa/arc1-extension",
   "version": "0.2.0",
-  "private": true,
   "description": "LISA SAP-translation tools packaged as an ARC-1 extension (loaded in-process via ARC1_PLUGINS)",
+  "keywords": ["arc-1", "arc1", "mcp", "sap", "translation", "i18n", "s4hana", "plugin", "extension"],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ClementRingot/LISA.git",
+    "directory": "packages/arc1-extension"
+  },
+  "homepage": "https://github.com/ClementRingot/LISA/tree/main/packages/arc1-extension#readme",
+  "bugs": "https://github.com/ClementRingot/LISA/issues",
   "type": "module",
   "main": "dist/index.js",
+  "module": "dist/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "engines": {
+    "node": ">=22"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "build": "tsc --noEmit && node esbuild.config.mjs",
+    "prepack": "npm run build",
     "test": "vitest run",
     "lint": "biome check src/",
     "clean": "rm -rf dist"
   },
-  "dependencies": {
-    "@lisa/core": "*",
+  "peerDependencies": {
+    "arc-1": ">=0.9.20",
     "zod": "^4.3.6"
   },
-  "peerDependencies": {
-    "arc-1": ">=0.9.20"
-  },
   "devDependencies": {
+    "@lisa/core": "*",
     "arc-1": "^0.9.20",
     "esbuild": "^0.28.1",
     "typescript": "^5.7.2",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.9",
+    "zod": "^4.3.6"
   }
 }

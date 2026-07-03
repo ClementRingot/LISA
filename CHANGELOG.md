@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **The ARC-1 extension is now published to npm as [`@lisa/arc1-extension`](https://www.npmjs.com/package/@lisa/arc1-extension)**
+  (public). Renamed from `lisa-arc1-extension`; the package is no longer `private`. `npm install @lisa/arc1-extension`
+  yields the single bundled `dist/index.js` — `@lisa/core` is inlined, `arc-1` and `zod` are peer
+  dependencies (host-provided). Publication is automated: pushing an `arc1-extension-vX.Y.Z` tag runs
+  `.github/workflows/publish-extension.yml`, which validates the tag↔version match and `npm publish`es
+  with the `NPM_TOKEN` secret. The git tag (`arc1-extension-v…`) and runtime plugin name
+  (`lisa-arc1-extension`) are unchanged. The product server and `@lisa/core` stay `private`.
 - **Tag & release-title conventions are now enforced, not typed.** `npm run tag <product|extension>`
   (`scripts/tag.mjs`) derives the exact tag and release title from the committed `package.json`
   via one shared convention (`scripts/lib/release-naming.mjs`) — product `vX.Y.Z` / title `vX.Y.Z`,

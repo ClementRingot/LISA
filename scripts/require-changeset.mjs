@@ -11,8 +11,8 @@
 //   2. Coverage — the changesets must bump every package whose shipped behaviour
 //      changed:
 //        - packages/server/src         → `lisa-server`
-//        - packages/arc1-extension/src → `lisa-arc1-extension`
-//        - packages/core/src           → BOTH `lisa-server` AND `lisa-arc1-extension`,
+//        - packages/arc1-extension/src → `@lisa/arc1-extension`
+//        - packages/core/src           → BOTH `lisa-server` AND `@lisa/arc1-extension`,
 //          because `@lisa/core` is bundled/inlined into BOTH artifacts, so a core
 //          change ships inside both. (`@lisa/core` is ignored by Changesets, so you
 //          never write a changeset for it — you bump its two dependents.)
@@ -29,7 +29,7 @@ import { readFileSync } from 'node:fs';
 const baseRef = process.argv[2] || process.env.CHANGESET_BASE_REF || 'origin/main';
 
 const SERVER = 'lisa-server';
-const EXTENSION = 'lisa-arc1-extension';
+const EXTENSION = '@lisa/arc1-extension';
 
 // Map a changed package directory (basename under packages/) to the released
 // package name(s) that must be bumped for it. `core` fans out to both dependents.
