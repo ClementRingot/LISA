@@ -38,8 +38,11 @@ npm ci
 npm run build --workspace packages/arc1-extension   # → packages/arc1-extension/dist/index.js
 ```
 
-`dist/index.js` (plus its `dist/**`) is the artifact ARC-1 loads. `@lisa/core` is compiled to the
-same `dist` tree; ship the whole `packages/arc1-extension/dist/` folder.
+`npm run build` type-checks with `tsc --noEmit`, then esbuild bundles the plugin into a **single
+self-contained ESM file** at `packages/arc1-extension/dist/index.js` (~24 KB, plus its
+`index.js.map`). `@lisa/core` is inlined into that file; only `arc-1/public` and `zod` stay external
+(both provided by the host ARC-1 process at runtime). `dist/index.js` is the sole artifact ARC-1
+loads — no separate manual bundling step is required.
 
 ## 2. Point ARC-1 at the plugin
 
@@ -92,18 +95,10 @@ Self-contained and version-pinned with ARC-1.
 
 ### B. Buildpack co-deploy (MTA)
 
-The plugin travels **inside ARC-1's own pushed app bits**. One catch: the raw `tsc` output
-(`packages/arc1-extension/dist/index.js`) still bare-imports `@lisa/core`, `zod`, and `arc-1/public`,
-which won't resolve once dropped next to a deployed ARC-1. **Bundle it into one self-contained file
-with esbuild**, keeping the two that must stay *shared* external:
-
-```bash
-# in the LISA repo, after `npm run build --workspace packages/arc1-extension`
-npx esbuild packages/arc1-extension/dist/index.js \
-  --bundle --format=esm --platform=node \
-  --external:zod --external:arc-1/public \
-  --outfile=dist-bundle/lisa/index.js
-```
+The plugin travels **inside ARC-1's own pushed app bits**. `npm run build` already emits a single
+self-contained `packages/arc1-extension/dist/index.js` (esbuild bundles `@lisa/core` in and keeps
+`zod` + `arc-1/public` external — see [§1](#1-build-the-extension)), so it resolves correctly once
+dropped next to a deployed ARC-1. No extra bundling step is needed:
 
 - **`arc-1/public` stays external** → resolves at runtime via ARC-1's package **self-reference**
   (`package.json` `"name":"arc-1"` + `exports["./public"]`, and the file is deployed under the app
@@ -113,12 +108,12 @@ npx esbuild packages/arc1-extension/dist/index.js \
   instance. (ARC-1 0.9.20 ships `zod@4.4.3` ≥ LISA's `^4.3.6`.)
 - **`@lisa/core` is inlined** — no reason to ship it separately.
 
-Drop the ~14 KB bundle into a folder that is part of ARC-1's app bits and **not** in the MTA module's
+Drop the ~24 KB bundle into a folder that is part of ARC-1's app bits and **not** in the MTA module's
 `ignore:` list (ARC-1 ignores `src/`, `tests/`, `node_modules/`, … but not an arbitrary `plugins/`):
 
 ```bash
 # on the ARC-1 side
-mkdir -p plugins/lisa && cp /path/to/LISA/dist-bundle/lisa/index.js plugins/lisa/index.js
+mkdir -p plugins/lisa && cp /path/to/LISA/packages/arc1-extension/dist/index.js plugins/lisa/index.js
 ```
 
 Then set the env on the ARC-1 side (`mta-overrides-*.mtaext` or `cf set-env`) and deploy:

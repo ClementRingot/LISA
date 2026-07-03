@@ -165,6 +165,11 @@ npm ci
 npm run build --workspace packages/arc1-extension   # → packages/arc1-extension/dist/index.js
 ```
 
+`npm run build` now bundles the plugin into a **single self-contained ESM file**
+(`packages/arc1-extension/dist/index.js`, ~24 KB) via esbuild — `@lisa/core` is inlined and only
+`arc-1/public` and `zod` stay external (both provided by the host ARC-1 process). That file is
+ready to load as-is; no manual bundling step is needed.
+
 Point an existing ARC-1 instance at the built plugin (env vars on the **ARC-1 side**):
 
 ```bash

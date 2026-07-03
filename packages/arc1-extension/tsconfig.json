@@ -11,7 +11,6 @@
     "noUnusedParameters": true,
     "noImplicitReturns": true,
     "isolatedModules": true,
-    "declaration": true,
     "sourceMap": true,
     "esModuleInterop": true,
     "skipLibCheck": true

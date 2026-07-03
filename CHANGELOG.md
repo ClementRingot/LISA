@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **`lisa-arc1-extension` build now emits a single self-contained ESM bundle.**
+  `npm run build --workspace packages/arc1-extension` type-checks with `tsc --noEmit`, then esbuild
+  bundles the plugin to `dist/index.js` with `@lisa/core` inlined and only `arc-1/public` + `zod`
+  external (both provided by the host ARC-1 process). The deployable artifact is produced directly —
+  the previous manual `npx esbuild` step in the deployment guide is no longer needed.
+
+### Security
+- Bump `form-data` 4.0.5 → 4.0.6 to patch a HIGH-severity CRLF injection advisory
+  ([GHSA-hmw2-7cc7-3qxx](https://github.com/advisories/GHSA-hmw2-7cc7-3qxx)), pulled in transitively
+  via `arc-1 → @sap-cloud-sdk/connectivity → axios`. `npm audit` now reports 0 vulnerabilities.
+
 ## [0.8.5] — 2026-07-01
 
 ### Changed
