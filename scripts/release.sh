@@ -4,7 +4,7 @@
 # bypasses the changeset flow and does NOT touch the extension; do not run both for one release.
 #
 # Cut a LISA release: bump the synced version across the files that carry it,
-# roll the CHANGELOG, build/lint/test, and stage a release commit + tag.
+# build/lint/test, and stage a release commit + tag.
 #
 # It does NOT push. The last thing it prints is the exact `git push` command,
 # so you review the diff and tag first.

@@ -300,12 +300,15 @@ The [`docs_page/`](./docs_page) folder holds the long-form guides:
 | [Quickstart](./docs_page/quickstart.md) | Fastest path to a working setup. |
 | [ABAP service setup](./docs_page/abap-service-setup.md) | Import the class & publish the HTTP service. |
 | [MCP tools usage](./docs_page/mcp-usage.md) | Every tool, with examples. |
+| [Text tables](./docs_page/text-table.md) | Translating delivery-class C/S tables (`text_table`, e.g. `T005T`). |
 | [Configuration reference](./docs_page/configuration-reference.md) | All env vars in detail. |
 | [Authentication](./docs_page/authentication.md) | Auth model & options. |
 | [BTP deployment](./docs_page/btp-deployment.md) | Cloud Foundry / MTA (standalone server). |
 | [ARC-1 extension deployment](./docs_page/arc1-extension-deployment.md) | Run LISA's tools in-process inside ARC-1. |
 | [Local development](./docs_page/local-development.md) | Dev loop, lint, build. |
 | [Architecture](./docs_page/architecture.md) | How the pieces fit together. |
+| [Wire-contract evolution](./docs_page/wire-contract-evolution.md) | Growing the contract as XCO APIs diverge per platform. |
+| [Releasing](./docs_page/releasing.md) | Changesets, tags, npm publication, which ref to deploy. |
 
 ---
 

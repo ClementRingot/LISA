@@ -208,7 +208,7 @@ The on-premise template ([`mta-overrides-onpremise.mtaext.example`](../packages/
 
 ```bash
 npm run build --workspace packages/core --workspace packages/server   # server bundles @lisa-mcp/core into its dist
-mbt build            # → mta_archives/lisa_0.6.0.mtar (matches the version in mta.yaml)
+mbt build            # → mta_archives/lisa_<version>.mtar (matches the version in mta.yaml)
 ```
 
 `mbt build` doesn't need this first command — it runs its own build inside `mta.yaml`'s `build-parameters` — but running it locally first lets you catch errors before packaging. Only `packages/core` and `packages/server` are built for the standalone deploy; `packages/arc1-extension` is a separate distribution (see [ARC-1 extension deployment](./arc1-extension-deployment.md)) and isn't part of this artifact.
@@ -217,7 +217,7 @@ mbt build            # → mta_archives/lisa_0.6.0.mtar (matches the version in 
 
 ```bash
 cf login              # target the right org/space
-cf deploy mta_archives/lisa_0.6.0.mtar -e mta-overrides-dev.mtaext
+cf deploy mta_archives/lisa_<version>.mtar -e mta-overrides-dev.mtaext
 ```
 
 Or in one step from npm: `npm run btp:build-deploy-dev` (builds the `.mtar` and deploys it with the extension applied); use `btp:build-deploy-sbx` for the sandbox landscape. Omit `-e mta-overrides-dev.mtaext` / use `npm run btp:build-deploy` to deploy on the auto-assigned default host.

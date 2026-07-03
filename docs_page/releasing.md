@@ -17,7 +17,7 @@ always agree:
 | `packages/server/package.json` | the deployable server |
 | `mta.yaml` | the label baked into the `.mtar` (`lisa_X.Y.Z.mtar`) |
 
-`@lisa-mcp/core` and `lisa-arc1-extension` are **versioned independently** — they're
+`@lisa-mcp/core` and `@lisa-mcp/arc1-extension` are **versioned independently** — they're
 separate distributions, not part of the product version. The extension has its
 own release line, tagged **`arc1-extension-vX.Y.Z`** (distinct from the product
 `vX.Y.Z` namespace). `@lisa-mcp/core` is private and consumed only via the `"*"`
@@ -56,8 +56,8 @@ npx changeset               # pick package(s) + patch/minor/major, write a summa
 ```
 
 - Bumping **`@lisa-mcp/server`** drives the **product** version (`vX.Y.Z`).
-- Bumping **`lisa-arc1-extension`** drives the **extension** version (`arc1-extension-vX.Y.Z`).
-- **Changing `@lisa-mcp/core` requires bumping BOTH** `@lisa-mcp/server` **and** `lisa-arc1-extension`.
+- Bumping **`@lisa-mcp/arc1-extension`** drives the **extension** version (`arc1-extension-vX.Y.Z`).
+- **Changing `@lisa-mcp/core` requires bumping BOTH** `@lisa-mcp/server` **and** `@lisa-mcp/arc1-extension`.
   `@lisa-mcp/core` is bundled/inlined into both artifacts, so a core change ships inside both — the
   guard fails a core-source change that doesn't cover both dependents. You never write a changeset
   for `@lisa-mcp/core` itself (it's ignored by Changesets); you bump its two dependents.
@@ -209,11 +209,11 @@ works), the **MTA deploy template** (`templates/mta/` — deploy LISA to BTP fro
 
 ## Building a released artifact
 
-Build from the **tag**, so the `.mtar`'s `0.7.0` label is truthful:
+Build from the **tag**, so the `.mtar`'s version label is truthful:
 
 ```bash
-git checkout v0.7.0
-mbt build                 # → mta_archives/lisa_0.7.0.mtar
+git checkout vX.Y.Z
+mbt build                 # → mta_archives/lisa_X.Y.Z.mtar
 ```
 
 See [BTP deployment](./btp-deployment.md) for the deploy itself.
@@ -255,7 +255,7 @@ cf target -o <org> -s <prod-space>        # confirm you're on prod
 npm run btp:build-deploy-prod             # mbt build + cf deploy -e …-prod.mtaext
 ```
 
-Building from the tag is what makes the `.mtar` name (`lisa_0.7.0.mtar`) and the
+Building from the tag is what makes the `.mtar` name (`lisa_X.Y.Z.mtar`) and the
 deploy command's `$npm_package_version` agree — on `main` past the tag they'd
 still say the old version (the label would lie). `check:version` guarantees the
 `.mtar` label and `package.json` always match at a given ref.
