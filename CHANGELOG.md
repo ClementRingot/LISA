@@ -8,8 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **The ARC-1 extension is now published to npm as [`@lisa/arc1-extension`](https://www.npmjs.com/package/@lisa/arc1-extension)**
-  (public). Renamed from `lisa-arc1-extension`; the package is no longer `private`. `npm install @lisa/arc1-extension`
+- **The ARC-1 extension is now published to npm as [`@lisa-mcp/arc1-extension`](https://www.npmjs.com/package/@lisa-mcp/arc1-extension)**
+  (public). Renamed from `lisa-arc1-extension`; the package is no longer `private`. `npm install @lisa-mcp/arc1-extension`
   yields the single bundled `dist/index.js` — `@lisa/core` is inlined, `arc-1` and `zod` are peer
   dependencies (host-provided). Publication is automated: pushing an `arc1-extension-vX.Y.Z` tag runs
   `.github/workflows/publish-extension.yml`, which validates the tag↔version match and `npm publish`es

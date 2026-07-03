@@ -163,7 +163,7 @@ auth stack and no second URL to operate.
 Install it from npm, or build from source:
 
 ```bash
-npm install @lisa/arc1-extension                    # → node_modules/@lisa/arc1-extension/dist/index.js
+npm install @lisa-mcp/arc1-extension                    # → node_modules/@lisa-mcp/arc1-extension/dist/index.js
 # — or build from source —
 npm ci
 npm run build --workspace packages/arc1-extension   # → packages/arc1-extension/dist/index.js
@@ -318,7 +318,7 @@ LISA/
 │   │       ├── handlers/ # tool registration (intent.ts), built on @lisa/core
 │   │       ├── sap/      # transport.ts (HTTP to ABAP; BTP via @arc-mcp/xsuaa-auth/btp)
 │   │       └── server/   # transport, config, logging (XSUAA OAuth via @arc-mcp/xsuaa-auth)
-│   └── arc1-extension/   # @lisa/arc1-extension — the same 3 tools as an in-process ARC-1 plugin (published to npm)
+│   └── arc1-extension/   # @lisa-mcp/arc1-extension — the same 3 tools as an in-process ARC-1 plugin (published to npm)
 │       └── src/          # Custom_* tool defs + index.ts (loaded via ARC1_PLUGINS)
 ├── mta.yaml              # BTP MTA descriptor
 ├── xs-security.json      # XSUAA config (authentication only)

@@ -1,4 +1,4 @@
-# @lisa/arc1-extension
+# @lisa-mcp/arc1-extension
 
 LISA's SAP object-translation tools, packaged as an **[ARC-1](https://github.com/arc-mcp/arc-1) extension** —
 loaded **in-process** by an ARC-1 instance so they reuse its authenticated SAP client, safety ceiling,
@@ -11,7 +11,7 @@ sharing `@lisa/core`.
 ## Install
 
 ```bash
-npm install @lisa/arc1-extension
+npm install @lisa-mcp/arc1-extension
 ```
 
 The published artifact is a **single self-contained ESM bundle** at `dist/index.js`
@@ -25,7 +25,7 @@ ARC-1 loads code plugins from `ARC1_PLUGINS` — a CSV of **absolute** paths to 
 Point it at the installed bundle:
 
 ```bash
-ARC1_PLUGINS=/abs/path/to/node_modules/@lisa/arc1-extension/dist/index.js
+ARC1_PLUGINS=/abs/path/to/node_modules/@lisa-mcp/arc1-extension/dist/index.js
 SAP_ALLOW_WRITES=true
 SAP_ALLOW_PLUGIN_RAW_WRITES=true        # all three tools POST → require the raw-write opt-in
 SAP_I18N_SERVICE_PATH=/sap/bc/http/sap/zi18n_service   # optional override

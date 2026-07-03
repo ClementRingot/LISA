@@ -1,6 +1,6 @@
 name: Publish extension
 
-# Publishes @lisa/arc1-extension to the public npm registry when an extension
+# Publishes @lisa-mcp/arc1-extension to the public npm registry when an extension
 # release tag (arc1-extension-vX.Y.Z) is pushed. The version is validated against
 # the tag (scripts/check-release-naming.mjs) before publishing, so a mistagged or
 # drifted version can never reach npm. Requires the NPM_TOKEN repository secret.

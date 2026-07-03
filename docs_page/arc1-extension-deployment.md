@@ -5,7 +5,7 @@ LISA ships in **two distributions** from the same monorepo, sharing one wire con
 
 - the **standalone MCP server** (`packages/server`) — its own Cloud Foundry app, its own XSUAA.
   See **[BTP deployment](./btp-deployment.md)**.
-- the **ARC-1 extension** (`packages/arc1-extension`, published as **`@lisa/arc1-extension`**) — the same three
+- the **ARC-1 extension** (`packages/arc1-extension`, published as **`@lisa-mcp/arc1-extension`**) — the same three
   tools loaded **in-process** by an existing ARC-1 instance via `ARC1_PLUGINS`. **This page.**
 
 > **Tools.** `Custom_TranslateListLanguages`, `Custom_TranslateGetTexts`, `Custom_TranslateSetTexts`
@@ -40,8 +40,8 @@ runtime). Get it one of two ways:
 ### A. From npm (recommended for consumers)
 
 ```bash
-npm install @lisa/arc1-extension
-# bundle at: node_modules/@lisa/arc1-extension/dist/index.js
+npm install @lisa-mcp/arc1-extension
+# bundle at: node_modules/@lisa-mcp/arc1-extension/dist/index.js
 ```
 
 `arc-1` and `zod` are **peer dependencies** — they come from the ARC-1 host, so a standalone
