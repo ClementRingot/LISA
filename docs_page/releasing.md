@@ -57,6 +57,10 @@ npx changeset               # pick package(s) + patch/minor/major, write a summa
 
 - Bumping **`lisa-server`** drives the **product** version (`vX.Y.Z`).
 - Bumping **`lisa-arc1-extension`** drives the **extension** version (`arc1-extension-vX.Y.Z`).
+- **Changing `@lisa/core` requires bumping BOTH** `lisa-server` **and** `lisa-arc1-extension`.
+  `@lisa/core` is bundled/inlined into both artifacts, so a core change ships inside both — the
+  guard fails a core-source change that doesn't cover both dependents. You never write a changeset
+  for `@lisa/core` itself (it's ignored by Changesets); you bump its two dependents.
 - A genuinely release-irrelevant source change (comments, build-only tweak) is recorded with an
   **empty** changeset so the guard still passes: `npx changeset add --empty`.
 
