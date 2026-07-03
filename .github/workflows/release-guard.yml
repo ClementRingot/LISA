@@ -1,0 +1,39 @@
+name: Release guard
+
+# Enforces the repo's tag + release-title conventions
+# (scripts/lib/release-naming.mjs) at the moment a tag or release appears —
+# the backstop behind scripts/tag.mjs, catching anything created by hand.
+
+on:
+  push:
+    tags: ['**']
+  release:
+    types: [created, edited, released, published]
+
+jobs:
+  tag-name:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Validate tag name + version match
+        run: node scripts/check-release-naming.mjs tag "$GITHUB_REF_NAME"
+
+  release-title:
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Validate release title is canonical
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+          TITLE: ${{ github.event.release.name }}
+        run: node scripts/check-release-naming.mjs title "$TAG" "$TITLE"

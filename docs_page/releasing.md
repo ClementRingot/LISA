@@ -92,19 +92,41 @@ npm run lint && npm test && npm run build
 git add -A && git commit -m "chore(release): version packages"
 ```
 
-Then tag **only the cadences that actually moved**, with the matching namespace, and push:
+Then tag **only the cadences that actually moved** — never hand-type the tag or the
+release title. `npm run tag` derives both from the version already committed, using the
+one convention in `scripts/lib/release-naming.mjs`:
 
 ```bash
-# product moved:
-git tag -a "v$(node -p "require('./packages/server/package.json').version")" -m "product release"
-# extension moved:
-git tag -a "arc1-extension-v$(node -p "require('./packages/arc1-extension/package.json').version")" -m "extension release"
+npm run tag product              # → tag v0.8.5            title "v0.8.5"
+npm run tag extension            # → tag arc1-extension-v0.2.0  title "lisa-arc1-extension v0.2.0"
+npm run tag product -- --headline "Batch CDS translations"   # title "v0.8.5 — Batch CDS translations"
 
-git push origin main --follow-tags
+# add --push to push the tag, and --release to also open the GitHub release with the canonical title:
+npm run tag product -- --push --release
+git push origin main             # push the release commit itself
 ```
 
-Create the GitHub release(s) from the matching tag, using the freshly rolled
-`packages/*/CHANGELOG.md` section as the body.
+The generator refuses a dirty tree, an existing tag, or a version-sync mismatch, so a
+tag can only ever point at a committed, self-consistent version.
+
+### Tag & release-title conventions (enforced three ways)
+
+| Cadence | Tag | Release title |
+|---------|-----|---------------|
+| product | `vX.Y.Z` | `vX.Y.Z`[` — headline`] |
+| extension | `arc1-extension-vX.Y.Z` | `lisa-arc1-extension vX.Y.Z`[` — headline`] |
+
+1. **Generated, not typed** — `npm run tag <product\|extension>` builds the exact tag +
+   title from `package.json`; a typo or a tag↔version drift is impossible by construction.
+2. **CI backstop** — `.github/workflows/release-guard.yml` runs `scripts/check-release-naming.mjs`
+   on every pushed tag (name + version match) and every release (title is canonical), catching
+   anything created by hand.
+3. **Server-side ruleset** — a GitHub *tag* ruleset ("Tag naming convention") restricts tag
+   *creation* to the `v…` and `arc1-extension-v…` prefixes, so a malformed tag is rejected at
+   push time before it enters the repo.
+
+If you create a release by hand instead of `--release`, title it **exactly** as the table above
+(the CI release-guard fails otherwise).
 
 > **Legacy path — `scripts/release.sh <version>`.** Predates Changesets: it hand-bumps the three
 > product-version files and rolls the root `CHANGELOG.md`. Still usable for a **manual product-only**

@@ -25,6 +25,8 @@
     "changeset": "changeset",
     "changeset:version": "changeset version && node scripts/sync-versions-after-changeset.mjs && npm install --package-lock-only && node scripts/check-version-sync.mjs",
     "changeset:check": "node scripts/require-changeset.mjs",
+    "tag": "node scripts/tag.mjs",
+    "tag:check": "node scripts/check-release-naming.mjs",
     "release": "./scripts/release.sh",
     "btp:build": "mbt build",
     "btp:deploy": "cf deploy mta_archives/lisa_$npm_package_version.mtar",

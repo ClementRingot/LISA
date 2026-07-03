@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Tag & release-title conventions are now enforced, not typed.** `npm run tag <product|extension>`
+  (`scripts/tag.mjs`) derives the exact tag and release title from the committed `package.json`
+  via one shared convention (`scripts/lib/release-naming.mjs`) — product `vX.Y.Z` / title `vX.Y.Z`,
+  extension `arc1-extension-vX.Y.Z` / title `lisa-arc1-extension vX.Y.Z`. A CI *Release guard*
+  (`.github/workflows/release-guard.yml` + `scripts/check-release-naming.mjs`) validates every
+  pushed tag (name + version match) and every release title, and a GitHub *tag ruleset* rejects
+  malformed tag creation server-side. See [docs: Releasing](./docs_page/releasing.md).
+
 ### Changed
 - **Version bumps are now driven by [Changesets](https://github.com/changesets/changesets).**
   Every PR that changes shipped package source must add a changeset (`npx changeset`) or CI fails
