@@ -39,15 +39,25 @@ const DIR_TO_REQUIRED = {
   core: [SERVER, EXTENSION],
 };
 
-function diffNames(base) {
+// `--name-status` so a DELETED changeset (a version PR consuming it) is
+// distinguishable from an ADDED one — reading a deleted path would ENOENT.
+// Rename lines are `R<score>\told\tnew`; the last field is the current path.
+function diffEntries(base) {
+  const run = (ref) => execFileSync('git', ['diff', '--name-status', ref], { encoding: 'utf8' });
+  let out;
   try {
-    return execFileSync('git', ['diff', '--name-only', `${base}...HEAD`], { encoding: 'utf8' })
-      .split('\n')
-      .filter(Boolean);
+    out = run(`${base}...HEAD`);
   } catch {
     // Fallback for shallow checkouts where the three-dot merge-base is unavailable.
-    return execFileSync('git', ['diff', '--name-only', base], { encoding: 'utf8' }).split('\n').filter(Boolean);
+    out = run(base);
   }
+  return out
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => {
+      const parts = line.split('\t');
+      return { status: parts[0][0], path: parts[parts.length - 1] };
+    });
 }
 
 const isPackageSource = (f) => /^packages\/[^/]+\/src\/.+/.test(f) && !/\.test\.tsx?$/.test(f);
@@ -69,12 +79,26 @@ function parseChangeset(path) {
   return { packages, empty: false };
 }
 
-const files = diffNames(baseRef);
-const sourceChanges = files.filter(isPackageSource);
-const changesetPaths = files.filter(isChangeset);
+const entries = diffEntries(baseRef);
+const sourceChanges = entries.map((e) => e.path).filter(isPackageSource);
+// Added/modified changesets are the PR's declared bumps; deleted ones were
+// CONSUMED by `changeset version` (a version PR) and no longer exist on disk.
+const changesetPaths = entries.filter((e) => isChangeset(e.path) && e.status !== 'D').map((e) => e.path);
+const consumedChangesets = entries.filter((e) => isChangeset(e.path) && e.status === 'D').map((e) => e.path);
 
 if (sourceChanges.length === 0) {
   console.log(`✓ no shipped package source changed vs ${baseRef} — changeset not required`);
+  process.exit(0);
+}
+
+// A version PR (`npm run changeset:version`) deletes the changesets it applies
+// and touches package source only through the version mirrors (e.g. the
+// extension's `plugin.version` in src/index.ts). That's the release itself —
+// no new changeset is required.
+if (changesetPaths.length === 0 && consumedChangesets.length > 0) {
+  console.log(
+    `✓ version PR: ${consumedChangesets.length} changeset(s) consumed by \`changeset version\` — no new changeset required`,
+  );
   process.exit(0);
 }
 
