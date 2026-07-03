@@ -41,7 +41,7 @@ If this works but the MCP tool doesn't, the problem is in the server config (pat
 
 ```
 packages/
-├── core/                         # @lisa/core — transport-agnostic wire contract
+├── core/                         # @lisa-mcp/core — transport-agnostic wire contract
 │   └── src/
 │       ├── wire.ts               # I18nTransport port + I18nCore (wire logic, ZCL_I18N_SERVICE mirror)
 │       ├── schemas.ts            # Zod schemas + tool metadata (the 3 tools)
@@ -50,7 +50,7 @@ packages/
 │   └── src/
 │       ├── index.ts              # entry point: resolveConfig → initLogger → start server
 │       ├── handlers/
-│       │   └── intent.ts         # registers tools on the MCP server, built on @lisa/core
+│       │   └── intent.ts         # registers tools on the MCP server, built on @lisa-mcp/core
 │       ├── sap/
 │       │   └── transport.ts      # btpTransport: HTTP to ABAP; BTP via @arc-mcp/xsuaa-auth/btp
 │       └── server/

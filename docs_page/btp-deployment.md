@@ -207,7 +207,7 @@ The on-premise template ([`mta-overrides-onpremise.mtaext.example`](../mta-overr
 ## 3. Build
 
 ```bash
-npm run build --workspace packages/core --workspace packages/server   # server bundles @lisa/core into its dist
+npm run build --workspace packages/core --workspace packages/server   # server bundles @lisa-mcp/core into its dist
 mbt build            # → mta_archives/lisa_0.6.0.mtar (matches the version in mta.yaml)
 ```
 

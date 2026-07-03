@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@arc-mcp/xsuaa-auth": "^0.1.4",
-    "@lisa/core": "*",
+    "@lisa-mcp/core": "*",
     "@modelcontextprotocol/sdk": "^1.18.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

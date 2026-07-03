@@ -3,10 +3,10 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   resolve: {
-    // Resolve @lisa/core to its TS source, not its built dist/, so tests don't depend on a
+    // Resolve @lisa-mcp/core to its TS source, not its built dist/, so tests don't depend on a
     // prior `tsc` build of core (CI runs `test` before `build`).
     alias: {
-      '@lisa/core': fileURLToPath(new URL('../core/src/index.ts', import.meta.url)),
+      '@lisa-mcp/core': fileURLToPath(new URL('../core/src/index.ts', import.meta.url)),
     },
   },
   test: {

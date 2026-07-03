@@ -1,12 +1,14 @@
 # @lisa-mcp/arc1-extension
 
+[![npm](https://img.shields.io/npm/v/@lisa-mcp/arc1-extension?label=%40lisa-mcp%2Farc1-extension&logo=npm)](https://www.npmjs.com/package/@lisa-mcp/arc1-extension)
+
 LISA's SAP object-translation tools, packaged as an **[ARC-1](https://github.com/arc-mcp/arc-1) extension** —
 loaded **in-process** by an ARC-1 instance so they reuse its authenticated SAP client, safety ceiling,
 scope policy, audit trail, and per-user principal propagation. No second auth stack, no second deployment.
 
 Three tools are exposed: `Custom_TranslateListLanguages`, `Custom_TranslateGetTexts`,
 `Custom_TranslateSetTexts` — the same wire contract as the standalone [LISA MCP server](https://github.com/ClementRingot/LISA),
-sharing `@lisa/core`.
+sharing `@lisa-mcp/core`.
 
 ## Install
 
@@ -15,7 +17,7 @@ npm install @lisa-mcp/arc1-extension
 ```
 
 The published artifact is a **single self-contained ESM bundle** at `dist/index.js`
-(`@lisa/core` is inlined). `arc-1` and `zod` are **peer dependencies**: they are provided by the
+(`@lisa-mcp/core` is inlined). `arc-1` and `zod` are **peer dependencies**: they are provided by the
 host ARC-1 process at runtime — `zod` in particular MUST resolve to ARC-1's own instance, since its
 registry runs `z.toJSONSchema()` on the tool schemas and plugin + registry have to share one zod.
 

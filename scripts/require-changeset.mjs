@@ -13,8 +13,8 @@
 //        - packages/server/src         → `lisa-server`
 //        - packages/arc1-extension/src → `@lisa-mcp/arc1-extension`
 //        - packages/core/src           → BOTH `lisa-server` AND `@lisa-mcp/arc1-extension`,
-//          because `@lisa/core` is bundled/inlined into BOTH artifacts, so a core
-//          change ships inside both. (`@lisa/core` is ignored by Changesets, so you
+//          because `@lisa-mcp/core` is bundled/inlined into BOTH artifacts, so a core
+//          change ships inside both. (`@lisa-mcp/core` is ignored by Changesets, so you
 //          never write a changeset for it — you bump its two dependents.)
 //
 // Escape hatch: a genuinely release-irrelevant source change (pure comments, a

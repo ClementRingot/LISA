@@ -1,4 +1,4 @@
-import type { I18nHttpResponse, I18nTransport, WireAction } from '@lisa/core';
+import type { I18nHttpResponse, I18nTransport, WireAction } from '@lisa-mcp/core';
 import type { SafeHttpClient } from 'arc-1/public';
 
 /**

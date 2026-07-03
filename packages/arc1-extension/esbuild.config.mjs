@@ -1,7 +1,7 @@
 import { build } from 'esbuild';
 
 // ARC-1 loads a code plugin as a SINGLE .js file and cannot resolve workspace symlinks
-// (@lisa/core) or the plugin's runtime node_modules. We bundle @lisa/core straight into
+// (@lisa-mcp/core) or the plugin's runtime node_modules. We bundle @lisa-mcp/core straight into
 // dist/index.js and keep external only the two packages the host ARC-1 process provides:
 //   - arc-1/public → resolved via ARC-1's package self-reference (defineTool / OperationType).
 //   - zod          → MUST stay the host's instance: ARC-1's registry runs z.toJSONSchema() on

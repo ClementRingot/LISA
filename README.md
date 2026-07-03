@@ -1,5 +1,7 @@
 # LISA — Localization & Internationalization Service for ABAP
 
+[![npm](https://img.shields.io/npm/v/@lisa-mcp/arc1-extension?label=%40lisa-mcp%2Farc1-extension&logo=npm)](https://www.npmjs.com/package/@lisa-mcp/arc1-extension)
+
 > Let AI assistants read, write and compare **SAP object translations** through a single, secure MCP server.
 
 **LISA** (Localization & Internationalization Service for ABAP) is a [Model Context Protocol](https://modelcontextprotocol.io) (MCP) server that lets AI assistants (Claude, Cursor, VS Code, …) manage the translation of SAP repository objects — data elements, domains, CDS views, message classes, class/function-group text pools, and more — without leaving the chat.
@@ -13,7 +15,9 @@ handler — pick whichever fits how you already run things:
   production-supported path. → [Part 2](#part-2--deploy-to-sap-btp-recommended).
 - **ARC-1 extension** — if you already run [ARC-1](https://github.com/arc-mcp/arc-1), load LISA's 3
   tools **in-process** instead: no second app, no second URL, no second XSUAA — you reuse ARC-1's
-  authenticated SAP client and per-user principal propagation. → [Part 3](#part-3--use-as-an-arc-1-extension).
+  authenticated SAP client and per-user principal propagation. Published on npm as
+  [`@lisa-mcp/arc1-extension`](https://www.npmjs.com/package/@lisa-mcp/arc1-extension).
+  → [Part 3](#part-3--use-as-an-arc-1-extension).
 
 Running it **locally** ([Part 4](#part-4--run-locally-development--testing)) is also fully
 supported, but meant for development and testing, not production.
@@ -74,7 +78,7 @@ This is the **full catalog** of object types LISA understands — XCO **semantic
 
 ## Use it alongside an ADT MCP server
 
-`LISA` is focused on the **translation** step — it deliberately does *not* discover objects or manage transports. For an interactive, AI-driven workflow it is designed to be used **next to an ADT MCP server** (e.g. [ARC-1](https://github.com/arc-mcp/arc-1)), which provides the surrounding capabilities:
+`LISA` is focused on the **translation** step — it deliberately does *not* discover objects or manage transports. For an interactive, AI-driven workflow it is designed to be used **next to an ADT MCP server** — SAP's own [**ABAP MCP Server**](https://community.sap.com/t5/technology-blog-posts-by-sap/entering-the-new-era-of-agentic-ai-for-abap-development/ba-p/14394643) shipped with ADT for VS Code, or [ARC-1](https://github.com/arc-mcp/arc-1) — which provides the surrounding capabilities:
 
 - **object discovery** — find the data element / CDS view / message class to translate;
 - **transport handling** — locate or create the transport request that `TranslateSetTexts` requires;
@@ -170,7 +174,7 @@ npm run build --workspace packages/arc1-extension   # → packages/arc1-extensio
 ```
 
 `npm run build` bundles the plugin into a **single self-contained ESM file**
-(`packages/arc1-extension/dist/index.js`, ~24 KB) via esbuild — `@lisa/core` is inlined and only
+(`packages/arc1-extension/dist/index.js`, ~24 KB) via esbuild — `@lisa-mcp/core` is inlined and only
 `arc-1/public` and `zod` stay external (both provided by the host ARC-1 process). That file is
 ready to load as-is; no manual bundling step is needed.
 
@@ -310,12 +314,12 @@ LISA/
 ├── docs_page/            # long-form documentation
 ├── roadmap/              # forward-looking design docs (planned, not implemented)
 ├── packages/
-│   ├── core/             # @lisa/core — transport-agnostic wire contract (Zod schemas + ZCL_I18N_SERVICE wire logic)
+│   ├── core/             # @lisa-mcp/core — transport-agnostic wire contract (Zod schemas + ZCL_I18N_SERVICE wire logic)
 │   │   └── src/          # wire.ts, schemas.ts, index.ts
 │   ├── server/           # standalone MCP server (deployable on BTP)
 │   │   └── src/
 │   │       ├── index.ts  # entry point
-│   │       ├── handlers/ # tool registration (intent.ts), built on @lisa/core
+│   │       ├── handlers/ # tool registration (intent.ts), built on @lisa-mcp/core
 │   │       ├── sap/      # transport.ts (HTTP to ABAP; BTP via @arc-mcp/xsuaa-auth/btp)
 │   │       └── server/   # transport, config, logging (XSUAA OAuth via @arc-mcp/xsuaa-auth)
 │   └── arc1-extension/   # @lisa-mcp/arc1-extension — the same 3 tools as an in-process ARC-1 plugin (published to npm)

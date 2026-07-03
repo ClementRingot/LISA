@@ -1,4 +1,4 @@
-import { CDS_ENTITY_TARGET, GetTextsSchema, I18nCore, TOOLS, narrowListTexts } from '@lisa/core';
+import { CDS_ENTITY_TARGET, GetTextsSchema, I18nCore, TOOLS, narrowListTexts } from '@lisa-mcp/core';
 import { OperationType, defineTool } from 'arc-1/public';
 import { ctxHttpTransport } from '../transport.js';
 

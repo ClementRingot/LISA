@@ -14,7 +14,7 @@
 //          ARC-1 actually reads at load time and surfaces to its host/audit)
 //      These can drift silently; that's the bug this guards.
 //
-// `@lisa/core` is deliberately NOT checked: it's private, never published, and
+// `@lisa-mcp/core` is deliberately NOT checked: it's private, never published, and
 // consumed only via the `"*"` workspace range, so its `version` field is inert.
 //
 // Run standalone (`node scripts/check-version-sync.mjs`) or via `npm run
