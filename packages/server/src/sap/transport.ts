@@ -1,5 +1,5 @@
 /**
- * BTP / principal-propagation implementation of the `@lisa/core` `I18nTransport` seam.
+ * BTP / principal-propagation implementation of the `@lisa-mcp/core` `I18nTransport` seam.
  *
  * The service must be registered as an ABAP HTTP Service on the SAP system.
  * By default the path is /sap/bc/http/sap/zi18n_service but it is overridable
@@ -14,7 +14,7 @@ import {
   lookupDestinationWithUserToken,
   parseVCAPServices,
 } from '@arc-mcp/xsuaa-auth/btp';
-import type { I18nHttpResponse, I18nTransport } from '@lisa/core';
+import type { I18nHttpResponse, I18nTransport } from '@lisa-mcp/core';
 import { Client, type Dispatcher, fetch as undiciFetch } from 'undici';
 import { toPackageLogger } from '../server/logger.js';
 import type { Config } from '../server/types.js';
@@ -205,7 +205,7 @@ async function sapRequest(
   return { status: resp.status, body: await resp.text() };
 }
 
-/** Builds the `I18nTransport` the `@lisa/core` `I18nCore` posts wire actions through. */
+/** Builds the `I18nTransport` the `@lisa-mcp/core` `I18nCore` posts wire actions through. */
 export function btpTransport(config: Config, userJwt?: string): I18nTransport {
   return {
     async post(action, jsonBody) {

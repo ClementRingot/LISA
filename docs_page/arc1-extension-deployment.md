@@ -1,7 +1,7 @@
 # Deploying LISA as an ARC-1 extension
 
 LISA ships in **two distributions** from the same monorepo, sharing one wire contract
-(`@lisa/core`) and one ABAP handler:
+(`@lisa-mcp/core`) and one ABAP handler:
 
 - the **standalone MCP server** (`packages/server`) — its own Cloud Foundry app, its own XSUAA.
   See **[BTP deployment](./btp-deployment.md)**.
@@ -9,7 +9,7 @@ LISA ships in **two distributions** from the same monorepo, sharing one wire con
   tools loaded **in-process** by an existing ARC-1 instance via `ARC1_PLUGINS`. **This page.**
 
 > **Tools.** `Custom_TranslateListLanguages`, `Custom_TranslateGetTexts`, `Custom_TranslateSetTexts`
-> — the same three the standalone server exposes, sharing `@lisa/core`. They reach SAP through
+> — the same three the standalone server exposes, sharing `@lisa-mcp/core`. They reach SAP through
 > ARC-1's gated `ctx.http.post`, so they run on any ARC-1 whose `SafeHttpClient` exposes the raw
 > write surface.
 
@@ -33,7 +33,7 @@ way (see [ABAP service setup](./abap-service-setup.md)).
 
 ## 1. Get the extension bundle
 
-The extension ships as a **single self-contained ESM file** (`dist/index.js`, ~24 KB) — `@lisa/core`
+The extension ships as a **single self-contained ESM file** (`dist/index.js`, ~24 KB) — `@lisa-mcp/core`
 is inlined; only `arc-1/public` and `zod` stay external (both provided by the host ARC-1 process at
 runtime). Get it one of two ways:
 
@@ -110,7 +110,7 @@ Self-contained and version-pinned with ARC-1.
 ### B. Buildpack co-deploy (MTA)
 
 The plugin travels **inside ARC-1's own pushed app bits**. `npm run build` already emits a single
-self-contained `packages/arc1-extension/dist/index.js` (esbuild bundles `@lisa/core` in and keeps
+self-contained `packages/arc1-extension/dist/index.js` (esbuild bundles `@lisa-mcp/core` in and keeps
 `zod` + `arc-1/public` external — see [§1](#1-build-the-extension)), so it resolves correctly once
 dropped next to a deployed ARC-1. No extra bundling step is needed:
 
@@ -120,7 +120,7 @@ dropped next to a deployed ARC-1. No extra bundling step is needed:
 - **`zod` stays external** → resolves to the **app's own `zod`**. This is required, not tidy: ARC-1's
   registry runs `z.toJSONSchema()` on your tool's schema, so plugin and registry must share one `zod`
   instance. (ARC-1 0.9.20 ships `zod@4.4.3` ≥ LISA's `^4.3.6`.)
-- **`@lisa/core` is inlined** — no reason to ship it separately.
+- **`@lisa-mcp/core` is inlined** — no reason to ship it separately.
 
 Drop the ~24 KB bundle into a folder that is part of ARC-1's app bits and **not** in the MTA module's
 `ignore:` list (ARC-1 ignores `src/`, `tests/`, `node_modules/`, … but not an arbitrary `plugins/`):
@@ -172,7 +172,7 @@ In an MCP client connected to ARC-1, the three `Custom_Translate*` tools should 
 | Symptom | Check |
 |---------|-------|
 | Tools missing from `tools/list` | `ARC1_PLUGINS` path absolute & correct; plugin file owner (`arc1`, not root) on Docker; `cf logs` for a loader rejection. |
-| Startup: `Cannot find package '@lisa/core'` (or `arc-1/public`) | You shipped the raw `tsc` `dist/` instead of an esbuild bundle. Build the self-contained file (§3.B) with `--external:zod --external:arc-1/public`. |
+| Startup: `Cannot find package '@lisa-mcp/core'` (or `arc-1/public`) | You shipped the raw `tsc` `dist/` instead of an esbuild bundle. Build the self-contained file (§3.B) with `--external:zod --external:arc-1/public`. |
 | Tool call fails: "Set SAP_ALLOW_PLUGIN_RAW_WRITES=true…" | `SAP_ALLOW_PLUGIN_RAW_WRITES` and/or `SAP_ALLOW_WRITES` not set on ARC-1. |
 | Tool call fails: "may not write to an ADT path" | `SAP_I18N_SERVICE_PATH` was pointed at a `/sap/bc/adt/…` path — LISA's ICF service must be non-ADT. |
 | Authenticated but SAP auth errors | Expected — SAP enforces translation authorization; grant the user the rights in SAP. |
@@ -182,4 +182,4 @@ In an MCP client connected to ARC-1, the three `Custom_Translate*` tools should 
 - **[BTP deployment](./btp-deployment.md)** — the standalone-server CF deployment.
 - **[roadmap/arc1-extension.md](../roadmap/arc1-extension.md)** — the design rationale, tool mapping,
   and the monorepo topology behind both distributions.
-- **[Architecture](./architecture.md)** — how `@lisa/core`, the server, and the extension fit together.
+- **[Architecture](./architecture.md)** — how `@lisa-mcp/core`, the server, and the extension fit together.

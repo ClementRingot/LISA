@@ -1,7 +1,7 @@
 # Distribute LISA as an ARC-1 extension
 
 > **Status: ✅ shipped in v0.7.0.** `packages/arc1-extension` (`lisa-arc1-extension`) ships the `Custom_*`
-> tools described below, on top of the monorepo topology recommended in this doc (`@lisa/core` +
+> tools described below, on top of the monorepo topology recommended in this doc (`@lisa-mcp/core` +
 > `packages/server` + `packages/arc1-extension`, npm workspaces instead of Changesets). The tools
 > reach SAP through ARC-1's gated `ctx.http.post` (raw non-ADT write surface). For the deployment
 > runbook see **[docs: ARC-1 extension deployment](../docs_page/arc1-extension-deployment.md)**.
@@ -69,7 +69,7 @@ diffing — is identical. So the prerequisite for "change once, both follow" is 
 **transport-agnostic core** with a small injected port:
 
 ```ts
-// @lisa/core — no SAP/BTP/MCP/arc-1 dependency
+// @lisa-mcp/core — no SAP/BTP/MCP/arc-1 dependency
 export interface I18nTransport {
   call<T>(action: 'list_languages' | 'list_texts' | 'set_translation',
           params: Record<string, unknown>): Promise<T>;
@@ -79,7 +79,7 @@ export function buildTools(t: I18nTransport) { /* the 3 tools — shared logic *
 
 ```
                  ┌───────────────────────────────┐
-                 │  @lisa/core                    │
+                 │  @lisa-mcp/core                    │
                  │  types · Zod schemas · tool    │
                  │  descriptions · shaping/diff   │
                  │  I18nTransport (port)          │
@@ -98,8 +98,8 @@ With that seam in place, pick one of two topologies:
 
 | Topology | How | Best when |
 |----------|-----|-----------|
-| **Monorepo (workspaces)** | one repo, packages `@lisa/core` + `@lisa/server` + `@lisa-mcp/arc1-extension`; independent versions via **Changesets** | solo maintainer who wants both to move together — one PR changes core + both adapters atomically, one CI, no publish step to propagate |
-| **Two repos + published `@lisa/core`** | core published to npm; each repo depends on it (release-please / Changesets to bump) | strict separation; mirrors ARC-1's own `@arc-mcp/xsuaa-auth` extraction. Cost: a publish → bump → consume cycle and possible version skew |
+| **Monorepo (workspaces)** | one repo, packages `@lisa-mcp/core` + `@lisa/server` + `@lisa-mcp/arc1-extension`; independent versions via **Changesets** | solo maintainer who wants both to move together — one PR changes core + both adapters atomically, one CI, no publish step to propagate |
+| **Two repos + published `@lisa-mcp/core`** | core published to npm; each repo depends on it (release-please / Changesets to bump) | strict separation; mirrors ARC-1's own `@arc-mcp/xsuaa-auth` extraction. Cost: a publish → bump → consume cycle and possible version skew |
 
 > A git submodule/subtree sharing `core/` is a third option but is more pain than value for a
 > solo maintainer — avoid.
@@ -110,16 +110,16 @@ Either way, keep the extension itself a **separate package**, following ARC-1's 
 the standalone server (plugins ship as **local files** loaded via `ARC1_PLUGINS`, so the built
 artifact is what ships). And keep two invariants:
 
-- **Contract tests live in `@lisa/core`** — exercise the 3 tools once against a mock transport
+- **Contract tests live in `@lisa-mcp/core`** — exercise the 3 tools once against a mock transport
   (in the spirit of `createMockToolContext`; LISA already has `tools.test.ts` / `i18n-client.test.ts`).
   They guard both adapters against drift.
 - **One canonical ABAP source.** `ZCL_I18N_SERVICE(_CLOUD)` lives in a single place, next to the
-  core — the `@lisa/core` wire types *are* the contract with that class, so ABAP and types
+  core — the `@lisa-mcp/core` wire types *are* the contract with that class, so ABAP and types
   version together. The extension references it; it never duplicates it.
 
 **Recommendation:** for a solo maintainer who wants them to evolve together, start with the
 **monorepo + Changesets** (core + two adapters). The `I18nTransport` seam is identical in both
-topologies, so you can publish `@lisa/core` later — if a third consumer appears — without
+topologies, so you can publish `@lisa-mcp/core` later — if a third consumer appears — without
 rewriting anything.
 
 ## Integration & deployment ("do I deploy it separately?")

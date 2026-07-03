@@ -7,7 +7,7 @@ import {
   TOOLS,
   narrowListTexts,
   supportedTargetTypesNote,
-} from '@lisa/core';
+} from '@lisa-mcp/core';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { btpTransport } from '../sap/transport.js';
 import { getLogger } from '../server/logger.js';

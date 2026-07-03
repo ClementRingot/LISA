@@ -1,5 +1,5 @@
 {
-  "name": "@lisa/core",
+  "name": "@lisa-mcp/core",
   "version": "0.1.0",
   "private": true,
   "description": "Transport-agnostic wire contract + Zod schemas for the LISA ZI18N_SERVICE (shared by the standalone MCP server and the ARC-1 extension)",

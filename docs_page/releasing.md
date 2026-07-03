@@ -17,10 +17,10 @@ always agree:
 | `packages/server/package.json` | the deployable server |
 | `mta.yaml` | the label baked into the `.mtar` (`lisa_X.Y.Z.mtar`) |
 
-`@lisa/core` and `lisa-arc1-extension` are **versioned independently** — they're
+`@lisa-mcp/core` and `lisa-arc1-extension` are **versioned independently** — they're
 separate distributions, not part of the product version. The extension has its
 own release line, tagged **`arc1-extension-vX.Y.Z`** (distinct from the product
-`vX.Y.Z` namespace). `@lisa/core` is private and consumed only via the `"*"`
+`vX.Y.Z` namespace). `@lisa-mcp/core` is private and consumed only via the `"*"`
 workspace range, so its `version` is inert and unchecked.
 
 `npm run check:version` enforces two independent invariants (CI runs it on
@@ -57,14 +57,14 @@ npx changeset               # pick package(s) + patch/minor/major, write a summa
 
 - Bumping **`lisa-server`** drives the **product** version (`vX.Y.Z`).
 - Bumping **`lisa-arc1-extension`** drives the **extension** version (`arc1-extension-vX.Y.Z`).
-- **Changing `@lisa/core` requires bumping BOTH** `lisa-server` **and** `lisa-arc1-extension`.
-  `@lisa/core` is bundled/inlined into both artifacts, so a core change ships inside both — the
+- **Changing `@lisa-mcp/core` requires bumping BOTH** `lisa-server` **and** `lisa-arc1-extension`.
+  `@lisa-mcp/core` is bundled/inlined into both artifacts, so a core change ships inside both — the
   guard fails a core-source change that doesn't cover both dependents. You never write a changeset
-  for `@lisa/core` itself (it's ignored by Changesets); you bump its two dependents.
+  for `@lisa-mcp/core` itself (it's ignored by Changesets); you bump its two dependents.
 - A genuinely release-irrelevant source change (comments, build-only tweak) is recorded with an
   **empty** changeset so the guard still passes: `npx changeset add --empty`.
 
-Commit the generated `.changeset/*.md` with your PR. `@lisa/core` is ignored by Changesets
+Commit the generated `.changeset/*.md` with your PR. `@lisa-mcp/core` is ignored by Changesets
 (`.changeset/config.json`), so never write a changeset for it.
 
 ## Cutting a release
@@ -131,7 +131,7 @@ If you create a release by hand instead of `--release`, title it **exactly** as 
 ### Publishing the extension to npm
 
 The extension is published publicly as **`@lisa-mcp/arc1-extension`** (the product server and
-`@lisa/core` stay `private` and are never published). Publication is **fully automated**: pushing an
+`@lisa-mcp/core` stay `private` and are never published). Publication is **fully automated**: pushing an
 `arc1-extension-vX.Y.Z` tag triggers `.github/workflows/publish-extension.yml`, which validates the
 tag↔version match, builds the bundle, and runs `npm publish` with the `NPM_TOKEN` repo secret. So the
 normal flow is simply:
@@ -141,7 +141,7 @@ npm run tag extension -- --push        # push arc1-extension-vX.Y.Z → CI publi
 ```
 
 - The published tarball is the single bundled `dist/index.js` (+ map), `README.md`, `LICENSE`,
-  `package.json` — `@lisa/core` is inlined, `arc-1` and `zod` are peer deps (host-provided).
+  `package.json` — `@lisa-mcp/core` is inlined, `arc-1` and `zod` are peer deps (host-provided).
 - `npm publish` fails if the version already exists on npm, so a tag is only ever published once.
 - **Prerequisites (one-time):** the `@lisa` npm org must exist and be owned by the publisher, and the
   `NPM_TOKEN` repository secret must be set (a granular token scoped to `@lisa-mcp/arc1-extension`,

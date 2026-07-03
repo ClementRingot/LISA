@@ -54,7 +54,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@lisa/core": "*",
+    "@lisa-mcp/core": "*",
     "arc-1": "^0.9.20",
     "esbuild": "^0.28.1",
     "typescript": "^5.7.2",

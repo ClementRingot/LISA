@@ -15,7 +15,7 @@
 //     → packages/arc1-extension/src/index.ts  — `plugin.version`, the value
 //        ARC-1 reads at load time and surfaces to its host/audit
 //
-// `@lisa/core` is deliberately ignored by changesets (private, inert) and has no
+// `@lisa-mcp/core` is deliberately ignored by changesets (private, inert) and has no
 // mirror, so it is not handled here.
 //
 // Run via the `changeset:version` npm script, right after `changeset version`.
