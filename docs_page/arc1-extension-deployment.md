@@ -20,7 +20,7 @@ LISA ships in **two distributions** from the same monorepo, sharing one wire con
 | **Standalone server** | You want LISA reachable as its own MCP endpoint/URL, with its own XSUAA login, independent of any ARC-1 deployment. One more CF app to operate. |
 | **ARC-1 extension** | You already run ARC-1 and want LISA's tools to appear **inside** it — reusing ARC-1's authenticated SAP client, safety ceiling, scope policy, audit, and **per-user principal propagation**. No second auth stack, no second URL: you go from two CF apps (arc1 + lisa) to **one**. |
 
-Both talk to the **same** `ZCL_I18N_SERVICE(_CLOUD)` handler over the same wire contract — the only
+Both talk to the **same** `ZCL_I18N_SERVICE` handler over the same wire contract — the only
 difference is who performs the HTTP call. The ABAP service is deployed to SAP **separately** either
 way (see [ABAP service setup](./abap-service-setup.md)).
 
