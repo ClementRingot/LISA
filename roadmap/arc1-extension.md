@@ -17,7 +17,7 @@ Reference: [ARC-1 — Extensions (Custom Tools)](https://docs.arc-1-mcp.com/exte
 
 LISA already maps onto ARC-1's "Extension" decision: it talks to the **same SAP system over
 HTTP** via a **custom ICF/REST service** (`/sap/bc/http/sap/zi18n_service`). Extensions never
-ship ABAP — and LISA's `ZCL_I18N_SERVICE(_CLOUD)` is deployed separately to SAP anyway, so that
+ship ABAP — and LISA's `ZCL_I18N_SERVICE` is deployed separately to SAP anyway, so that
 constraint is already satisfied.
 
 ## Why this waits for v2
@@ -113,7 +113,7 @@ artifact is what ships). And keep two invariants:
 - **Contract tests live in `@lisa-mcp/core`** — exercise the 3 tools once against a mock transport
   (in the spirit of `createMockToolContext`; LISA already has `tools.test.ts` / `i18n-client.test.ts`).
   They guard both adapters against drift.
-- **One canonical ABAP source.** `ZCL_I18N_SERVICE(_CLOUD)` lives in a single place, next to the
+- **One canonical ABAP source.** `ZCL_I18N_SERVICE` lives in a single place, next to the
   core — the `@lisa-mcp/core` wire types *are* the contract with that class, so ABAP and types
   version together. The extension references it; it never duplicates it.
 

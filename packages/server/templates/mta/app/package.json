@@ -1,0 +1,15 @@
+{
+  "name": "lisa-mcp-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CF app wrapper — pulls the published LISA server from npm. Bump the dependency to upgrade LISA.",
+  "dependencies": {
+    "@lisa-mcp/server": "^0.9.0"
+  },
+  "scripts": {
+    "start": "lisa-mcp"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}

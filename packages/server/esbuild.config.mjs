@@ -12,6 +12,9 @@ await build({
   target: 'node22',
   format: 'esm',
   sourcemap: true,
+  // dist/index.js is also the package's `bin` (npx @lisa-mcp/server) — it needs
+  // a shebang to be executable when npm links it.
+  banner: { js: '#!/usr/bin/env node' },
   external: [
     '@arc-mcp/xsuaa-auth',
     '@arc-mcp/xsuaa-auth/btp',

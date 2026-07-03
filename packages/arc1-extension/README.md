@@ -34,8 +34,9 @@ SAP_I18N_SERVICE_PATH=/sap/bc/http/sap/zi18n_service   # optional override
 ```
 
 > The plugin registers under the runtime name **`lisa-arc1-extension`** (its ARC-1 identity, kept
-> stable across the npm rename). Requires LISA's `ZCL_I18N_SERVICE` (or `_CLOUD`) handler class
-> installed on the target SAP system.
+> stable across the npm rename). Requires LISA's `ZCL_I18N_SERVICE` handler class installed on the
+> target SAP system (three per-platform variants — see the
+> [LISA repo's `abap/` folder](https://github.com/ClementRingot/LISA/tree/main/abap)).
 
 Full runbook — Docker image, Cloud Foundry, the write-flag rationale — in
 [docs: ARC-1 extension deployment](https://github.com/ClementRingot/LISA/blob/main/docs_page/arc1-extension-deployment.md).

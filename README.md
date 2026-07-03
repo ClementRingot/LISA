@@ -1,5 +1,6 @@
 # LISA — Localization & Internationalization Service for ABAP
 
+[![npm](https://img.shields.io/npm/v/@lisa-mcp/server?label=%40lisa-mcp%2Fserver&logo=npm)](https://www.npmjs.com/package/@lisa-mcp/server)
 [![npm](https://img.shields.io/npm/v/@lisa-mcp/arc1-extension?label=%40lisa-mcp%2Farc1-extension&logo=npm)](https://www.npmjs.com/package/@lisa-mcp/arc1-extension)
 
 > Let AI assistants read, write and compare **SAP object translations** through a single, secure MCP server.
@@ -29,14 +30,14 @@ supported, but meant for development and testing, not production.
 ```
 ┌──────────────┐   MCP/HTTP    ┌────────────────────┐   HTTPS (JSON)    ┌──────────────────────────┐
 │  AI assistant│ ────────────> │  LISA MCP          │ ───────────────>  │  SAP ABAP system         │
-│ (Claude/IDE) │   3 tools     │(Node.js, this repo)│  /zi18n_service   │  ZCL_I18N_SERVICE(_CLOUD)│
+│ (Claude/IDE) │   3 tools     │(Node.js, this repo)│  /zi18n_service   │  ZCL_I18N_SERVICE        │
 └──────────────┘ <──────────── └────────────────────┘ <───────────────  │  → XCO i18n APIs         │
                                                                         └──────────────────────────┘
 ```
 
 There are **two halves** to a working setup:
 
-1. **The ABAP service** — a handler class (`ZCL_I18N_SERVICE(_CLOUD)`) that you import into your SAP system and expose as an ABAP **HTTP service**. It does the actual translation work using the XCO i18n APIs. → see [`abap/`](./abap) and [docs: ABAP service setup](./docs_page/abap-service-setup.md).
+1. **The ABAP service** — a handler class (`ZCL_I18N_SERVICE`, three per-platform variants) that you import into your SAP system and expose as an ABAP **HTTP service**. It does the actual translation work using the XCO i18n APIs. → see [`abap/`](./abap) and [docs: ABAP service setup](./docs_page/abap-service-setup.md).
 2. **The MCP server** — this Node.js project. It authenticates the caller, propagates their identity to SAP, and translates MCP tool calls into HTTP calls to the ABAP service.
 
 ---
@@ -128,6 +129,12 @@ mbt build           # produces mta_archives/lisa_0.1.0.mtar
 cf deploy mta_archives/lisa_0.1.0.mtar
 ```
 
+> **No clone needed — deploy from npm.** The server is published as
+> [`@lisa-mcp/server`](https://www.npmjs.com/package/@lisa-mcp/server), which ships a ready-made
+> MTA template (`templates/mta/`): a 3-file deploy project whose `nodejs` module just
+> `npm install`s the published package — same XSUAA/Destination resources, and upgrading LISA is a
+> version bump. See [docs: BTP deployment — deploy from npm](./docs_page/btp-deployment.md#deploy-from-npm-no-clone).
+
 Then set the DCR signing secret (one-off) and point your MCP client at the deployed URL:
 
 ```bash
@@ -197,6 +204,14 @@ distribution you pick — only who performs the HTTP call differs.
 ## Part 4 — Run locally (development & testing)
 
 For local development you connect **directly** to SAP (BasicAuth) — no BTP services involved. This path is for trying things out and developing the server; **production should run on BTP** (Part 2) or **inside ARC-1** (Part 3).
+
+**Fastest — straight from npm** (no clone; a `.env` in the current directory is picked up):
+
+```bash
+npx @lisa-mcp/server
+```
+
+**Or from source** (for developing LISA itself):
 
 ```bash
 git clone <this-repo>

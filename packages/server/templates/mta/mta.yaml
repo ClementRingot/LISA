@@ -1,0 +1,99 @@
+# ──────────────────────────────────────────────────────────────────────
+# LISA — deploy-from-npm MTA (TEMPLATE)
+#
+# Deploys the PUBLISHED @lisa-mcp/server package to SAP BTP Cloud Foundry —
+# no repo clone, no TypeScript build. `mbt build` runs `npm install` in app/,
+# which pulls the server from npm; upgrading LISA is a version bump in
+# app/package.json.
+#
+#   cp -r node_modules/@lisa-mcp/server/templates/mta lisa-deploy
+#   cd lisa-deploy
+#   # 1. set the two destination names + service path below (or in an .mtaext)
+#   # 2. mbt build
+#   # 3. cf deploy mta_archives/lisa-npm_*.mtar
+#   # 4. one-off: cf set-env lisa-mcp LISA_DCR_SIGNING_SECRET "$(openssl rand -base64 48)"
+#      && cf restage lisa-mcp
+#
+# This mirrors the source-build mta.yaml of the LISA repo (same resources, same
+# properties) — only the module build differs. Landscape-specific overrides work
+# the same way: cf deploy … -e my-landscape.mtaext
+# ──────────────────────────────────────────────────────────────────────
+_schema-version: '3.1'
+ID: lisa-npm
+description: LISA — Localization & Internationalization Service for ABAP (deployed from the @lisa-mcp/server npm package)
+# Version of YOUR deployment project (labels the .mtar). Independent of the
+# LISA version, which app/package.json pins.
+version: 1.0.0
+
+modules:
+  - name: lisa-mcp
+    type: nodejs
+    path: app
+    parameters:
+      memory: 256M
+      disk-quota: 512M
+      health-check-type: http
+      health-check-http-endpoint: /health
+      # No `host:` on purpose — the deploy service assigns a globally-unique
+      # default route. Pin a short `host:` in an .mtaext if you want one.
+    properties:
+      MCP_TRANSPORT: http-streamable
+      LOG_FORMAT: json
+      LOG_LEVEL: info
+      # ── REQUIRED landscape values (set here or in an .mtaext) ────────────
+      # BasicAuth destination for system-level calls / non-JWT fallback.
+      # Optional for pure principal-propagation backends — see the LISA docs.
+      SAP_BTP_DESTINATION: CHANGE_ME_TECH_DESTINATION
+      # PrincipalPropagation / OAuth2* destination for per-user calls.
+      SAP_BTP_PP_DESTINATION: CHANGE_ME_SSO_DESTINATION
+      # ICF path of the zi18n_service handler registered in the SAP system.
+      SAP_I18N_SERVICE_PATH: /sap/bc/http/sap/zi18n_service
+    requires:
+      - name: lisa-xsuaa
+      - name: lisa-destination
+      # Inactive resources below silently drop their `requires` — re-activate
+      # lisa-connectivity in an .mtaext for the on-premise (Cloud Connector) case.
+      - name: lisa-connectivity
+      - name: lisa-logs
+    build-parameters:
+      builder: custom
+      commands:
+        - npm install --omit=dev
+      build-result: .
+      supported-platforms:
+        - cf
+
+resources:
+  - name: lisa-xsuaa
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: xsuaa
+      service-plan: application
+      # Authentication only — no scopes/role-templates (see xs-security.json).
+      # xsappname `lisa` is unique per subaccount: a SECOND instance in the same
+      # subaccount must override it via an .mtaext.
+      path: ./xs-security.json
+
+  - name: lisa-destination
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: destination
+      service-plan: lite
+
+  - name: lisa-connectivity
+    # OFF by default: only the on-premise (Cloud Connector) scenario needs it.
+    active: false
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: connectivity
+      service-plan: lite
+
+  - name: lisa-logs
+    # OFF by default: SAP retired Application Logging on many subaccounts
+    # (SAP Note 3557260); binding it there hard-fails the deploy. LISA logs to
+    # stderr regardless, so `cf logs lisa-mcp` works without it.
+    active: false
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: application-logs
+      service-plan: lite
