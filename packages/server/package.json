@@ -32,6 +32,7 @@
   "files": [
     "dist",
     "templates",
+    ".env.example",
     "README.md",
     "LICENSE"
   ],

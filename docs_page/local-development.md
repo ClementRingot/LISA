@@ -4,7 +4,7 @@
 
 ```bash
 npm install
-cp .env.example .env     # fill in SAP_URL / SAP_USERNAME / SAP_PASSWORD / SAP_CLIENT
+cp packages/server/.env.example .env     # fill in SAP_URL / SAP_USERNAME / SAP_PASSWORD / SAP_CLIENT
 ```
 
 For local dev you connect **directly** to SAP (BasicAuth) — no BTP services involved. Make sure the [ABAP service](./abap-service-setup.md) is installed and reachable from your machine.

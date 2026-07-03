@@ -260,7 +260,7 @@ deploy command's `$npm_package_version` agree — on `main` past the tag they'd
 still say the old version (the label would lie). `check:version` guarantees the
 `.mtar` label and `package.json` always match at a given ref.
 
-> First prod deploy: `cp mta-overrides.mtaext.example mta-overrides-prod.mtaext`,
+> First prod deploy: `cp packages/server/templates/mta/mta-overrides.mtaext.example mta-overrides-prod.mtaext`,
 > fill in the prod host/destinations, then set `LISA_DCR_SIGNING_SECRET` on the
 > app once (see [BTP deployment §5](./btp-deployment.md)) — it survives
 > redeploys, so you only do it once per landscape.

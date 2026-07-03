@@ -19,7 +19,7 @@ curl -u USER:PASS -H 'Content-Type: application/json' \
 
 ```bash
 npm install
-cp .env.example .env
+cp packages/server/.env.example .env
 ```
 
 Edit `.env`:
