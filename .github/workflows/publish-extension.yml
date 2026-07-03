@@ -28,7 +28,9 @@ jobs:
       - name: Validate tag ↔ version
         run: node scripts/check-release-naming.mjs tag "$GITHUB_REF_NAME"
       - name: Build the bundle
-        run: npm run build --workspace packages/arc1-extension
+        run: |
+          npm run build --workspace packages/core
+          npm run build --workspace packages/arc1-extension
       - name: Publish to npm
         run: npm publish --workspace packages/arc1-extension
         env:
