@@ -57,7 +57,7 @@
     "@lisa-mcp/core": "*",
     "arc-1": "^0.9.20",
     "esbuild": "^0.28.1",
-    "typescript": "^5.7.2",
+    "typescript": "^6.0.3",
     "vitest": "^4.1.9",
     "zod": "^4.3.6"
   }
