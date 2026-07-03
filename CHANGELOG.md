@@ -1,16 +1,14 @@
 # Changelog
 
-All notable changes to this project are documented here.
+> **This file is frozen at v0.9.0.** Since then, changelogs are generated **per package**
+> from [changesets](./docs_page/releasing.md): see
+> [`packages/server/CHANGELOG.md`](./packages/server/CHANGELOG.md) (the product server) and
+> [`packages/arc1-extension/CHANGELOG.md`](./packages/arc1-extension/CHANGELOG.md) (the ARC-1
+> extension). There is no `Unreleased` section here anymore — unreleased work is visible as
+> pending `.changeset/*.md` files on `main`.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-## [Unreleased]
-
-> Since v0.9.0, changelogs are generated per package from changesets —
-> see [`packages/server/CHANGELOG.md`](./packages/server/CHANGELOG.md) and
-> [`packages/arc1-extension/CHANGELOG.md`](./packages/arc1-extension/CHANGELOG.md).
-> This file holds the pre-Changesets history.
+The history below follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
+[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.9.0] — 2026-07-03
 
@@ -375,7 +373,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - XSUAA OAuth proxy (stateless DCR + signed callback state), OIDC and API-key auth.
 - BTP deployment (MTA), Destination + Connectivity (principal propagation).
 
-[Unreleased]: https://github.com/ClementRingot/LISA/compare/v0.9.0...HEAD
 [0.9.0]: https://github.com/ClementRingot/LISA/compare/v0.8.5...v0.9.0
 [0.8.5]: https://github.com/ClementRingot/LISA/compare/v0.8.4...v0.8.5
 [0.8.4]: https://github.com/ClementRingot/LISA/compare/v0.8.3...v0.8.4
