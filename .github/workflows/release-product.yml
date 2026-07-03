@@ -13,6 +13,10 @@ name: Product release
 on:
   push:
     tags: ['v*']
+  # Manual fallback: dispatch on the TAG ref (pick the tag in the Run-workflow
+  # dropdown) — e.g. when a tag was pushed with the default GITHUB_TOKEN, which
+  # does not trigger `push` workflows.
+  workflow_dispatch:
 
 permissions:
   contents: write # create the GitHub release
@@ -36,8 +40,14 @@ jobs:
         run: |
           npm run build --workspace packages/core
           npm run build --workspace packages/server
-      - name: Publish to npm
-        run: npm publish --workspace packages/server
+      - name: Publish to npm (skipped if the version is already published)
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if npm view "@lisa-mcp/server@${VERSION}" version >/dev/null 2>&1; then
+            echo "@lisa-mcp/server@${VERSION} is already on npm — skipping publish."
+          else
+            npm publish --workspace packages/server
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Create GitHub release

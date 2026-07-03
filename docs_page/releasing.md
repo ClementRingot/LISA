@@ -69,6 +69,30 @@ Commit the generated `.changeset/*.md` with your PR. `@lisa-mcp/core` is ignored
 
 ## Cutting a release
 
+### Automated (the normal path)
+
+`.github/workflows/changesets.yml` runs on every push to `main`:
+
+1. **Changesets pending?** It opens (or updates) a **"Version Packages" PR** that runs
+   `npm run changeset:version` for you — bumps, per-package CHANGELOGs, version mirrors
+   (`mta.yaml`, root `package.json`, `plugin.version`), lockfile, sync check.
+2. **You merge that PR** — the one human step. That's the release decision.
+3. On the resulting push (no changesets left), the workflow creates and pushes the
+   **canonical tags** for any committed version not yet on origin
+   (`scripts/tag-missing-releases.mjs` → `scripts/tag.mjs`, so the names are derived,
+   never typed). The pushed tags trigger the publish pipelines
+   (`release-product.yml` / `publish-extension.yml`) → npm publish + GitHub release.
+
+> **One-time setup:** the `CHANGESETS_PAT` repository secret — a token with
+> *Contents: Read/Write* and *Pull requests: Read/Write* on this repo. Without it the
+> workflow falls back to `GITHUB_TOKEN`, whose events **don't trigger other workflows**
+> (GitHub anti-recursion): the Version PR would get no CI runs and the pushed tags would
+> not publish. If a tag ever lands without its pipeline run, dispatch the publish
+> workflow manually on the tag ref (both have `workflow_dispatch`; publishing is
+> idempotent — an already-published version is skipped).
+
+### Manual (fallback / offline)
+
 From a clean `main` with pending changesets:
 
 ```bash
