@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+> Since v0.9.0, changelogs are generated per package from changesets —
+> see [`packages/server/CHANGELOG.md`](./packages/server/CHANGELOG.md) and
+> [`packages/arc1-extension/CHANGELOG.md`](./packages/arc1-extension/CHANGELOG.md).
+> This file holds the pre-Changesets history.
+
+## [0.9.0] — 2026-07-03
+
 ### Added
 - **The standalone MCP server is now published to npm as [`@lisa-mcp/server`](https://www.npmjs.com/package/@lisa-mcp/server)**
   (public; renamed from the private `lisa-server`). Two new ways to consume LISA without cloning
@@ -368,7 +375,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - XSUAA OAuth proxy (stateless DCR + signed callback state), OIDC and API-key auth.
 - BTP deployment (MTA), Destination + Connectivity (principal propagation).
 
-[Unreleased]: https://github.com/ClementRingot/LISA/compare/v0.8.5...HEAD
+[Unreleased]: https://github.com/ClementRingot/LISA/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/ClementRingot/LISA/compare/v0.8.5...v0.9.0
 [0.8.5]: https://github.com/ClementRingot/LISA/compare/v0.8.4...v0.8.5
 [0.8.4]: https://github.com/ClementRingot/LISA/compare/v0.8.3...v0.8.4
 [0.8.3]: https://github.com/ClementRingot/LISA/compare/v0.8.2...v0.8.3
