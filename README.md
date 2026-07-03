@@ -1,5 +1,6 @@
 # LISA — Localization & Internationalization Service for ABAP
 
+[![npm](https://img.shields.io/npm/v/@lisa-mcp/server?label=%40lisa-mcp%2Fserver&logo=npm)](https://www.npmjs.com/package/@lisa-mcp/server)
 [![npm](https://img.shields.io/npm/v/@lisa-mcp/arc1-extension?label=%40lisa-mcp%2Farc1-extension&logo=npm)](https://www.npmjs.com/package/@lisa-mcp/arc1-extension)
 
 > Let AI assistants read, write and compare **SAP object translations** through a single, secure MCP server.
@@ -128,6 +129,12 @@ mbt build           # produces mta_archives/lisa_0.1.0.mtar
 cf deploy mta_archives/lisa_0.1.0.mtar
 ```
 
+> **No clone needed — deploy from npm.** The server is published as
+> [`@lisa-mcp/server`](https://www.npmjs.com/package/@lisa-mcp/server), which ships a ready-made
+> MTA template (`templates/mta/`): a 3-file deploy project whose `nodejs` module just
+> `npm install`s the published package — same XSUAA/Destination resources, and upgrading LISA is a
+> version bump. See [docs: BTP deployment — deploy from npm](./docs_page/btp-deployment.md#deploy-from-npm-no-clone).
+
 Then set the DCR signing secret (one-off) and point your MCP client at the deployed URL:
 
 ```bash
@@ -197,6 +204,14 @@ distribution you pick — only who performs the HTTP call differs.
 ## Part 4 — Run locally (development & testing)
 
 For local development you connect **directly** to SAP (BasicAuth) — no BTP services involved. This path is for trying things out and developing the server; **production should run on BTP** (Part 2) or **inside ARC-1** (Part 3).
+
+**Fastest — straight from npm** (no clone; a `.env` in the current directory is picked up):
+
+```bash
+npx @lisa-mcp/server
+```
+
+**Or from source** (for developing LISA itself):
 
 ```bash
 git clone <this-repo>

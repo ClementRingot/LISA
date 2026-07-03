@@ -8,13 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **The standalone MCP server is now published to npm as [`@lisa-mcp/server`](https://www.npmjs.com/package/@lisa-mcp/server)**
+  (public; renamed from the private `lisa-server`). Two new ways to consume LISA without cloning
+  the repo: **run locally** with `npx @lisa-mcp/server` (the bundle carries a `lisa-mcp` bin;
+  stdio or HTTP), and **deploy to BTP from npm** via the MTA template shipped in the package
+  (`templates/mta/` — a 3-file deploy project whose `nodejs` module `npm install`s the published
+  server; same XSUAA/Destination resources, upgrades are a version bump in `app/package.json`).
+  Publication is automated: pushing a product tag `vX.Y.Z` now `npm publish`es the server (with
+  provenance) in `.github/workflows/release-product.yml` before cutting the GitHub release.
+  `@lisa-mcp/core` stays private (bundled into the artifact); the runtime deps install from npm.
+  See [docs: BTP deployment — deploy from npm](./docs_page/btp-deployment.md#deploy-from-npm-no-clone).
 - **The ARC-1 extension is now published to npm as [`@lisa-mcp/arc1-extension`](https://www.npmjs.com/package/@lisa-mcp/arc1-extension)**
   (public). Renamed from `lisa-arc1-extension`; the package is no longer `private`. `npm install @lisa-mcp/arc1-extension`
   yields the single bundled `dist/index.js` — `@lisa/core` is inlined, `arc-1` and `zod` are peer
   dependencies (host-provided). Publication is automated: pushing an `arc1-extension-vX.Y.Z` tag runs
   `.github/workflows/publish-extension.yml`, which validates the tag↔version match and `npm publish`es
   with the `NPM_TOKEN` secret. The git tag (`arc1-extension-v…`) and runtime plugin name
-  (`lisa-arc1-extension`) are unchanged. The product server and `@lisa/core` stay `private`.
+  (`lisa-arc1-extension`) are unchanged. `@lisa-mcp/core` stays `private` (the server is now
+  published too — see above).
 - **Tag & release-title conventions are now enforced, not typed.** `npm run tag <product|extension>`
   (`scripts/tag.mjs`) derives the exact tag and release title from the committed `package.json`
   via one shared convention (`scripts/lib/release-naming.mjs`) — product `vX.Y.Z` / title `vX.Y.Z`,

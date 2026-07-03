@@ -224,6 +224,31 @@ Or in one step from npm: `npm run btp:build-deploy-dev` (builds the `.mtar` and 
 
 This creates the **XSUAA and Destination** service instances (if missing) and pushes the app. Connectivity and App-Logs are created only when you re-activate them (see [Optional services](#optional-services-connectivity--application-logs)).
 
+### Deploy from npm (no clone)
+
+Steps 3–4 above build from a repo clone. The alternative is deploying the **published
+[`@lisa-mcp/server`](https://www.npmjs.com/package/@lisa-mcp/server) package**: it ships a
+ready-made MTA template whose `nodejs` module is just a `package.json` depending on the
+package — `mbt build` runs `npm install` (pulling LISA from npm) instead of compiling sources.
+
+```bash
+npm install @lisa-mcp/server                                    # anywhere, just to get the template
+cp -r node_modules/@lisa-mcp/server/templates/mta lisa-deploy
+cd lisa-deploy
+# 1. pin the LISA version in app/package.json
+# 2. set SAP_BTP_*_DESTINATION + SAP_I18N_SERVICE_PATH in mta.yaml (or an .mtaext)
+mbt build && cf deploy mta_archives/lisa-npm_1.0.0.mtar
+```
+
+Same resources (XSUAA authentication-only, Destination; Connectivity/App-Logs inactive by
+default), same `.mtaext` override mechanism, same steps 1, 5 and 6 of this guide (destinations,
+DCR secret, verify). Upgrading LISA is a version bump in `app/package.json` + redeploy — no
+`git pull`, no TypeScript build. The template's own
+[README](https://github.com/ClementRingot/LISA/tree/main/packages/server/templates/mta) has the details.
+
+Use the **repo clone** path when you develop LISA itself or need to deploy unreleased changes;
+use the **npm** path to consume LISA as a product.
+
 ## 5. Set the DCR signing secret (important)
 
 ```bash

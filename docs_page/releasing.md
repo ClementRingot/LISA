@@ -55,9 +55,9 @@ On each PR, declare what (if anything) should be released:
 npx changeset               # pick package(s) + patch/minor/major, write a summary
 ```
 
-- Bumping **`lisa-server`** drives the **product** version (`vX.Y.Z`).
+- Bumping **`@lisa-mcp/server`** drives the **product** version (`vX.Y.Z`).
 - Bumping **`lisa-arc1-extension`** drives the **extension** version (`arc1-extension-vX.Y.Z`).
-- **Changing `@lisa-mcp/core` requires bumping BOTH** `lisa-server` **and** `lisa-arc1-extension`.
+- **Changing `@lisa-mcp/core` requires bumping BOTH** `@lisa-mcp/server` **and** `lisa-arc1-extension`.
   `@lisa-mcp/core` is bundled/inlined into both artifacts, so a core change ships inside both — the
   guard fails a core-source change that doesn't cover both dependents. You never write a changeset
   for `@lisa-mcp/core` itself (it's ignored by Changesets); you bump its two dependents.
@@ -128,17 +128,29 @@ tag can only ever point at a committed, self-consistent version.
 If you create a release by hand instead of `--release`, title it **exactly** as the table above
 (the CI release-guard fails otherwise).
 
-### Publishing the extension to npm
+### Publishing to npm
 
-The extension is published publicly as **`@lisa-mcp/arc1-extension`** (the product server and
-`@lisa-mcp/core` stay `private` and are never published). Publication is **fully automated**: pushing an
-`arc1-extension-vX.Y.Z` tag triggers `.github/workflows/publish-extension.yml`, which validates the
-tag↔version match, builds the bundle, and runs `npm publish` with the `NPM_TOKEN` repo secret. So the
-normal flow is simply:
+Both distributions are published publicly (`@lisa-mcp/core` stays `private` — it's bundled into
+each artifact, never published):
+
+| Package | Tag that publishes it | Workflow |
+|---------|----------------------|----------|
+| **`@lisa-mcp/server`** (the product server) | `vX.Y.Z` | `.github/workflows/release-product.yml` |
+| **`@lisa-mcp/arc1-extension`** | `arc1-extension-vX.Y.Z` | `.github/workflows/publish-extension.yml` |
+
+Publication is **fully automated**: pushing the tag triggers the workflow, which validates the
+tag↔version match, builds the bundle, runs `npm publish` with the `NPM_TOKEN` repo secret, and cuts
+the GitHub release. So the normal flow is simply:
 
 ```bash
-npm run tag extension -- --push        # push arc1-extension-vX.Y.Z → CI publishes to npm
+npm run tag product -- --push          # push vX.Y.Z → CI publishes @lisa-mcp/server + GitHub release
+npm run tag extension -- --push        # push arc1-extension-vX.Y.Z → CI publishes the extension
 ```
+
+The server tarball is the bundled `dist/index.js` (+ map, with a `bin` so `npx @lisa-mcp/server`
+works), the **MTA deploy template** (`templates/mta/` — deploy LISA to BTP from npm without cloning),
+`README.md`, `LICENSE`, `package.json`. `@lisa-mcp/core` is inlined; the real runtime deps
+(express, jose, MCP SDK, …) install from npm.
 
 - The published tarball is the single bundled `dist/index.js` (+ map), `README.md`, `LICENSE`,
   `package.json` — `@lisa-mcp/core` is inlined, `arc-1` and `zod` are peer deps (host-provided).

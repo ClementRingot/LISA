@@ -1,14 +1,44 @@
 {
-  "name": "lisa-server",
+  "name": "@lisa-mcp/server",
   "version": "0.8.5",
-  "description": "Standalone MCP Server for SAP object translation — deployable on BTP",
-  "private": true,
+  "description": "LISA — standalone MCP server for SAP object translation (XCO i18n). Deployable on SAP BTP or runnable locally.",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "sap",
+    "translation",
+    "i18n",
+    "s4hana",
+    "btp",
+    "abap",
+    "xsuaa"
+  ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ClementRingot/LISA.git",
+    "directory": "packages/server"
+  },
+  "homepage": "https://github.com/ClementRingot/LISA#readme",
+  "bugs": "https://github.com/ClementRingot/LISA/issues",
   "engines": {
     "node": "22.x"
   },
   "type": "module",
   "main": "dist/index.js",
+  "bin": {
+    "lisa-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "templates",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "scripts": {
     "build": "tsc --noEmit && node esbuild.config.mjs",
     "start": "node dist/index.js",
@@ -21,7 +51,6 @@
   },
   "dependencies": {
     "@arc-mcp/xsuaa-auth": "^0.1.4",
-    "@lisa-mcp/core": "*",
     "@modelcontextprotocol/sdk": "^1.18.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -34,6 +63,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
+    "@lisa-mcp/core": "*",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/node": "^22.10.0",

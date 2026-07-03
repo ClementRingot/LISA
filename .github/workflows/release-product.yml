@@ -1,11 +1,11 @@
 name: Product release
 
-# Cuts the GitHub release when a product tag (vX.Y.Z) is pushed. The product
-# server is private — it deploys to SAP BTP, not npm — so unlike the extension
-# there is nothing to publish here: this workflow only creates the GitHub release.
-# The tag ↔ version match is validated first (scripts/check-release-naming.mjs), and
-# the release title is derived from the same single source of truth as the tag
+# Publishes @lisa-mcp/server to the public npm registry when a product tag
+# (vX.Y.Z) is pushed, then cuts the matching GitHub release. The tag ↔ version
+# match is validated first (scripts/check-release-naming.mjs), and the release
+# title is derived from the same single source of truth as the tag
 # (scripts/lib/release-naming.mjs) so it always satisfies release-guard.yml.
+# Requires the NPM_TOKEN repository secret (same one publish-extension.yml uses).
 #
 # The `v*` glob matches only product tags: extension tags start with `arc1-` and
 # are handled by publish-extension.yml.
@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: write # create the GitHub release
+  id-token: write # npm provenance
 
 jobs:
   release:
@@ -27,8 +28,18 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+      - run: npm ci
       - name: Validate tag ↔ version
         run: node scripts/check-release-naming.mjs tag "$GITHUB_REF_NAME"
+      - name: Build the bundle
+        run: |
+          npm run build --workspace packages/core
+          npm run build --workspace packages/server
+      - name: Publish to npm
+        run: npm publish --workspace packages/server
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -43,5 +54,13 @@ jobs:
             gh release create "$GITHUB_REF_NAME" \
               --verify-tag \
               --title "$TITLE" \
-              --generate-notes
+              --generate-notes \
+              --notes "📦 Published to npm as [\`@lisa-mcp/server@${VERSION}\`](https://www.npmjs.com/package/@lisa-mcp/server/v/${VERSION}).
+
+          \`\`\`bash
+          npx @lisa-mcp/server            # run locally
+          npm install @lisa-mcp/server    # or deploy to BTP from npm (templates/mta)
+          \`\`\`
+
+          See [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/CHANGELOG.md) for details."
           fi
