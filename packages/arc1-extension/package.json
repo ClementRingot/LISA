@@ -1,8 +1,18 @@
 {
   "name": "@lisa-mcp/arc1-extension",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "LISA SAP-translation tools packaged as an ARC-1 extension (loaded in-process via ARC1_PLUGINS)",
-  "keywords": ["arc-1", "arc1", "mcp", "sap", "translation", "i18n", "s4hana", "plugin", "extension"],
+  "keywords": [
+    "arc-1",
+    "arc1",
+    "mcp",
+    "sap",
+    "translation",
+    "i18n",
+    "s4hana",
+    "plugin",
+    "extension"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -20,7 +30,11 @@
       "default": "./dist/index.js"
     }
   },
-  "files": ["dist", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "engines": {
     "node": ">=22"
   },

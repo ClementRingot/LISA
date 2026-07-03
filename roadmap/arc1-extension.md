@@ -98,7 +98,7 @@ With that seam in place, pick one of two topologies:
 
 | Topology | How | Best when |
 |----------|-----|-----------|
-| **Monorepo (workspaces)** | one repo, packages `@lisa/core` + `@lisa/server` + `@lisa/arc1-extension`; independent versions via **Changesets** | solo maintainer who wants both to move together — one PR changes core + both adapters atomically, one CI, no publish step to propagate |
+| **Monorepo (workspaces)** | one repo, packages `@lisa/core` + `@lisa/server` + `@lisa-mcp/arc1-extension`; independent versions via **Changesets** | solo maintainer who wants both to move together — one PR changes core + both adapters atomically, one CI, no publish step to propagate |
 | **Two repos + published `@lisa/core`** | core published to npm; each repo depends on it (release-please / Changesets to bump) | strict separation; mirrors ARC-1's own `@arc-mcp/xsuaa-auth` extraction. Cost: a publish → bump → consume cycle and possible version skew |
 
 > A git submodule/subtree sharing `core/` is a third option but is more pain than value for a
