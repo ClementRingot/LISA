@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# LEGACY manual product-only release. Prefer `npm run changeset:version` (Changesets-driven
+# bump + per-package CHANGELOG + mirror-file sync) — see docs_page/releasing.md. This script
+# bypasses the changeset flow and does NOT touch the extension; do not run both for one release.
+#
 # Cut a LISA release: bump the synced version across the files that carry it,
 # roll the CHANGELOG, build/lint/test, and stage a release commit + tag.
 #

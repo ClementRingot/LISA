@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **Version bumps are now driven by [Changesets](https://github.com/changesets/changesets).**
+  Every PR that changes shipped package source must add a changeset (`npx changeset`) or CI fails
+  (`scripts/require-changeset.mjs`) — closing the gap that let the ARC-1 extension sit at `0.1.0`
+  across several `feat`s. Releases are cut with `npm run changeset:version`, which bumps each
+  package, rolls per-package `CHANGELOG.md`s, and mirrors the versions into `mta.yaml`, the root
+  `package.json`, and the extension's `plugin.version`. The two cadences keep their namespaced tags
+  (`vX.Y.Z` product, `arc1-extension-vX.Y.Z` extension); `scripts/release.sh` remains a legacy manual
+  product-only path. See [docs: Releasing](./docs_page/releasing.md).
 - **`lisa-arc1-extension` `0.1.0` → `0.2.0`.** First version bump of the ARC-1 extension since its
   introduction, catching up its `plugin.version` (the value ARC-1 reads at load and surfaces to its
   host/audit) with the tool-behaviour changes accumulated at `0.1.0`: the merged owner-routed

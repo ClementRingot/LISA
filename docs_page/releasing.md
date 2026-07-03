@@ -18,9 +18,10 @@ always agree:
 | `mta.yaml` | the label baked into the `.mtar` (`lisa_X.Y.Z.mtar`) |
 
 `@lisa/core` and `lisa-arc1-extension` are **versioned independently** — they're
-separate distributions, not part of the product version — so they're left
-alone by the release flow. `@lisa/core` is private and consumed only via the
-`"*"` workspace range, so its `version` is inert and unchecked.
+separate distributions, not part of the product version. The extension has its
+own release line, tagged **`arc1-extension-vX.Y.Z`** (distinct from the product
+`vX.Y.Z` namespace). `@lisa/core` is private and consumed only via the `"*"`
+workspace range, so its `version` is inert and unchecked.
 
 `npm run check:version` enforces two independent invariants (CI runs it on
 every PR, so a mismatch can't be merged):
@@ -38,36 +39,73 @@ every PR, so a mismatch can't be merged):
 > lockstep with the tag: at the tag, the label is true; on `main` past the tag,
 > it would lie. To build a specific release, check the tag out first (below).
 
-## Cutting a release
+## Version bumps are driven by Changesets
 
-From a clean `main` (or a release branch), with the `CHANGELOG.md`
-`[Unreleased]` section reflecting what's shipping:
+Bumps are **never hand-typed**. We use [Changesets](https://github.com/changesets/changesets)
+so the version number and `CHANGELOG` entry are *derived* from small intent files committed
+with each PR. This closes the gap that once left the extension frozen at `0.1.0` across several
+`feat`s:
+
+> **Every PR that changes shipped package source must add a changeset.**
+> CI runs `scripts/require-changeset.mjs` and fails the PR otherwise.
+
+On each PR, declare what (if anything) should be released:
 
 ```bash
-npm run release 0.7.0
+npx changeset               # pick package(s) + patch/minor/major, write a summary
 ```
 
-The script (`scripts/release.sh`) does, in order:
+- Bumping **`lisa-server`** drives the **product** version (`vX.Y.Z`).
+- Bumping **`lisa-arc1-extension`** drives the **extension** version (`arc1-extension-vX.Y.Z`).
+- A genuinely release-irrelevant source change (comments, build-only tweak) is recorded with an
+  **empty** changeset so the guard still passes: `npx changeset add --empty`.
 
-1. Validates the version is semver and the tag doesn't already exist.
-2. Bumps the three synced version fields.
-3. Runs `check:version` to confirm they agree.
-4. Rolls the `CHANGELOG`: `[Unreleased]` → `[0.7.0] — <today>`, and opens a
-   fresh `[Unreleased]`.
-5. Runs `lint` / `test` / `build` for **core + server** (the releasable
-   artifact — not `arc1-extension`).
-6. Creates the release commit `chore(release): v0.7.0` and an annotated tag
-   `v0.7.0` — **locally**. It does not push.
+Commit the generated `.changeset/*.md` with your PR. `@lisa/core` is ignored by Changesets
+(`.changeset/config.json`), so never write a changeset for it.
 
-Then review and push:
+## Cutting a release
+
+From a clean `main` with pending changesets:
 
 ```bash
-git show v0.7.0
+npm run changeset:version
+```
+
+This one command:
+
+1. `changeset version` — consumes the pending changesets, bumps each affected package's
+   `package.json`, and rolls each `packages/*/CHANGELOG.md`;
+2. `scripts/sync-versions-after-changeset.mjs` — mirrors the bumped versions into the
+   non-package files: `mta.yaml`, root `package.json`, and `plugin.version` in
+   `packages/arc1-extension/src/index.ts`;
+3. refreshes `package-lock.json`;
+4. re-runs `check:version` — both version lines must stay internally consistent.
+
+Review the diff, validate, and commit:
+
+```bash
+npm run lint && npm test && npm run build
+git add -A && git commit -m "chore(release): version packages"
+```
+
+Then tag **only the cadences that actually moved**, with the matching namespace, and push:
+
+```bash
+# product moved:
+git tag -a "v$(node -p "require('./packages/server/package.json').version")" -m "product release"
+# extension moved:
+git tag -a "arc1-extension-v$(node -p "require('./packages/arc1-extension/package.json').version")" -m "extension release"
+
 git push origin main --follow-tags
 ```
 
-`--follow-tags` pushes the commit and the annotated tag together. (The script
-prints these commands at the end, so you don't have to remember them.)
+Create the GitHub release(s) from the matching tag, using the freshly rolled
+`packages/*/CHANGELOG.md` section as the body.
+
+> **Legacy path — `scripts/release.sh <version>`.** Predates Changesets: it hand-bumps the three
+> product-version files and rolls the root `CHANGELOG.md`. Still usable for a **manual product-only**
+> release, but it **bypasses** the changeset flow and ignores the extension. Prefer
+> `npm run changeset:version`; never run both for the same release (they double-bump).
 
 ## Building a released artifact
 
@@ -129,6 +167,8 @@ still say the old version (the label would lie). `check:version` guarantees the
 
 ## Keeping the CHANGELOG honest
 
-The release flow only works if `[Unreleased]` actually describes what's
-shipping. Add a line to `[Unreleased]` as part of any user-facing change —
-then cutting the release is just `npm run release <version>`.
+Changelogs are generated from changesets, per package
+(`packages/server/CHANGELOG.md`, `packages/arc1-extension/CHANGELOG.md`) — you don't hand-edit
+them. Just make sure the **changeset summary** you write on each PR reads as a real changelog
+line, because that text is what lands verbatim. The root `CHANGELOG.md` holds the pre-Changesets
+history; new entries flow through the per-package files.

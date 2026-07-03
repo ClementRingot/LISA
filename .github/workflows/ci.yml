@@ -11,12 +11,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run check:version
+      - name: Require a changeset when package source changed
+        if: github.event_name == 'pull_request'
+        run: node scripts/require-changeset.mjs "origin/${{ github.base_ref }}"
       - run: npm run lint
       - run: npm test
       - run: npm run build

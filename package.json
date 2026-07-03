@@ -22,6 +22,9 @@
     "format": "biome format --write packages/*/src/",
     "clean": "npm run clean --workspaces --if-present",
     "check:version": "node scripts/check-version-sync.mjs",
+    "changeset": "changeset",
+    "changeset:version": "changeset version && node scripts/sync-versions-after-changeset.mjs && npm install --package-lock-only && node scripts/check-version-sync.mjs",
+    "changeset:check": "node scripts/require-changeset.mjs",
     "release": "./scripts/release.sh",
     "btp:build": "mbt build",
     "btp:deploy": "cf deploy mta_archives/lisa_$npm_package_version.mtar",
@@ -34,6 +37,7 @@
     "btp:build-deploy-prod": "npm run btp:build && npm run btp:deploy-prod"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.4"
+    "@biomejs/biome": "^1.9.4",
+    "@changesets/cli": "^2.31.0"
   }
 }
