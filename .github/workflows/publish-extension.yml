@@ -1,16 +1,17 @@
 name: Publish extension
 
 # Publishes @lisa-mcp/arc1-extension to the public npm registry when an extension
-# release tag (arc1-extension-vX.Y.Z) is pushed. The version is validated against
-# the tag (scripts/check-release-naming.mjs) before publishing, so a mistagged or
-# drifted version can never reach npm. Requires the NPM_TOKEN repository secret.
+# release tag (arc1-extension-vX.Y.Z) is pushed, then cuts the matching GitHub
+# release. The version is validated against the tag (scripts/check-release-naming.mjs)
+# before publishing, so a mistagged or drifted version can never reach npm. Requires
+# the NPM_TOKEN repository secret.
 
 on:
   push:
     tags: ['arc1-extension-v*']
 
 permissions:
-  contents: read
+  contents: write # create the GitHub release
   id-token: write # npm provenance
 
 jobs:
@@ -35,3 +36,25 @@ jobs:
         run: npm publish --workspace packages/arc1-extension
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#arc1-extension-v}"
+          # Canonical release title from the single source of truth (release-naming.mjs),
+          # so the title always satisfies release-guard.yml.
+          TITLE="$(node -e "import('./scripts/lib/release-naming.mjs').then(m => process.stdout.write(m.names('extension', process.argv[1]).title))" "$VERSION")"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists — skipping."
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              --verify-tag \
+              --title "$TITLE" \
+              --notes "📦 Published to npm as [\`@lisa-mcp/arc1-extension@${VERSION}\`](https://www.npmjs.com/package/@lisa-mcp/arc1-extension/v/${VERSION}).
+
+          \`\`\`bash
+          npm install @lisa-mcp/arc1-extension@${VERSION}
+          \`\`\`
+
+          See [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/CHANGELOG.md) for details."
+          fi

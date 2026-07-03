@@ -1,0 +1,47 @@
+name: Product release
+
+# Cuts the GitHub release when a product tag (vX.Y.Z) is pushed. The product
+# server is private — it deploys to SAP BTP, not npm — so unlike the extension
+# there is nothing to publish here: this workflow only creates the GitHub release.
+# The tag ↔ version match is validated first (scripts/check-release-naming.mjs), and
+# the release title is derived from the same single source of truth as the tag
+# (scripts/lib/release-naming.mjs) so it always satisfies release-guard.yml.
+#
+# The `v*` glob matches only product tags: extension tags start with `arc1-` and
+# are handled by publish-extension.yml.
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write # create the GitHub release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref }}
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Validate tag ↔ version
+        run: node scripts/check-release-naming.mjs tag "$GITHUB_REF_NAME"
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          # Canonical release title from the single source of truth (release-naming.mjs),
+          # so the title always satisfies release-guard.yml.
+          TITLE="$(node -e "import('./scripts/lib/release-naming.mjs').then(m => process.stdout.write(m.names('product', process.argv[1]).title))" "$VERSION")"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME already exists — skipping."
+          else
+            gh release create "$GITHUB_REF_NAME" \
+              --verify-tag \
+              --title "$TITLE" \
+              --generate-notes
+          fi
