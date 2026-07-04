@@ -34,6 +34,7 @@
     "templates",
     ".env.example",
     "README.md",
+    "NOTICE",
     "LICENSE"
   ],
   "publishConfig": {

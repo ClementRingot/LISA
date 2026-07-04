@@ -1,0 +1,17 @@
+LISA — third-party notices
+==========================
+
+This software depends on @arc-mcp/xsuaa-auth
+(https://github.com/arc-mcp/xsuaa-auth), an MIT-licensed package authored by the
+ARC-1 maintainers, for its XSUAA OAuth proxy, stateless DCR client store, OAuth
+state codec, and BTP connectivity layer. That dependency carries its own license.
+
+A portion still vendored in this repository — the OAuth callback-proxy request
+handler (packages/server) — is derived from ARC-1
+(https://github.com/arc-mcp/arc-1) and is used under the MIT License:
+
+    Copyright (c) 2025-2026 Alice Vinogradova and contributors
+    Copyright (c) 2026 Marian Zeis
+
+The full MIT license text applying to this project and to the vendored portion
+is in the LICENSE file.

@@ -374,5 +374,5 @@ LISA's XSUAA OAuth + BTP connectivity layer is provided by the MIT-licensed
 **[`@arc-mcp/xsuaa-auth`](https://www.npmjs.com/package/@arc-mcp/xsuaa-auth)**
 dependency (authored by the ARC-1 maintainers). A small remaining portion (the
 OAuth callback-proxy handler) is derived from **[ARC-1](https://github.com/arc-mcp/arc-1)**
-and used under its MIT License — see the [`LICENSE`](./LICENSE) file for the
-preserved upstream copyright.
+and used under its MIT License — see the [`NOTICE`](./NOTICE) file for the
+preserved upstream copyright and third-party attributions.
