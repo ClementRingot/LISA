@@ -177,6 +177,7 @@ Install it from npm, or build from source:
 ```bash
 npm install @lisa-mcp/arc1-extension                    # → node_modules/@lisa-mcp/arc1-extension/dist/index.js
 # — or build from source —
+git clone https://github.com/ClementRingot/LISA.git && cd LISA
 npm ci
 npm run build --workspace packages/arc1-extension   # → packages/arc1-extension/dist/index.js
 ```

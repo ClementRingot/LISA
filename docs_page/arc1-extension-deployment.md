@@ -50,6 +50,8 @@ npm install @lisa-mcp/arc1-extension
 ### B. Build from source (for development / pinning to a commit)
 
 ```bash
+git clone https://github.com/ClementRingot/LISA.git
+cd LISA                                             # or: git checkout arc1-extension-vX.Y.Z to pin a release
 npm ci
 npm run build --workspace packages/arc1-extension   # → packages/arc1-extension/dist/index.js
 ```
