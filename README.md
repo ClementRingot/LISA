@@ -215,7 +215,7 @@ npx @lisa-mcp/server
 **Or from source** (for developing LISA itself):
 
 ```bash
-git clone <this-repo>
+git clone https://github.com/ClementRingot/LISA.git
 cd LISA
 npm install
 cp packages/server/.env.example .env      # then edit .env

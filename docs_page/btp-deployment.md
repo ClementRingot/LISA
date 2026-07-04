@@ -206,7 +206,12 @@ The on-premise template ([`mta-overrides-onpremise.mtaext.example`](../packages/
 
 ## 3. Build
 
+From a clone of the repo (to deploy without cloning, see
+[Deploy from npm](#deploy-from-npm-no-clone) under step 4):
+
 ```bash
+git clone https://github.com/ClementRingot/LISA.git && cd LISA
+npm install
 npm run build --workspace packages/core --workspace packages/server   # server bundles @lisa-mcp/core into its dist
 mbt build            # → mta_archives/lisa_<version>.mtar (matches the version in mta.yaml)
 ```
