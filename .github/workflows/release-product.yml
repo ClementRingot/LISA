@@ -1,7 +1,8 @@
 name: Product release
 
-# Publishes @lisa-mcp/server to the public npm registry when a product tag
-# (vX.Y.Z) is pushed, then cuts the matching GitHub release. The tag ↔ version
+# Publishes @lisa-mcp/server to the public npm registry AND the Docker image to
+# ghcr.io/clementringot/lisa-mcp when a product tag (vX.Y.Z) is pushed, then
+# cuts the matching GitHub release. The tag ↔ version
 # match is validated first (scripts/check-release-naming.mjs), and the release
 # title is derived from the same single source of truth as the tag
 # (scripts/lib/release-naming.mjs) so it always satisfies release-guard.yml.
@@ -26,6 +27,7 @@ on:
 permissions:
   contents: write # create the GitHub release
   id-token: write # npm trusted publishing (OIDC) + provenance
+  packages: write # push the Docker image to ghcr.io
 
 jobs:
   release:
@@ -56,6 +58,14 @@ jobs:
           else
             npm publish --workspace packages/server
           fi
+      - name: Publish the Docker image to ghcr.io
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          IMAGE="ghcr.io/clementringot/lisa-mcp"   # ghcr requires a lowercase owner
+          echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker build -t "$IMAGE:$VERSION" -t "$IMAGE:latest" .
+          docker push "$IMAGE:$VERSION"
+          docker push "$IMAGE:latest"
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -76,6 +86,7 @@ jobs:
           \`\`\`bash
           npx @lisa-mcp/server            # run locally
           npm install @lisa-mcp/server    # or deploy to BTP from npm (templates/mta)
+          docker pull ghcr.io/clementringot/lisa-mcp:${VERSION}   # self-hosted container
           \`\`\`
 
           See the [server CHANGELOG](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/packages/server/CHANGELOG.md) for details."
