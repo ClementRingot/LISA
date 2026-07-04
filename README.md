@@ -5,6 +5,8 @@
 [![CI](https://github.com/ClementRingot/LISA/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ClementRingot/LISA/actions/workflows/ci.yml?query=branch%3Amain)
 [![Product release](https://github.com/ClementRingot/LISA/actions/workflows/release-product.yml/badge.svg)](https://github.com/ClementRingot/LISA/actions/workflows/release-product.yml)
 [![Publish extension](https://github.com/ClementRingot/LISA/actions/workflows/publish-extension.yml/badge.svg)](https://github.com/ClementRingot/LISA/actions/workflows/publish-extension.yml)
+[![node](https://img.shields.io/node/v/@lisa-mcp/server?logo=nodedotjs)](https://github.com/ClementRingot/LISA/blob/main/packages/server/package.json)
+[![license](https://img.shields.io/github/license/ClementRingot/LISA)](./LICENSE)
 
 > Let AI assistants read, write and compare **SAP object translations** through a single, secure MCP server.
 
