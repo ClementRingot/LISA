@@ -274,6 +274,29 @@ By default the server starts an HTTP-streamable MCP endpoint on `http://localhos
 
 > ⚠️ Local mode has **no XSUAA in front of it** — with no auth vars set the HTTP transport is open, and SAP calls use a single technical user instead of per-user principal propagation. Keep it on your machine; don't expose it. For anything shared or production-grade, use **BTP (Part 2)**.
 
+### Run in Docker (self-hosted)
+
+A production-grade image (multi-stage, non-root, `tini`) is published to **ghcr.io** on every
+product release — or build it yourself from the repo's [`Dockerfile`](./Dockerfile):
+
+```bash
+docker pull ghcr.io/clementringot/lisa-mcp:latest     # or :X.Y.Z to pin
+# — or: git clone … && docker build -t lisa-mcp .
+
+docker run -p 8080:8080 \
+  -e SAP_URL=https://your-abap-system.example.com \
+  -e SAP_USERNAME=ABAP_USER -e SAP_PASSWORD=secret -e SAP_CLIENT=100 \
+  -e SAP_API_KEYS=mykey123:developer \
+  ghcr.io/clementringot/lisa-mcp:latest
+# MCP endpoint: http://localhost:8080/mcp   |   health: /health
+```
+
+This is the **self-hosted** path (Kubernetes, VM, on-prem): outside BTP there is no XSUAA and no
+Destination service, so SAP is reached **directly** (`SAP_URL`, technical user — no per-user
+principal propagation) and callers authenticate via **API keys or OIDC/Entra**
+(`OIDC_ISSUER` + `OIDC_AUDIENCE`) — set at least one, or the endpoint is open. For per-user
+SSO + principal propagation, deploy on **BTP (Part 2)**.
+
 ---
 
 ## Configuration reference
