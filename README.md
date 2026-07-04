@@ -13,7 +13,11 @@ For authentication and SAP BTP connectivity it builds on the **same stack as [AR
 handler — pick whichever fits how you already run things:
 
 - **Standalone MCP server** — its own Cloud Foundry app, its own XSUAA login. The primary,
-  production-supported path. → [Part 2](#part-2--deploy-to-sap-btp-recommended).
+  production-supported path. Published on npm as
+  [`@lisa-mcp/server`](https://www.npmjs.com/package/@lisa-mcp/server) — consume it **from npm**
+  (`npx @lisa-mcp/server` locally, or deploy to BTP via the bundled MTA template, no clone) or
+  **from a clone of this repo** (develop / build from source).
+  → [Part 2](#part-2--deploy-to-sap-btp-recommended).
 - **ARC-1 extension** — if you already run [ARC-1](https://github.com/arc-mcp/arc-1), load LISA's 3
   tools **in-process** instead: no second app, no second URL, no second XSUAA — you reuse ARC-1's
   authenticated SAP client and per-user principal propagation. Published on npm as
