@@ -4,7 +4,7 @@
 //
 //   target      version source                       git tag                     release title
 //   ─────────   ──────────────────────────────────   ─────────────────────────   ────────────────────────────
-//   product     package.json (root)                  vX.Y.Z                      vX.Y.Z              [ — headline]
+//   product     package.json (root)                  vX.Y.Z                      lisa vX.Y.Z         [ — headline]
 //   extension   packages/arc1-extension/package.json arc1-extension-vX.Y.Z       lisa-arc1-extension vX.Y.Z [ — …]
 //
 // The extension's *title* prefix (`lisa-arc1-extension`) deliberately differs
@@ -22,9 +22,12 @@ export const TARGETS = {
     label: 'product',
     versionFile: 'package.json',
     tag: (v) => `v${v}`,
-    title: (v) => `v${v}`,
+    // `lisa vX.Y.Z` — same `<name> vX.Y.Z` shape as the extension title, so both
+    // releases read consistently in the Releases list (the bare vX.Y.Z form is
+    // already carried by the tag itself).
+    title: (v) => `lisa v${v}`,
     tagRe: new RegExp(`^v(${SEMVER})$`),
-    titleRe: new RegExp(`^v(${SEMVER})(?: — .+)?$`),
+    titleRe: new RegExp(`^lisa v(${SEMVER})(?: — .+)?$`),
   },
   extension: {
     key: 'extension',

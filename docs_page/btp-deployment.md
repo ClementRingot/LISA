@@ -81,7 +81,7 @@ active once the HTTP Service object is activated; this setup is purely the cross
 Destination Service exchanges the user JWT for a per-user Bearer token, which LISA forwards as
 `Authorization: Bearer …`. Each user needs a business user whose email matches the JWT.
 
-See [`mta-overrides-btp-abap.mtaext.example`](../mta-overrides-btp-abap.mtaext.example) for both option
+See [`mta-overrides-btp-abap.mtaext.example`](../packages/server/templates/mta/mta-overrides-btp-abap.mtaext.example) for both option
 (A) and (B) destination property lists, including how to provision them as instance-level destinations
 via the destination service `init_data`.
 
@@ -119,7 +119,7 @@ Point `SAP_BTP_PP_DESTINATION` at a destination configured as:
 | Client Key | _(leave empty)_ |
 
 Also enable **Use default JDK truststore** on the destination so the public S/4HC TLS certificate is
-trusted. See [`mta-overrides-public-cloud.mtaext.example`](../mta-overrides-public-cloud.mtaext.example)
+trusted. See [`mta-overrides-public-cloud.mtaext.example`](../packages/server/templates/mta/mta-overrides-public-cloud.mtaext.example)
 for the full property list, including the harmless BAS hint properties you keep when reusing the BAS
 destination.
 
@@ -169,7 +169,7 @@ carries a JWT) is unaffected.
 The base `mta.yaml` deliberately ships without a fixed route. To deploy under a short, stable URL your MCP clients can connect to, copy the tracked template and pin a `host:`:
 
 ```bash
-cp mta-overrides.mtaext.example mta-overrides-dev.mtaext
+cp packages/server/templates/mta/mta-overrides.mtaext.example mta-overrides-dev.mtaext
 # edit mta-overrides-dev.mtaext — it keeps the lisa-<space> convention by default,
 # so the dev space resolves to https://lisa-dev.cfapps.<region>.../mcp
 ```
@@ -178,10 +178,10 @@ Four tracked templates are provided — copy the one matching your backend:
 
 | Template | Backend scenario |
 |----------|------------------|
-| [`mta-overrides.mtaext.example`](../mta-overrides.mtaext.example) | Generic / fully-annotated reference |
-| [`mta-overrides-onpremise.mtaext.example`](../mta-overrides-onpremise.mtaext.example) | On-premise via Cloud Connector (BasicAuth + PrincipalPropagation; re-activates `lisa-connectivity`) |
-| [`mta-overrides-btp-abap.mtaext.example`](../mta-overrides-btp-abap.mtaext.example) | SAP BTP ABAP Environment / Steampunk (OAuth2UserTokenExchange same-subaccount, or OAuth2SAMLBearerAssertion; direct internet) |
-| [`mta-overrides-public-cloud.mtaext.example`](../mta-overrides-public-cloud.mtaext.example) | S/4HANA Cloud Public Edition (per-user SAMLAssertion, direct internet) |
+| [`mta-overrides.mtaext.example`](../packages/server/templates/mta/mta-overrides.mtaext.example) | Generic / fully-annotated reference |
+| [`mta-overrides-onpremise.mtaext.example`](../packages/server/templates/mta/mta-overrides-onpremise.mtaext.example) | On-premise via Cloud Connector (BasicAuth + PrincipalPropagation; re-activates `lisa-connectivity`) |
+| [`mta-overrides-btp-abap.mtaext.example`](../packages/server/templates/mta/mta-overrides-btp-abap.mtaext.example) | SAP BTP ABAP Environment / Steampunk (OAuth2UserTokenExchange same-subaccount, or OAuth2SAMLBearerAssertion; direct internet) |
+| [`mta-overrides-public-cloud.mtaext.example`](../packages/server/templates/mta/mta-overrides-public-cloud.mtaext.example) | S/4HANA Cloud Public Edition (per-user SAMLAssertion, direct internet) |
 
 Use one file per landscape (e.g. `mta-overrides-dev.mtaext`, `mta-overrides-sbx.mtaext`). All `mta-overrides*.mtaext` are gitignored; the `.example` template is tracked. Override per-landscape destinations and other properties in the same file. The host must be lowercase letters/digits/hyphens and free on the shared region domain (first-come-first-served across **all** subaccounts) — pin a landscape-specific name if `lisa-<space>` ever clashes. When running more than one instance in the **same subaccount** (e.g. sandbox alongside dev), each needs a distinct XSUAA `xsappname` — see the `mta-overrides.mtaext.example` "XSUAA xsappname" block.
 
@@ -202,13 +202,18 @@ resources:
     active: true
 ```
 
-The on-premise template ([`mta-overrides-onpremise.mtaext.example`](../mta-overrides-onpremise.mtaext.example)) already does this for `lisa-connectivity`.
+The on-premise template ([`mta-overrides-onpremise.mtaext.example`](../packages/server/templates/mta/mta-overrides-onpremise.mtaext.example)) already does this for `lisa-connectivity`.
 
 ## 3. Build
 
+From a clone of the repo (to deploy without cloning, see
+[Deploy from npm](#deploy-from-npm-no-clone) under step 4):
+
 ```bash
+git clone https://github.com/ClementRingot/LISA.git && cd LISA
+npm install
 npm run build --workspace packages/core --workspace packages/server   # server bundles @lisa-mcp/core into its dist
-mbt build            # → mta_archives/lisa_0.6.0.mtar (matches the version in mta.yaml)
+mbt build            # → mta_archives/lisa_<version>.mtar (matches the version in mta.yaml)
 ```
 
 `mbt build` doesn't need this first command — it runs its own build inside `mta.yaml`'s `build-parameters` — but running it locally first lets you catch errors before packaging. Only `packages/core` and `packages/server` are built for the standalone deploy; `packages/arc1-extension` is a separate distribution (see [ARC-1 extension deployment](./arc1-extension-deployment.md)) and isn't part of this artifact.
@@ -217,7 +222,7 @@ mbt build            # → mta_archives/lisa_0.6.0.mtar (matches the version in 
 
 ```bash
 cf login              # target the right org/space
-cf deploy mta_archives/lisa_0.6.0.mtar -e mta-overrides-dev.mtaext
+cf deploy mta_archives/lisa_<version>.mtar -e mta-overrides-dev.mtaext
 ```
 
 Or in one step from npm: `npm run btp:build-deploy-dev` (builds the `.mtar` and deploys it with the extension applied); use `btp:build-deploy-sbx` for the sandbox landscape. Omit `-e mta-overrides-dev.mtaext` / use `npm run btp:build-deploy` to deploy on the auto-assigned default host.
@@ -237,7 +242,7 @@ cp -r node_modules/@lisa-mcp/server/templates/mta lisa-deploy
 cd lisa-deploy
 # 1. pin the LISA version in app/package.json
 # 2. set SAP_BTP_*_DESTINATION + SAP_I18N_SERVICE_PATH in mta.yaml (or an .mtaext)
-mbt build && cf deploy mta_archives/lisa-npm_1.0.0.mtar
+mbt build && cf deploy mta_archives/lisa_1.0.0.mtar
 ```
 
 Same resources (XSUAA authentication-only, Destination; Connectivity/App-Logs inactive by

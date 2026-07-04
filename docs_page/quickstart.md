@@ -17,9 +17,23 @@ curl -u USER:PASS -H 'Content-Type: application/json' \
 
 ## 2. Run the MCP server
 
+**Fastest — straight from npm, no clone:**
+
 ```bash
+mkdir lisa && cd lisa
+npm install @lisa-mcp/server
+cp node_modules/@lisa-mcp/server/.env.example .env
+# edit .env (below), then:
+npx @lisa-mcp/server
+```
+
+**Or from a repo clone** (for developing LISA itself):
+
+```bash
+git clone https://github.com/ClementRingot/LISA.git
+cd LISA
 npm install
-cp .env.example .env
+cp packages/server/.env.example .env
 ```
 
 Edit `.env`:
@@ -34,7 +48,7 @@ MCP_TRANSPORT=http-streamable
 PORT=8080
 ```
 
-Start it:
+Start it (`npx @lisa-mcp/server` on the npm path):
 
 ```bash
 npm run dev

@@ -17,7 +17,7 @@ always agree:
 | `packages/server/package.json` | the deployable server |
 | `mta.yaml` | the label baked into the `.mtar` (`lisa_X.Y.Z.mtar`) |
 
-`@lisa-mcp/core` and `lisa-arc1-extension` are **versioned independently** — they're
+`@lisa-mcp/core` and `@lisa-mcp/arc1-extension` are **versioned independently** — they're
 separate distributions, not part of the product version. The extension has its
 own release line, tagged **`arc1-extension-vX.Y.Z`** (distinct from the product
 `vX.Y.Z` namespace). `@lisa-mcp/core` is private and consumed only via the `"*"`
@@ -56,8 +56,8 @@ npx changeset               # pick package(s) + patch/minor/major, write a summa
 ```
 
 - Bumping **`@lisa-mcp/server`** drives the **product** version (`vX.Y.Z`).
-- Bumping **`lisa-arc1-extension`** drives the **extension** version (`arc1-extension-vX.Y.Z`).
-- **Changing `@lisa-mcp/core` requires bumping BOTH** `@lisa-mcp/server` **and** `lisa-arc1-extension`.
+- Bumping **`@lisa-mcp/arc1-extension`** drives the **extension** version (`arc1-extension-vX.Y.Z`).
+- **Changing `@lisa-mcp/core` requires bumping BOTH** `@lisa-mcp/server` **and** `@lisa-mcp/arc1-extension`.
   `@lisa-mcp/core` is bundled/inlined into both artifacts, so a core change ships inside both — the
   guard fails a core-source change that doesn't cover both dependents. You never write a changeset
   for `@lisa-mcp/core` itself (it's ignored by Changesets); you bump its two dependents.
@@ -83,12 +83,21 @@ Commit the generated `.changeset/*.md` with your PR. `@lisa-mcp/core` is ignored
    never typed). The pushed tags trigger the publish pipelines
    (`release-product.yml` / `publish-extension.yml`) → npm publish + GitHub release.
 
-> **One-time setup:** the `CHANGESETS_PAT` repository secret — a token with
-> *Contents: Read/Write* and *Pull requests: Read/Write* on this repo. Without it the
-> workflow falls back to `GITHUB_TOKEN`, whose events **don't trigger other workflows**
-> (GitHub anti-recursion): the Version PR would get no CI runs and the pushed tags would
-> not publish. If a tag ever lands without its pipeline run, dispatch the publish
-> workflow manually on the tag ref (both have `workflow_dispatch`; publishing is
+> **One-time setup — GitHub App (preferred, never expires):** events created with the
+> default `GITHUB_TOKEN` don't trigger other workflows (GitHub anti-recursion), so the
+> release train needs its own identity:
+>
+> 1. Create a GitHub App on your account (Settings → Developer settings → GitHub Apps):
+>    permissions **Contents: Read/Write** + **Pull requests: Read/Write**, webhook off.
+> 2. **Install it on this repository.**
+> 3. Set the repository **variable** `RELEASE_APP_ID` (the App's numeric ID) and the
+>    repository **secret** `RELEASE_APP_PRIVATE_KEY` (a generated private key, `.pem`).
+>
+> While those are absent, the workflow falls back to the `CHANGESETS_PAT` secret (a
+> fine-grained PAT, *Contents: RW* + *Pull requests: RW* — expires, so the App is the
+> durable choice), then to `GITHUB_TOKEN` (works, but the Version PR gets no CI runs and
+> the pushed tags don't publish — if a tag ever lands that way, dispatch the publish
+> workflow manually on the tag ref; both have `workflow_dispatch`, and publishing is
 > idempotent — an already-published version is skipped).
 
 ### Manual (fallback / offline)
@@ -121,9 +130,9 @@ release title. `npm run tag` derives both from the version already committed, us
 one convention in `scripts/lib/release-naming.mjs`:
 
 ```bash
-npm run tag product              # → tag v0.8.5            title "v0.8.5"
+npm run tag product              # → tag v0.8.5            title "lisa v0.8.5"
 npm run tag extension            # → tag arc1-extension-v0.2.0  title "lisa-arc1-extension v0.2.0"
-npm run tag product -- --headline "Batch CDS translations"   # title "v0.8.5 — Batch CDS translations"
+npm run tag product -- --headline "Batch CDS translations"   # title "lisa v0.8.5 — Batch CDS translations"
 
 # add --push to push the tag, and --release to also open the GitHub release with the canonical title:
 npm run tag product -- --push --release
@@ -137,7 +146,7 @@ tag can only ever point at a committed, self-consistent version.
 
 | Cadence | Tag | Release title |
 |---------|-----|---------------|
-| product | `vX.Y.Z` | `vX.Y.Z`[` — headline`] |
+| product | `vX.Y.Z` | `lisa vX.Y.Z`[` — headline`] |
 | extension | `arc1-extension-vX.Y.Z` | `lisa-arc1-extension vX.Y.Z`[` — headline`] |
 
 1. **Generated, not typed** — `npm run tag <product\|extension>` builds the exact tag +
@@ -163,8 +172,11 @@ each artifact, never published):
 | **`@lisa-mcp/arc1-extension`** | `arc1-extension-vX.Y.Z` | `.github/workflows/publish-extension.yml` |
 
 Publication is **fully automated**: pushing the tag triggers the workflow, which validates the
-tag↔version match, builds the bundle, runs `npm publish` with the `NPM_TOKEN` repo secret, and cuts
-the GitHub release. So the normal flow is simply:
+tag↔version match, builds the bundle, runs `npm publish`, and cuts the GitHub release. npm auth is
+**Trusted Publishing (OIDC)** — no `NPM_TOKEN`, nothing to rotate: each package's npmjs settings
+list this repo + workflow file as a *Trusted Publisher* (`@lisa-mcp/server` ↔
+`release-product.yml`, `@lisa-mcp/arc1-extension` ↔ `publish-extension.yml`), and npm authenticates
+the workflow run itself via OIDC (provenance attested automatically). So the normal flow is simply:
 
 ```bash
 npm run tag product -- --push          # push vX.Y.Z → CI publishes @lisa-mcp/server + GitHub release
@@ -178,29 +190,30 @@ works), the **MTA deploy template** (`templates/mta/` — deploy LISA to BTP fro
 
 - The published tarball is the single bundled `dist/index.js` (+ map), `README.md`, `LICENSE`,
   `package.json` — `@lisa-mcp/core` is inlined, `arc-1` and `zod` are peer deps (host-provided).
-- `npm publish` fails if the version already exists on npm, so a tag is only ever published once.
-- **Prerequisites (one-time):** the `@lisa` npm org must exist and be owned by the publisher, and the
-  `NPM_TOKEN` repository secret must be set (a granular token scoped to `@lisa-mcp/arc1-extension`,
-  *Read and write*). If the `@lisa` scope is unavailable, rename to a scope you own (e.g.
-  `@clementringot/arc1-extension`) in `packages/arc1-extension/package.json` and update
-  `EXTENSION` in `scripts/require-changeset.mjs` to match.
+- Publishing is **idempotent**: a version already on the registry is skipped (not an error), so
+  re-runs and mixed manual/automated tagging are safe.
+- **Prerequisites (one-time):** the `@lisa-mcp` npm scope must be owned by the publisher, and each
+  package must have its **Trusted Publisher** configured on npmjs.com (Settings → Trusted
+  Publisher → GitHub Actions → owner `ClementRingot`, repo `LISA`, the workflow file above,
+  environment blank). No npm token is stored in the repo.
 
 > The **npm name** (`@lisa-mcp/arc1-extension`), the **git tag** (`arc1-extension-vX.Y.Z`), and the
 > **runtime plugin name** (`lisa-arc1-extension`, what ARC-1 registers) are three deliberately
 > independent identities — only the npm name is the public distribution name.
 
 > **Legacy path — `scripts/release.sh <version>`.** Predates Changesets: it hand-bumps the three
-> product-version files and rolls the root `CHANGELOG.md`. Still usable for a **manual product-only**
-> release, but it **bypasses** the changeset flow and ignores the extension. Prefer
-> `npm run changeset:version`; never run both for the same release (they double-bump).
+> product-version files and used to roll the root `CHANGELOG.md` (deleted since — the script just
+> skips that step). Still usable for a **manual product-only** release, but it **bypasses** the
+> changeset flow and ignores the extension. Prefer `npm run changeset:version`; never run both for
+> the same release (they double-bump).
 
 ## Building a released artifact
 
-Build from the **tag**, so the `.mtar`'s `0.7.0` label is truthful:
+Build from the **tag**, so the `.mtar`'s version label is truthful:
 
 ```bash
-git checkout v0.7.0
-mbt build                 # → mta_archives/lisa_0.7.0.mtar
+git checkout vX.Y.Z
+mbt build                 # → mta_archives/lisa_X.Y.Z.mtar
 ```
 
 See [BTP deployment](./btp-deployment.md) for the deploy itself.
@@ -242,12 +255,12 @@ cf target -o <org> -s <prod-space>        # confirm you're on prod
 npm run btp:build-deploy-prod             # mbt build + cf deploy -e …-prod.mtaext
 ```
 
-Building from the tag is what makes the `.mtar` name (`lisa_0.7.0.mtar`) and the
+Building from the tag is what makes the `.mtar` name (`lisa_X.Y.Z.mtar`) and the
 deploy command's `$npm_package_version` agree — on `main` past the tag they'd
 still say the old version (the label would lie). `check:version` guarantees the
 `.mtar` label and `package.json` always match at a given ref.
 
-> First prod deploy: `cp mta-overrides.mtaext.example mta-overrides-prod.mtaext`,
+> First prod deploy: `cp packages/server/templates/mta/mta-overrides.mtaext.example mta-overrides-prod.mtaext`,
 > fill in the prod host/destinations, then set `LISA_DCR_SIGNING_SECRET` on the
 > app once (see [BTP deployment §5](./btp-deployment.md)) — it survives
 > redeploys, so you only do it once per landscape.
@@ -257,5 +270,8 @@ still say the old version (the label would lie). `check:version` guarantees the
 Changelogs are generated from changesets, per package
 (`packages/server/CHANGELOG.md`, `packages/arc1-extension/CHANGELOG.md`) — you don't hand-edit
 them. Just make sure the **changeset summary** you write on each PR reads as a real changelog
-line, because that text is what lands verbatim. The root `CHANGELOG.md` holds the pre-Changesets
-history; new entries flow through the per-package files.
+line, because that text is what lands verbatim. Each GitHub release links to the CHANGELOG of the
+package it ships. There is no root `CHANGELOG.md` anymore: the pre-Changesets history (0.1.0 →
+0.9.0) is preserved in the
+[frozen file at the v0.9.0 tag](https://github.com/ClementRingot/LISA/blob/v0.9.0/CHANGELOG.md),
+and both per-package CHANGELOGs link to it in their footer.

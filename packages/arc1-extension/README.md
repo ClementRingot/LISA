@@ -21,6 +21,11 @@ The published artifact is a **single self-contained ESM bundle** at `dist/index.
 host ARC-1 process at runtime — `zod` in particular MUST resolve to ARC-1's own instance, since its
 registry runs `z.toJSONSchema()` on the tool schemas and plugin + registry have to share one zod.
 
+Prefer building from source (development, or pinning to a commit)? Clone the
+[LISA repo](https://github.com/ClementRingot/LISA) and run
+`npm ci && npm run build --workspace packages/arc1-extension` — same bundle, at
+`packages/arc1-extension/dist/index.js`.
+
 ## Use
 
 ARC-1 loads code plugins from `ARC1_PLUGINS` — a CSV of **absolute** paths to each plugin's entry file.

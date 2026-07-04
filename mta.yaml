@@ -20,7 +20,7 @@ modules:
       # landscapes (or a space literally named like another) pick the same name.
       # The default route is long/auto-generated; read it back with
       # `cf app lisa-mcp`. To deploy under a short URL you choose, pin `host:`
-      # in your `mta-overrides.mtaext` (see mta-overrides.mtaext.example).
+      # in your `mta-overrides.mtaext` (see packages/server/templates/mta/mta-overrides.mtaext.example).
     properties:
       # ── Transport ──────────────────────────────────────────────────────────
       MCP_TRANSPORT: http-streamable
@@ -28,7 +28,7 @@ modules:
       LOG_LEVEL: info
       # ── Landscape-specific properties ──────────────────────────────────────
       # SAP_I18N_SERVICE_PATH and the SAP_BTP_*_DESTINATION names are set per
-      # landscape in your `mta-overrides.mtaext` (see mta-overrides.mtaext.example).
+      # landscape in your `mta-overrides.mtaext` (see packages/server/templates/mta/mta-overrides.mtaext.example).
     requires:
       - name: lisa-xsuaa
       - name: lisa-destination
@@ -48,7 +48,6 @@ modules:
       build-result: .
       ignore:
         - .env
-        - .env.example
         - packages/*/src/
         - "*.log"
         - mta_archives/
@@ -66,7 +65,7 @@ resources:
       # xsappname comes from xs-security.json (`lisa`). It is unique per
       # subaccount, so a SECOND instance in the same subaccount (e.g. sandbox
       # alongside dev) MUST override it in mta-overrides.mtaext — see the
-      # "XSUAA xsappname" block in mta-overrides.mtaext.example.
+      # "XSUAA xsappname" block in packages/server/templates/mta/mta-overrides.mtaext.example.
       path: ./xs-security.json
 
   - name: lisa-destination

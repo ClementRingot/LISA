@@ -18,7 +18,9 @@ documentation live in the [LISA repository](https://github.com/ClementRingot/LIS
 npx @lisa-mcp/server
 ```
 
-Configure via environment variables (or a `.env` next to where you run it):
+Configure via environment variables, or a `.env` next to where you run it — the package ships a
+commented [`.env.example`](./.env.example) to copy
+(`cp node_modules/@lisa-mcp/server/.env.example .env`):
 
 ```bash
 SAP_URL=https://your-abap-system.example.com
@@ -59,9 +61,10 @@ cp -r node_modules/@lisa-mcp/server/templates/mta lisa-deploy && cd lisa-deploy
 mbt build && cf deploy mta_archives/*.mtar
 ```
 
-It provisions XSUAA (authentication only — no scopes/roles) and the Destination service, and
-upgrading LISA is just a version bump in `app/package.json`. See the template's
-[README](./templates/mta/README.md) and
+It provisions XSUAA (authentication only — no scopes/roles) and the Destination service, ships
+per-backend **override templates** (`mta-overrides-*.mtaext.example` — on-premise / BTP ABAP
+Environment / S/4HANA Cloud), and upgrading LISA is just a version bump in `app/package.json`.
+See the template's [README](./templates/mta/README.md) and
 [docs: BTP deployment](https://github.com/ClementRingot/LISA/blob/main/docs_page/btp-deployment.md).
 
 ## Configuration & docs

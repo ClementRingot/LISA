@@ -15,11 +15,17 @@ cd lisa-deploy
 1. **Pin the LISA version** in `app/package.json` (`"@lisa-mcp/server": "^X.Y.Z"`).
 2. **Set your landscape values** in `mta.yaml` (or in a landscape `.mtaext`):
    `SAP_BTP_DESTINATION`, `SAP_BTP_PP_DESTINATION`, `SAP_I18N_SERVICE_PATH`.
+   Ready-made override templates ship right next to this file — copy the one for your
+   backend and fill it in (all `mta-overrides*.mtaext` are meant to be kept out of git):
+   - [`mta-overrides.mtaext.example`](./mta-overrides.mtaext.example) — generic (host, destinations, DCR, `xsappname`)
+   - [`mta-overrides-onpremise.mtaext.example`](./mta-overrides-onpremise.mtaext.example) — on-premise via Cloud Connector
+   - [`mta-overrides-btp-abap.mtaext.example`](./mta-overrides-btp-abap.mtaext.example) — SAP BTP ABAP Environment
+   - [`mta-overrides-public-cloud.mtaext.example`](./mta-overrides-public-cloud.mtaext.example) — S/4HANA Cloud Public Edition
 3. Build & deploy:
 
    ```bash
    mbt build
-   cf deploy mta_archives/lisa-npm_1.0.0.mtar        # add -e my-landscape.mtaext for overrides
+   cf deploy mta_archives/lisa_1.0.0.mtar -e my-landscape.mtaext
    ```
 
 4. **One-off after the first deploy** — pin the DCR signing secret (it must NOT live in
@@ -38,7 +44,7 @@ Bump the dependency, rebuild, redeploy:
 
 ```bash
 (cd app && npm install @lisa-mcp/server@latest --save)
-mbt build && cf deploy mta_archives/lisa-npm_1.0.0.mtar
+mbt build && cf deploy mta_archives/lisa_1.0.0.mtar -e my-landscape.mtaext
 ```
 
 ## What still comes from the SAP side

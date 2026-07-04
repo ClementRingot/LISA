@@ -5,7 +5,12 @@ name: Product release
 # match is validated first (scripts/check-release-naming.mjs), and the release
 # title is derived from the same single source of truth as the tag
 # (scripts/lib/release-naming.mjs) so it always satisfies release-guard.yml.
-# Requires the NPM_TOKEN repository secret (same one publish-extension.yml uses).
+#
+# npm auth: TRUSTED PUBLISHING (OIDC) — no NPM_TOKEN. The package's npmjs
+# settings must list this repo + workflow file as a Trusted Publisher
+# (@lisa-mcp/server → Settings → Trusted Publisher → GitHub Actions:
+# ClementRingot/LISA, release-product.yml). `id-token: write` lets npm verify
+# the workflow's identity; provenance is attested automatically.
 #
 # The `v*` glob matches only product tags: extension tags start with `arc1-` and
 # are handled by publish-extension.yml.
@@ -20,7 +25,7 @@ on:
 
 permissions:
   contents: write # create the GitHub release
-  id-token: write # npm provenance
+  id-token: write # npm trusted publishing (OIDC) + provenance
 
 jobs:
   release:
@@ -29,10 +34,13 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: ${{ github.ref }}
+      # No registry-url here: it would write an .npmrc expecting NODE_AUTH_TOKEN,
+      # which no longer exists — OIDC needs no token config at all.
       - uses: actions/setup-node@v6
         with:
           node-version: 22
-          registry-url: 'https://registry.npmjs.org'
+      # Trusted publishing needs npm ≥ 11.5 (Node 22 bundles npm 10).
+      - run: npm install -g npm@latest
       - run: npm ci
       - name: Validate tag ↔ version
         run: node scripts/check-release-naming.mjs tag "$GITHUB_REF_NAME"
@@ -48,8 +56,6 @@ jobs:
           else
             npm publish --workspace packages/server
           fi
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -72,5 +78,5 @@ jobs:
           npm install @lisa-mcp/server    # or deploy to BTP from npm (templates/mta)
           \`\`\`
 
-          See [CHANGELOG.md](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/CHANGELOG.md) for details."
+          See the [server CHANGELOG](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/packages/server/CHANGELOG.md) for details."
           fi

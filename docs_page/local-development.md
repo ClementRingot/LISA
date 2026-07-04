@@ -3,18 +3,23 @@
 ## Setup
 
 ```bash
+git clone https://github.com/ClementRingot/LISA.git
+cd LISA
 npm install
-cp .env.example .env     # fill in SAP_URL / SAP_USERNAME / SAP_PASSWORD / SAP_CLIENT
+cp packages/server/.env.example .env     # fill in SAP_URL / SAP_USERNAME / SAP_PASSWORD / SAP_CLIENT
 ```
 
 For local dev you connect **directly** to SAP (BasicAuth) — no BTP services involved. Make sure the [ABAP service](./abap-service-setup.md) is installed and reachable from your machine.
+
+> Just want to **run** the server locally, not develop it? Skip the clone entirely:
+> `npx @lisa-mcp/server` (see the [Quickstart](./quickstart.md)).
 
 ## Scripts
 
 | Command | What it does |
 |---------|--------------|
 | `npm run dev` | Run with `tsx` (no build step, fast iteration). |
-| `npm run build` | Compile TypeScript to `dist/` via `tsc`. |
+| `npm run build` | Type-check (`tsc --noEmit`) then bundle each package to `dist/` via esbuild. |
 | `npm start` | Run the compiled server (`node dist/index.js`). |
 | `npm run lint` | Biome check over `src/`. |
 | `npm run format` | Biome format-write over `src/`. |
@@ -59,7 +64,7 @@ packages/
 │           ├── http.ts           # Express transport, mcpAuthRouter, OAuth callback; wires @arc-mcp/xsuaa-auth
 │           ├── logger.ts         # logging + audit events; toPackageLogger() adapter for @arc-mcp/xsuaa-auth
 │           └── types.ts          # shared types
-└── arc1-extension/               # lisa-arc1-extension — the 3 tools as an in-process ARC-1 plugin
+└── arc1-extension/               # @lisa-mcp/arc1-extension — the 3 tools as an in-process ARC-1 plugin
     └── src/
         ├── transport.ts          # ctxHttpTransport: I18nTransport over ctx.http (ARC-1's SafeHttpClient)
         ├── tools/                # Custom_TranslateListLanguages.ts, Custom_TranslateGetTexts.ts, Custom_TranslateSetTexts.ts

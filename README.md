@@ -125,8 +125,9 @@ This is the **main way to run `LISA`**. It deploys to Cloud Foundry as an MTA an
 ```bash
 npm install
 npm run build
-mbt build           # produces mta_archives/lisa_0.1.0.mtar
-cf deploy mta_archives/lisa_0.1.0.mtar
+mbt build           # produces mta_archives/lisa_<version>.mtar (version from mta.yaml)
+cf deploy mta_archives/lisa_<version>.mtar
+# or in one step, with your landscape overrides applied: npm run btp:build-deploy-dev
 ```
 
 > **No clone needed — deploy from npm.** The server is published as
@@ -176,6 +177,7 @@ Install it from npm, or build from source:
 ```bash
 npm install @lisa-mcp/arc1-extension                    # → node_modules/@lisa-mcp/arc1-extension/dist/index.js
 # — or build from source —
+git clone https://github.com/ClementRingot/LISA.git && cd LISA
 npm ci
 npm run build --workspace packages/arc1-extension   # → packages/arc1-extension/dist/index.js
 ```
@@ -214,10 +216,10 @@ npx @lisa-mcp/server
 **Or from source** (for developing LISA itself):
 
 ```bash
-git clone <this-repo>
+git clone https://github.com/ClementRingot/LISA.git
 cd LISA
 npm install
-cp .env.example .env      # then edit .env
+cp packages/server/.env.example .env      # then edit .env
 npm run dev               # tsx packages/server/src/index.ts  (hot dev)
 # or
 npm run build && npm start
@@ -284,7 +286,8 @@ By default the server starts an HTTP-streamable MCP endpoint on `http://localhos
 | `MCP_RATE_LIMIT` / `OAUTH_RATE_LIMIT` | Per-minute rate limits (default 600 / 20). |
 | `CORS_ORIGINS` | Comma-separated allowed CORS origins. |
 
-Full `.env.example` is in the repo.
+The full commented template lives at [`packages/server/.env.example`](./packages/server/.env.example)
+(also shipped inside the npm package).
 
 ---
 
@@ -298,12 +301,15 @@ The [`docs_page/`](./docs_page) folder holds the long-form guides:
 | [Quickstart](./docs_page/quickstart.md) | Fastest path to a working setup. |
 | [ABAP service setup](./docs_page/abap-service-setup.md) | Import the class & publish the HTTP service. |
 | [MCP tools usage](./docs_page/mcp-usage.md) | Every tool, with examples. |
+| [Text tables](./docs_page/text-table.md) | Translating delivery-class C/S tables (`text_table`, e.g. `T005T`). |
 | [Configuration reference](./docs_page/configuration-reference.md) | All env vars in detail. |
 | [Authentication](./docs_page/authentication.md) | Auth model & options. |
 | [BTP deployment](./docs_page/btp-deployment.md) | Cloud Foundry / MTA (standalone server). |
 | [ARC-1 extension deployment](./docs_page/arc1-extension-deployment.md) | Run LISA's tools in-process inside ARC-1. |
 | [Local development](./docs_page/local-development.md) | Dev loop, lint, build. |
 | [Architecture](./docs_page/architecture.md) | How the pieces fit together. |
+| [Wire-contract evolution](./docs_page/wire-contract-evolution.md) | Growing the contract as XCO APIs diverge per platform. |
+| [Releasing](./docs_page/releasing.md) | Changesets, tags, npm publication, which ref to deploy. |
 
 ---
 
@@ -331,17 +337,18 @@ LISA/
 ├── packages/
 │   ├── core/             # @lisa-mcp/core — transport-agnostic wire contract (Zod schemas + ZCL_I18N_SERVICE wire logic)
 │   │   └── src/          # wire.ts, schemas.ts, index.ts
-│   ├── server/           # standalone MCP server (deployable on BTP)
-│   │   └── src/
-│   │       ├── index.ts  # entry point
-│   │       ├── handlers/ # tool registration (intent.ts), built on @lisa-mcp/core
-│   │       ├── sap/      # transport.ts (HTTP to ABAP; BTP via @arc-mcp/xsuaa-auth/btp)
-│   │       └── server/   # transport, config, logging (XSUAA OAuth via @arc-mcp/xsuaa-auth)
+│   ├── server/           # @lisa-mcp/server — standalone MCP server (published to npm, deployable on BTP)
+│   │   ├── src/
+│   │   │   ├── index.ts  # entry point
+│   │   │   ├── handlers/ # tool registration (intent.ts), built on @lisa-mcp/core
+│   │   │   ├── sap/      # transport.ts (HTTP to ABAP; BTP via @arc-mcp/xsuaa-auth/btp)
+│   │   │   └── server/   # transport, config, logging (XSUAA OAuth via @arc-mcp/xsuaa-auth)
+│   │   ├── templates/mta/    # deploy-from-npm MTA project + mta-overrides-*.mtaext.example landscape templates
+│   │   └── .env.example      # local-dev config template (shipped in the npm package)
 │   └── arc1-extension/   # @lisa-mcp/arc1-extension — the same 3 tools as an in-process ARC-1 plugin (published to npm)
 │       └── src/          # Custom_* tool defs + index.ts (loaded via ARC1_PLUGINS)
-├── mta.yaml              # BTP MTA descriptor
-├── xs-security.json      # XSUAA config (authentication only)
-└── .env.example
+├── mta.yaml              # BTP MTA descriptor (source-build path)
+└── xs-security.json      # XSUAA config (authentication only)
 ```
 
 ---

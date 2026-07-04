@@ -4,9 +4,9 @@
 // the one convention in scripts/lib/release-naming.mjs — so a typo or a
 // tag↔version drift is impossible by construction.
 //
-//   node scripts/tag.mjs product                       # → v0.8.5   / title "v0.8.5"
+//   node scripts/tag.mjs product                       # → v0.8.5   / title "lisa v0.8.5"
 //   node scripts/tag.mjs extension                     # → arc1-extension-v0.2.0 / "lisa-arc1-extension v0.2.0"
-//   node scripts/tag.mjs product --headline "Batch X"  # title "v0.8.5 — Batch X"
+//   node scripts/tag.mjs product --headline "Batch X"  # title "lisa v0.8.5 — Batch X"
 //   node scripts/tag.mjs extension --push              # also `git push origin <tag>`
 //   node scripts/tag.mjs product --push --release      # …and create the GitHub release with the canonical title
 //

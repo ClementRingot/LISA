@@ -10,7 +10,7 @@
 #   cd lisa-deploy
 #   # 1. set the two destination names + service path below (or in an .mtaext)
 #   # 2. mbt build
-#   # 3. cf deploy mta_archives/lisa-npm_*.mtar
+#   # 3. cf deploy mta_archives/lisa_*.mtar
 #   # 4. one-off: cf set-env lisa-mcp LISA_DCR_SIGNING_SECRET "$(openssl rand -base64 48)"
 #      && cf restage lisa-mcp
 #
@@ -19,10 +19,15 @@
 # the same way: cf deploy … -e my-landscape.mtaext
 # ──────────────────────────────────────────────────────────────────────
 _schema-version: '3.1'
-ID: lisa-npm
+# Same ID as the repo's source-build mta.yaml ON PURPOSE: the deploy service
+# identifies a deployment by MTA ID (per space), so switching between the
+# source-build and npm deploy paths UPGRADES the same deployment instead of
+# creating a parallel one — and every mta-overrides*.mtaext (extends: lisa)
+# applies to both paths unchanged.
+ID: lisa
 description: LISA — Localization & Internationalization Service for ABAP (deployed from the @lisa-mcp/server npm package)
-# Version of YOUR deployment project (labels the .mtar). Independent of the
-# LISA version, which app/package.json pins.
+# Version of YOUR deployment project (labels the .mtar → lisa_1.0.0.mtar).
+# Independent of the LISA version, which app/package.json pins.
 version: 1.0.0
 
 modules:
