@@ -34,6 +34,13 @@ handler — pick whichever fits how you already run things:
 Running it **locally** ([Part 4](#part-4--run-locally-development--testing)) is also fully
 supported, but meant for development and testing, not production.
 
+> **No MCP client at all?** A **BTP runtime** (Joule Studio action, CAP service, SAP Build) can call
+> the underlying ABAP API (`zi18n_service`) **directly** — no LISA Node layer — through a **BTP
+> destination** that carries the auth (per-user propagation or a shared user). You get the same 3
+> operations over plain JSON. See [BTP destination setup](./docs_page/btp-destination-setup.md),
+> the [OpenAPI spec](./api/zi18n_service.openapi.yaml) (import as a Joule Studio action), and the
+> [API-usage skill](./skills/lisa-abap-api/SKILL.md).
+
 ---
 
 ## How it works
