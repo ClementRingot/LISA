@@ -17,13 +17,14 @@
 - **[Configuration reference](./configuration-reference.md)** — every environment variable.
 - **[Authentication](./authentication.md)** — the auth model and the supported methods.
 - **[Architecture](./architecture.md)** — how the components fit together.
-- **[ABAP API via BTP destination (agent skill)](../skills/lisa-abap-api/SKILL.md)** — wire `zi18n_service` into a BTP integration (Joule Studio / CAP / SAP Build) where the destination handles auth; the six actions and the JSON contract. For credential-based access, use the MCP server instead.
+- **[Using the ABAP API (agent skill)](../skills/lisa-abap-api/SKILL.md)** — how to drive `zi18n_service`: the six actions, the JSON wire contract, target types, and pitfalls. Auth-agnostic — a BTP destination or the MCP server carries it.
 - **[OpenAPI spec](../api/zi18n_service.openapi.yaml)** — the `zi18n_service` contract as OpenAPI 3.0, ready to import into Joule Studio (actions), SAP API Management, or Postman.
 - **[Wire-contract evolution & platform divergence](./wire-contract-evolution.md)** — why one MCP serves every platform, the per-platform ABAP split, and how to grow the contract / add a `target_type` or parameter as the XCO APIs diverge.
 
 ## Operations
 
 - **[Local development](./local-development.md)** — dev loop, lint, build.
+- **[BTP destination setup](./btp-destination-setup.md)** — create the destination that authenticates `zi18n_service` calls (per-user propagation or a shared Basic-auth user).
 - **[BTP deployment](./btp-deployment.md)** — Cloud Foundry / MTA (standalone server).
 - **[ARC-1 extension deployment](./arc1-extension-deployment.md)** — run LISA's tools in-process inside ARC-1.
 - **[Releasing](./releasing.md)** — cut a tagged release; which ref to deploy.

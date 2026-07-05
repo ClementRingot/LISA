@@ -1,119 +1,57 @@
 ---
 name: lisa-abap-api
 description: >-
-  Wire LISA's ZCL_I18N_SERVICE ABAP HTTP API into a BTP integration (Joule Studio actions, CAP,
-  SAP Build) through a BTP destination — to read, write and compare SAP object translations (data
-  elements, domains, CDS views, message classes, text pools, text tables, and more). The
-  destination handles authentication — per-user principal propagation (PrincipalPropagation,
-  OAuth2UserTokenExchange, OAuth2SAMLBearerAssertion, SAMLAssertion) or a shared BasicAuthentication
-  user (technical user on-premise/private cloud; communication user from a communication scenario +
-  arrangement on cloud) — with the credential kept in the destination's vault, so this skill never
-  handles a secret. Covers destination setup per landscape, all six actions, the JSON wire
-  contract, and an importable OpenAPI spec. If you'd rather a runtime component (not a destination)
-  hold the credential and expose the tools, run the LISA MCP server instead.
+  Use LISA's ZCL_I18N_SERVICE ABAP HTTP API to read, write and compare SAP object translations —
+  data elements, domains, CDS views, message classes, text pools, text tables, and more. Covers
+  the six actions, the JSON wire contract, target types and selectors, and the pitfalls. Auth is
+  handled OUTSIDE this skill — by a BTP destination or the LISA MCP server — so the agent never
+  holds a credential. Use when driving zi18n_service from a BTP runtime (Joule Studio, CAP, SAP
+  Build) or any client that already carries the auth; for destination setup see the BTP
+  destination doc, and for a credential-holding runtime use the MCP server.
 ---
 
-# LISA ABAP API — via a BTP destination (no MCP server, no secret in the agent)
+# LISA ABAP API — using `zi18n_service`
 
-The whole API is **one ABAP HTTP service** (`zi18n_service`, handler class `ZCL_I18N_SERVICE`)
-installed on the target SAP system. This skill calls it **from BTP through a destination**: the
-destination authenticates every call, so **no credential is ever handled here** — nothing to read
-from a `.env`, no `Authorization` header to build, no secret in the agent's context.
-
-> **The credential must never live where the agent can read it.** That is the rule — not "no Basic
-> auth". A BTP destination is safe **including with `BasicAuthentication`**, because the password
-> sits in the destination's vault, not in a `.env` the agent could `cat`. What this skill forbids
-> is the agent holding the secret itself (a hand-built `curl -u user:pass`, a `.env` it reads).
-> If you'd rather a **runtime component** hold credentials and expose the three tools directly —
-> no BTP destination in the loop — run the **LISA MCP server**
-> ([`@lisa-mcp/server`](https://www.npmjs.com/package/@lisa-mcp/server)) or the ARC-1 extension.
-
-Every action is a **POST** of a JSON body to `{destination}{path}/{action}`; responses use one
-envelope:
+`ZCL_I18N_SERVICE` (`zi18n_service`) is one ABAP **HTTP service**. Every action is a **POST** of a
+JSON body to `{base}{path}/{action}`, with a single response envelope:
 
 ```jsonc
 { "success": true,  "data": { … } }            // HTTP 200
 { "success": false, "error": { "code": "…", "message": "…" } }   // HTTP 400
 ```
 
-Default path: `/sap/bc/http/sap/zi18n_service`. Actions: `capabilities`, `list_languages`,
-`list_texts`, `get_translation`, `set_translation`, `compare_translations` — full request/response
-shapes, selectors and error codes are in [reference.md](./reference.md).
+Default path `/sap/bc/http/sap/zi18n_service`. Actions: `capabilities`, `list_languages`,
+`list_texts`, `get_translation`, `set_translation`, `compare_translations`. Full request/response
+shapes, selectors and error codes are in [reference.md](./reference.md); the machine-readable
+contract is [`api/zi18n_service.openapi.yaml`](../../api/zi18n_service.openapi.yaml).
 
-## The destination carries the auth
+## Authentication is out of scope — on purpose
 
-Point the BTP destination at the SAP system with an auth type that matches the backend. **Whatever
-the type, the credential lives in the destination's secure store — never in the skill or the
-agent's context.** That is the property that makes this path safe: the agent only ever names a
-destination and sends a JSON body.
+This skill **never handles a credential.** Something else carries the auth, and the agent only ever
+sends a JSON body:
 
-**Per-user propagation** — every call runs under the identity of the actual end user (per-user SAP
-authorizations + clean audit, no shared user):
+- **From a BTP runtime** (Joule Studio action, CAP, SAP Build): a **BTP destination** authenticates
+  the call — bind your action to it. Creating that destination (per-user propagation or a shared
+  Basic-auth user, per landscape) is documented in
+  [BTP destination setup](../../docs_page/btp-destination-setup.md).
+- **Want a runtime that holds credentials and exposes the three tools directly?** Run the **LISA
+  MCP server** ([`@lisa-mcp/server`](https://www.npmjs.com/package/@lisa-mcp/server)) or the ARC-1
+  extension — the agent calls the tools and never sees a secret.
 
-| Backend | Destination `Authentication` | SAP receives |
-|---|---|---|
-| On-premise / private cloud | `PrincipalPropagation` (`ProxyType=OnPremise`, Cloud Connector) | the real business user |
-| BTP ABAP Env — same subaccount | `OAuth2UserTokenExchange` | per-user Bearer |
-| BTP ABAP Env — cross-subaccount | `OAuth2SAMLBearerAssertion` | per-user Bearer |
-| S/4HANA Cloud public | `SAMLAssertion` | per-user `SAML2.0 …` |
+**Never** build a `curl -u user:pass`, read a credential from a `.env`, or put a secret in a
+prompt. If you have no authenticated way to reach the system, stop and point the user at the two
+options above — do not improvise auth.
 
-Conditions for propagation: (1) the runtime supports user-propagating destination auth types
-(check your Joule Studio / actions version); (2) the IAS/XSUAA identity trust chain between the
-caller's subaccount and the destination's; (3) a SAP-side user mapping (Cloud Connector cert
-mapping on-premise; a business user with matching email on cloud) — plus per-user transport access
-for writes. `OAuth2UserTokenExchange` only works within ONE subaccount.
+## Workflow (pure JSON, whatever the runtime)
 
-> **No communication scenario/arrangement is needed for propagation** (SAMLAssertion / SAML-bearer
-> / token exchange). The endpoint is already active once the HTTP Service object is published; the
-> destination's auth supplies the user identity. A communication scenario + arrangement is only for
-> the shared **Basic-auth communication user** below — a different, credential-based path.
-
-**Basic auth (shared technical / communication user)** — when propagation isn't set up (or the
-runtime supports only `BasicAuthentication` destinations), the destination stores a
-`BasicAuthentication` credential and every call runs under **one shared user**:
-
-| Backend | Destination `Authentication` | Credential the destination holds |
-|---|---|---|
-| On-premise / private cloud | `BasicAuthentication` (`ProxyType=OnPremise`, Cloud Connector) | the **technical user** + password; set `sap-client` on the destination |
-| BTP ABAP Env / S/4HANA Cloud public | `BasicAuthentication` | the **communication user** created by the communication scenario + arrangement (see below) |
-
-This is the same technical-user / communication-arrangement setup as a raw Basic-auth call — the
-only, crucial difference is **where the password lives: in the BTP destination's vault, not in a
-`.env` the agent reads**. Trade-off vs propagation: no per-user identity or audit (all calls are
-the shared user), and that user's SAP authorizations gate everything.
-
-> **Cloud communication user (one-time):** create a **communication scenario** in ADT with the
-> `zi18n_service` HTTP service as an inbound service (auth = Basic), then a **communication
-> arrangement** (Fiori: *Communication Arrangements*) binding it to a communication system + a
-> **communication user**. Put that user in the `BasicAuthentication` destination. On ABAP
-> Environment the endpoint itself activates with the HTTP Service object — the arrangement exists
-> only to mint the callable Basic-auth user.
-
-Either way the agent handles no secret. If you instead want credentials held by a first-class
-runtime (not a destination) with the three tools exposed directly, that is the **LISA MCP
-server** — see the banner at the top.
-
-## Wire it up (Joule Studio, CAP, SAP Build)
-
-1. **Import the OpenAPI spec** [`api/zi18n_service.openapi.yaml`](../../api/zi18n_service.openapi.yaml)
-   to create the action; the operation descriptions double as the tool prompts.
-2. **Bind the action to the destination** above — that is where auth lives.
-3. The BTP runtime issues the POSTs; you supply only the **JSON body**. No `Authorization` header,
-   no `.env`, no secret anywhere in the skill or the agent.
-
-CAP: consume the same destination via the SAP Cloud SDK (`executeHttpRequest`). SAP Build: an
-Action bound to the destination. The wire contract is identical whichever runtime you use.
-
-## Workflow (the JSON, whatever the runtime)
-
-1. **Probe first** — `capabilities` (body `{}`) returns the per-action allow-list of
-   `target_type`s for THIS system; public cloud and on-premise differ. Never assume a type works
+1. **Probe first** — `capabilities` (body `{}`) returns the per-action allow-list of `target_type`s
+   for THIS system; public cloud and on-premise support different sets. Never assume a type works
    (an unlisted one fails with `CLOUD_UNSUPPORTED` or an XCO error).
 2. **Read before writing** — `list_texts` returns every slot with a `populated` flag
    (`false` = still to translate):
    `{"target_type":"data_element","object_name":"ZMY_DTEL","language":"FR"}`
-3. **Write with a transport** — `set_translation` needs a modifiable transport request the
-   propagated user can record into:
+3. **Write with a transport** — `set_translation` needs a modifiable **transport request** the
+   caller's user can record into:
    `{"target_type":"data_element","object_name":"ZMY_DTEL","language":"FR","transport":"A4HK900123","texts":[{"attribute":"short_field_label","value":"Client"}]}`
 
 ## Pitfalls (the ones that actually bite)
@@ -122,9 +60,9 @@ Action bound to the destination. The wire contract is identical whichever runtim
   ABAP API only knows the physical `data_definition` (view) and `metadata_extension` (DDLX) —
   address them separately and merge yourself if needed.
 - **HTTP status is not the whole truth**: a 200 always carries `"success": true`; business errors
-  come back as HTTP 400 with `error.code`/`error.message`. A `401`/`403` means the **destination's
-  auth or the SAP-side user mapping** is wrong (not a credential you hold); `404` or an HTML page =
-  wrong path or service not published.
+  come back as HTTP 400 with `error.code`/`error.message`. A `401`/`403` means the **auth carried
+  by your destination/client** (or the SAP-side user mapping) is wrong — not something this skill
+  fixes; `404` or an HTML page = wrong path or service not published.
 - **Positional attributes** round-trip as `"attribute": "ui_lineitem_label[3]"` in `list_texts`
   output but are written back as bare `attribute` + a separate `position` (see reference.md).
 - **One call per object for writes**: batch all `texts` entries of one object into a single
