@@ -41,6 +41,34 @@ Direct calls authenticate with **HTTP Basic Auth**. Who the user is differs by l
 > what they may read/write; writes additionally need a **transport request** the user can record
 > into.
 
+## Called from BTP (destinations — per-user propagation instead of basic auth)
+
+When the caller runs **on BTP** (Joule Studio actions, CAP apps, SAP Build…), put the auth in a
+**BTP destination** instead of hardcoding basic auth — including the per-user
+principal-propagation variants, which run every call under the identity of the actual end user
+(per-user SAP authorizations + clean audit, no shared technical user):
+
+| Backend | Destination `Authentication` | SAP receives |
+|---|---|---|
+| On-premise / private cloud | `PrincipalPropagation` (`ProxyType=OnPremise`, Cloud Connector) | the real business user |
+| BTP ABAP Env — same subaccount | `OAuth2UserTokenExchange` | per-user Bearer |
+| BTP ABAP Env — cross-subaccount | `OAuth2SAMLBearerAssertion` | per-user Bearer |
+| S/4HANA Cloud public | `SAMLAssertion` | per-user `SAML2.0 …` |
+
+Three conditions for propagation to work: (1) the calling runtime must support user-propagating
+destination auth types (check your Joule Studio / actions version — technical-only runtimes fall
+back to a BasicAuth destination and the prerequisites above); (2) the identity trust chain
+(IAS/XSUAA) between the caller's subaccount and the destination's; (3) a user mapping on the SAP
+side (Cloud Connector cert mapping on-premise; a business user with matching email on cloud) —
+plus, for writes, per-user transport access. Note `OAuth2UserTokenExchange` only works within
+ONE subaccount, and a propagated business user on public cloud does NOT need the communication
+arrangement (that exists to mint the basic-auth communication user).
+
+For **Joule Studio** specifically: import the OpenAPI spec at
+[`api/zi18n_service.openapi.yaml`](../../api/zi18n_service.openapi.yaml) to create the action,
+bind it to the destination, and the action descriptions do the rest. The wire contract below is
+identical either way — only who authenticates changes.
+
 ## Workflow
 
 1. **Smoke-test + capability probe** (always start here):

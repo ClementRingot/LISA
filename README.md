@@ -344,7 +344,8 @@ The [`docs_page/`](./docs_page) folder holds the long-form guides:
 | [Architecture](./docs_page/architecture.md) | How the pieces fit together. |
 | [Wire-contract evolution](./docs_page/wire-contract-evolution.md) | Growing the contract as XCO APIs diverge per platform. |
 | [Releasing](./docs_page/releasing.md) | Changesets, tags, npm publication, which ref to deploy. |
-| [Agent skill: direct ABAP API](./skills/lisa-abap-api/SKILL.md) | Call `zi18n_service` directly (no MCP) — basic auth per landscape, all 6 actions. |
+| [Agent skill: direct ABAP API](./skills/lisa-abap-api/SKILL.md) | Call `zi18n_service` directly (no MCP) — basic auth or BTP destinations, all 6 actions. |
+| [OpenAPI spec](./api/zi18n_service.openapi.yaml) | Import into Joule Studio / API tooling — the full `zi18n_service` contract. |
 
 ---
 
