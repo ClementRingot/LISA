@@ -4,25 +4,29 @@ description: >-
   Wire LISA's ZCL_I18N_SERVICE ABAP HTTP API into a BTP integration (Joule Studio actions, CAP,
   SAP Build) through a BTP destination — to read, write and compare SAP object translations (data
   elements, domains, CDS views, message classes, text pools, text tables, and more). The
-  destination handles authentication (per-user principal propagation: PrincipalPropagation,
-  OAuth2UserTokenExchange, OAuth2SAMLBearerAssertion, SAMLAssertion), so this skill never handles
-  a credential. Covers destination setup per landscape, all six actions, the JSON wire contract,
-  and an importable OpenAPI spec. If you need credential-based (Basic-auth) access instead, run
-  the LISA MCP server — authentication belongs in that component, not in a skill.
+  destination handles authentication — per-user principal propagation (PrincipalPropagation,
+  OAuth2UserTokenExchange, OAuth2SAMLBearerAssertion, SAMLAssertion) or a shared BasicAuthentication
+  user (technical user on-premise/private cloud; communication user from a communication scenario +
+  arrangement on cloud) — with the credential kept in the destination's vault, so this skill never
+  handles a secret. Covers destination setup per landscape, all six actions, the JSON wire
+  contract, and an importable OpenAPI spec. If you'd rather a runtime component (not a destination)
+  hold the credential and expose the tools, run the LISA MCP server instead.
 ---
 
-# LISA ABAP API — via a BTP destination (no MCP server, no credentials)
+# LISA ABAP API — via a BTP destination (no MCP server, no secret in the agent)
 
 The whole API is **one ABAP HTTP service** (`zi18n_service`, handler class `ZCL_I18N_SERVICE`)
 installed on the target SAP system. This skill calls it **from BTP through a destination**: the
 destination authenticates every call, so **no credential is ever handled here** — nothing to read
 from a `.env`, no `Authorization` header to build, no secret in the agent's context.
 
-> **Authentication is not a skill's job.** If you want programmatic access that relies on
-> **credentials** (Basic auth, a technical or communication user), run the **LISA MCP server**
-> ([`@lisa-mcp/server`](https://www.npmjs.com/package/@lisa-mcp/server)) or the ARC-1 extension —
-> they hold the credential server-side and expose the tools; the agent never sees a secret. This
-> skill deliberately covers **only** the destination-based path, where BTP externalises auth.
+> **The credential must never live where the agent can read it.** That is the rule — not "no Basic
+> auth". A BTP destination is safe **including with `BasicAuthentication`**, because the password
+> sits in the destination's vault, not in a `.env` the agent could `cat`. What this skill forbids
+> is the agent holding the secret itself (a hand-built `curl -u user:pass`, a `.env` it reads).
+> If you'd rather a **runtime component** hold credentials and expose the three tools directly —
+> no BTP destination in the loop — run the **LISA MCP server**
+> ([`@lisa-mcp/server`](https://www.npmjs.com/package/@lisa-mcp/server)) or the ARC-1 extension.
 
 Every action is a **POST** of a JSON body to `{destination}{path}/{action}`; responses use one
 envelope:
@@ -36,11 +40,15 @@ Default path: `/sap/bc/http/sap/zi18n_service`. Actions: `capabilities`, `list_l
 `list_texts`, `get_translation`, `set_translation`, `compare_translations` — full request/response
 shapes, selectors and error codes are in [reference.md](./reference.md).
 
-## The destination carries the auth (per-user propagation)
+## The destination carries the auth
 
-Point the BTP destination at the SAP system with the auth type that matches the backend. Every
-call then runs under the identity of the **actual end user** (per-user SAP authorizations + clean
-audit, no shared technical user):
+Point the BTP destination at the SAP system with an auth type that matches the backend. **Whatever
+the type, the credential lives in the destination's secure store — never in the skill or the
+agent's context.** That is the property that makes this path safe: the agent only ever names a
+destination and sends a JSON body.
+
+**Per-user propagation** — every call runs under the identity of the actual end user (per-user SAP
+authorizations + clean audit, no shared user):
 
 | Backend | Destination `Authentication` | SAP receives |
 |---|---|---|
@@ -49,14 +57,36 @@ audit, no shared technical user):
 | BTP ABAP Env — cross-subaccount | `OAuth2SAMLBearerAssertion` | per-user Bearer |
 | S/4HANA Cloud public | `SAMLAssertion` | per-user `SAML2.0 …` |
 
-Three conditions for propagation to work: (1) the calling runtime must support user-propagating
-destination auth types (check your Joule Studio / actions version); (2) the identity trust chain
-(IAS/XSUAA) between the caller's subaccount and the destination's; (3) a user mapping on the SAP
-side (Cloud Connector cert mapping on-premise; a business user with matching email on cloud) —
-plus, for writes, per-user transport access. Note `OAuth2UserTokenExchange` only works within ONE
-subaccount, and a propagated business user on public cloud does **not** need a communication
-arrangement (that only exists to mint a Basic-auth communication user — the credential path this
-skill avoids).
+Conditions for propagation: (1) the runtime supports user-propagating destination auth types
+(check your Joule Studio / actions version); (2) the IAS/XSUAA identity trust chain between the
+caller's subaccount and the destination's; (3) a SAP-side user mapping (Cloud Connector cert
+mapping on-premise; a business user with matching email on cloud) — plus per-user transport access
+for writes. `OAuth2UserTokenExchange` only works within ONE subaccount.
+
+**Basic auth (shared technical / communication user)** — when propagation isn't set up (or the
+runtime supports only `BasicAuthentication` destinations), the destination stores a
+`BasicAuthentication` credential and every call runs under **one shared user**:
+
+| Backend | Destination `Authentication` | Credential the destination holds |
+|---|---|---|
+| On-premise / private cloud | `BasicAuthentication` (`ProxyType=OnPremise`, Cloud Connector) | the **technical user** + password; set `sap-client` on the destination |
+| BTP ABAP Env / S/4HANA Cloud public | `BasicAuthentication` | the **communication user** created by the communication scenario + arrangement (see below) |
+
+This is the same technical-user / communication-arrangement setup as a raw Basic-auth call — the
+only, crucial difference is **where the password lives: in the BTP destination's vault, not in a
+`.env` the agent reads**. Trade-off vs propagation: no per-user identity or audit (all calls are
+the shared user), and that user's SAP authorizations gate everything.
+
+> **Cloud communication user (one-time):** create a **communication scenario** in ADT with the
+> `zi18n_service` HTTP service as an inbound service (auth = Basic), then a **communication
+> arrangement** (Fiori: *Communication Arrangements*) binding it to a communication system + a
+> **communication user**. Put that user in the `BasicAuthentication` destination. On ABAP
+> Environment the endpoint itself activates with the HTTP Service object — the arrangement exists
+> only to mint the callable Basic-auth user.
+
+Either way the agent handles no secret. If you instead want credentials held by a first-class
+runtime (not a destination) with the three tools exposed directly, that is the **LISA MCP
+server** — see the banner at the top.
 
 ## Wire it up (Joule Studio, CAP, SAP Build)
 

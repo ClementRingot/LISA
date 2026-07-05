@@ -119,7 +119,7 @@ lock/transport recording; writes across the two objects are not atomic).
 | HTTP 400, `error.code` `CLOUD_UNSUPPORTED` | `target_type` not supported on this stack for this action — re-check `capabilities` |
 | HTTP 400, other `error.code` | Business error from XCO/handler — `error.message` is specific (missing transport, object not found, bad selector, unresolvable language…) |
 | HTTP 401 | The destination's authentication was rejected by SAP |
-| HTTP 403 | Service not enabled (`UCON_HTTP_SERVICES` on-premise), or the propagated user lacks the service authorization / has no SAP-side mapping |
+| HTTP 403 | Service not enabled (`UCON_HTTP_SERVICES` on-premise), or the destination's user (propagated business user, or the shared technical/communication user) lacks the service authorization / has no SAP-side mapping |
 | HTTP 404 / HTML | Wrong path, service not published, or (for `capabilities` only) an older handler |
 
 ## Smoke test
