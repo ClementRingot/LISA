@@ -1,10 +1,11 @@
 # LISA ABAP API — wire contract reference
 
-Every action: `POST {destination}{path}/{action}` with a JSON body (`Content-Type:
-application/json`). **Authentication is provided by the caller's BTP destination** (see
-[SKILL.md](./SKILL.md)) — not by anything in this contract; `sap-client`, when an on-premise
-system needs it, is a destination property. Envelope: `{ "success": true, "data": {…} }` on 200,
-`{ "success": false, "error": { "code", "message" } }` on 400.
+Every action: `POST {base}{path}/{action}` with a JSON body (`Content-Type: application/json`).
+**Authentication is provided by whatever calls the API** — a BTP destination, or the LISA MCP
+server — not by anything in this contract (see [SKILL.md](./SKILL.md)); `sap-client`, when an
+on-premise system needs it, is carried by that caller/destination. Envelope:
+`{ "success": true, "data": {…} }` on 200, `{ "success": false, "error": { "code", "message" } }`
+on 400.
 
 ## Actions
 

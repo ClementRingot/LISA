@@ -34,6 +34,13 @@ handler — pick whichever fits how you already run things:
 Running it **locally** ([Part 4](#part-4--run-locally-development--testing)) is also fully
 supported, but meant for development and testing, not production.
 
+> **No MCP client at all?** A **BTP runtime** (Joule Studio action, CAP service, SAP Build) can call
+> the underlying ABAP API (`zi18n_service`) **directly** — no LISA Node layer — through a **BTP
+> destination** that carries the auth (per-user propagation or a shared user). You get the same 3
+> operations over plain JSON. See [BTP destination setup](./docs_page/btp-destination-setup.md),
+> the [OpenAPI spec](./api/zi18n_service.openapi.yaml) (import as a Joule Studio action), and the
+> [API-usage skill](./skills/lisa-abap-api/SKILL.md).
+
 ---
 
 ## How it works
@@ -344,7 +351,8 @@ The [`docs_page/`](./docs_page) folder holds the long-form guides:
 | [Architecture](./docs_page/architecture.md) | How the pieces fit together. |
 | [Wire-contract evolution](./docs_page/wire-contract-evolution.md) | Growing the contract as XCO APIs diverge per platform. |
 | [Releasing](./docs_page/releasing.md) | Changesets, tags, npm publication, which ref to deploy. |
-| [Agent skill: ABAP API via BTP destination](./skills/lisa-abap-api/SKILL.md) | Wire `zi18n_service` into a BTP integration (Joule Studio / CAP) — the destination authenticates, no credentials in the skill. |
+| [BTP destination setup](./docs_page/btp-destination-setup.md) | Create the destination that authenticates `zi18n_service` calls (per-user propagation or shared Basic-auth user), for the MCP server or a Joule Studio / CAP action. |
+| [Agent skill: using the ABAP API](./skills/lisa-abap-api/SKILL.md) | How to drive `zi18n_service` — the six actions, wire contract, pitfalls. Auth-agnostic (a destination or the MCP server carries it). |
 | [OpenAPI spec](./api/zi18n_service.openapi.yaml) | Import into Joule Studio / API tooling — the full `zi18n_service` contract. |
 
 ---
