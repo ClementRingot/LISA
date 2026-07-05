@@ -63,6 +63,11 @@ caller's subaccount and the destination's; (3) a SAP-side user mapping (Cloud Co
 mapping on-premise; a business user with matching email on cloud) — plus per-user transport access
 for writes. `OAuth2UserTokenExchange` only works within ONE subaccount.
 
+> **No communication scenario/arrangement is needed for propagation** (SAMLAssertion / SAML-bearer
+> / token exchange). The endpoint is already active once the HTTP Service object is published; the
+> destination's auth supplies the user identity. A communication scenario + arrangement is only for
+> the shared **Basic-auth communication user** below — a different, credential-based path.
+
 **Basic auth (shared technical / communication user)** — when propagation isn't set up (or the
 runtime supports only `BasicAuthentication` destinations), the destination stores a
 `BasicAuthentication` credential and every call runs under **one shared user**:
