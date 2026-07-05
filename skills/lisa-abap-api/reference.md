@@ -1,8 +1,10 @@
 # LISA ABAP API — wire contract reference
 
-Every action: `POST {base}{path}/{action}` with a JSON body (`Content-Type: application/json`),
-Basic Auth, `?sap-client=NNN` on-premise only. Envelope: `{ "success": true, "data": {…} }` on
-200, `{ "success": false, "error": { "code", "message" } }` on 400.
+Every action: `POST {destination}{path}/{action}` with a JSON body (`Content-Type:
+application/json`). **Authentication is provided by the caller's BTP destination** (see
+[SKILL.md](./SKILL.md)) — not by anything in this contract; `sap-client`, when an on-premise
+system needs it, is a destination property. Envelope: `{ "success": true, "data": {…} }` on 200,
+`{ "success": false, "error": { "code", "message" } }` on 400.
 
 ## Actions
 
@@ -116,16 +118,13 @@ lock/transport recording; writes across the two objects are not atomic).
 | HTTP 200, `success: true` | OK |
 | HTTP 400, `error.code` `CLOUD_UNSUPPORTED` | `target_type` not supported on this stack for this action — re-check `capabilities` |
 | HTTP 400, other `error.code` | Business error from XCO/handler — `error.message` is specific (missing transport, object not found, bad selector, unresolvable language…) |
-| HTTP 401 | Basic-auth credentials rejected |
-| HTTP 403 | Service not enabled (`UCON_HTTP_SERVICES` on-premise) or the user lacks the service authorization (cloud: check the communication arrangement) |
+| HTTP 401 | The destination's authentication was rejected by SAP |
+| HTTP 403 | Service not enabled (`UCON_HTTP_SERVICES` on-premise), or the propagated user lacks the service authorization / has no SAP-side mapping |
 | HTTP 404 / HTML | Wrong path, service not published, or (for `capabilities` only) an older handler |
 
-## Full smoke test
+## Smoke test
 
-```bash
-BASE="https://your-system.example.com"; P="/sap/bc/http/sap/zi18n_service"
-AUTH="USER:PASS"; CLIENT="?sap-client=100"   # CLIENT="" on cloud
-
-curl -u "$AUTH" -H 'Content-Type: application/json' -X POST "$BASE$P/list_languages$CLIENT" -d '{}'
-# → {"success":true,"data":{"languages":[…]}}  = service live, auth OK
-```
+Call `list_languages` (body `{}`) through the destination-bound action — `{"success":true,
+"data":{"languages":[…]}}` means the service is live and the destination authenticates. There is
+no credential to pass: the destination does that. (For credential-based testing, use the LISA MCP
+server instead — see [SKILL.md](./SKILL.md).)

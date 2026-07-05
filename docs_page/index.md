@@ -17,7 +17,7 @@
 - **[Configuration reference](./configuration-reference.md)** — every environment variable.
 - **[Authentication](./authentication.md)** — the auth model and the supported methods.
 - **[Architecture](./architecture.md)** — how the components fit together.
-- **[Direct ABAP API (agent skill)](../skills/lisa-abap-api/SKILL.md)** — call `zi18n_service` over plain HTTPS, no MCP: basic-auth or BTP-destination prerequisites per landscape, all six actions, curl examples.
+- **[ABAP API via BTP destination (agent skill)](../skills/lisa-abap-api/SKILL.md)** — wire `zi18n_service` into a BTP integration (Joule Studio / CAP / SAP Build) where the destination handles auth; the six actions and the JSON contract. For credential-based access, use the MCP server instead.
 - **[OpenAPI spec](../api/zi18n_service.openapi.yaml)** — the `zi18n_service` contract as OpenAPI 3.0, ready to import into Joule Studio (actions), SAP API Management, or Postman.
 - **[Wire-contract evolution & platform divergence](./wire-contract-evolution.md)** — why one MCP serves every platform, the per-platform ABAP split, and how to grow the contract / add a `target_type` or parameter as the XCO APIs diverge.
 
