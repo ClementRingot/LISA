@@ -1,0 +1,401 @@
+openapi: 3.0.3
+info:
+  title: LISA — zi18n_service (SAP object translations)
+  version: 1.0.0
+  description: |
+    Direct HTTP API of LISA's ABAP handler (`ZCL_I18N_SERVICE`) for reading, writing and
+    comparing SAP repository-object translations via SAP's XCO i18n APIs.
+
+    **Conventions (read first):**
+    - Every action is a **POST** with a JSON body; GET is never used.
+    - Every response uses one envelope: HTTP 200 → `{"success": true, "data": {…}}`;
+      business errors → HTTP 400 with `{"success": false, "error": {"code", "message"}}`.
+    - **Call `capabilities` first**: it returns the per-action allow-list of `target_type`s
+      this specific system supports (public cloud and on-premise differ). Never assume a type.
+    - Language codes are **ISO** (`FR`, `RO`, `ZH`) — never SAP 1-char SPRAS codes.
+    - Writes (`set_translation`) require a modifiable **transport request** the calling user
+      can record into.
+    - The merged `cds_entity` target of the LISA MCP server does **not** exist at this layer:
+      address the CDS view (`data_definition`) and its metadata extension
+      (`metadata_extension`) separately.
+
+    **Auth**: HTTP Basic (technical user on-premise/private cloud with `?sap-client=`;
+    communication user from a communication scenario + arrangement on BTP ABAP Environment /
+    S/4HANA Cloud public). When called through a **BTP destination** (e.g. from Joule Studio),
+    the destination supplies the credentials — including per-user principal-propagation
+    variants (`PrincipalPropagation`, `OAuth2UserTokenExchange`, `OAuth2SAMLBearerAssertion`,
+    `SAMLAssertion`); this spec's `basicAuth` scheme then simply isn't used by the caller.
+servers:
+  - url: 'https://{host}{basePath}'
+    variables:
+      host:
+        default: your-system.example.com
+        description: SAP system host (on-premise via Cloud Connector or direct; cloud API host)
+      basePath:
+        default: /sap/bc/http/sap/zi18n_service
+        description: ICF path of the zi18n_service HTTP service
+
+security:
+  - basicAuth: []
+
+tags:
+  - name: discovery
+    description: Probe what this system supports
+  - name: read
+    description: Read translations
+  - name: write
+    description: Write translations (transport required)
+
+paths:
+  /capabilities:
+    post:
+      operationId: getCapabilities
+      tags: [discovery]
+      summary: Which target types THIS system supports, per action (call this first)
+      description: >-
+        Returns the allow-list of `target_type` values this system accepts for `list_texts`
+        (reads) and `set_translation` (writes). Sets differ between public cloud and
+        on-premise/private cloud and can differ by system version. Older handlers without this
+        action return 404 — then expect `CLOUD_UNSUPPORTED` errors at call time instead.
+      parameters: [{ $ref: '#/components/parameters/sapClient' }]
+      requestBody: { $ref: '#/components/requestBodies/empty' }
+      responses:
+        '200':
+          description: Per-action target-type allow-lists
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, enum: [true] }
+                  data:
+                    type: object
+                    properties:
+                      list_texts:
+                        type: array
+                        items: { $ref: '#/components/schemas/TargetType' }
+                      set_translation:
+                        type: array
+                        items: { $ref: '#/components/schemas/TargetType' }
+        '400': { $ref: '#/components/responses/businessError' }
+
+  /list_languages:
+    post:
+      operationId: listLanguages
+      tags: [discovery]
+      summary: List the languages installed on the SAP system
+      parameters: [{ $ref: '#/components/parameters/sapClient' }]
+      requestBody: { $ref: '#/components/requestBodies/empty' }
+      responses:
+        '200':
+          description: Installed languages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, enum: [true] }
+                  data:
+                    type: object
+                    properties:
+                      languages:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            sap_code: { type: string, description: 1-char SPRAS code }
+                            iso_code: { type: string, description: ISO code — use THIS in requests }
+                            name: { type: string }
+        '400': { $ref: '#/components/responses/businessError' }
+
+  /list_texts:
+    post:
+      operationId: listTexts
+      tags: [read]
+      summary: Read every translatable text slot of one object (the workhorse read)
+      description: >-
+        Returns all translatable slots of the object in the requested language — or in the
+        object's ORIGINAL language when `language` is omitted. Each slot carries `populated`
+        (`false` = empty in that language, i.e. still to translate). Positional UI labels are
+        encoded in the attribute name (`ui_lineitem_label[3]`). "List only translated" = filter
+        `populated == true`; "compare" = two calls diffed by slot key.
+      parameters: [{ $ref: '#/components/parameters/sapClient' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [target_type, object_name]
+              properties:
+                target_type: { $ref: '#/components/schemas/TargetType' }
+                object_name: { type: string, example: ZI_MYVIEW }
+                language: { $ref: '#/components/schemas/IsoLanguage' }
+                language_key_field_name: { $ref: '#/components/schemas/LanguageKeyFieldName' }
+                master_key_fields: { $ref: '#/components/schemas/MasterKeyFields' }
+      responses:
+        '200':
+          description: All text slots of the object
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, enum: [true] }
+                  data:
+                    type: object
+                    properties:
+                      texts:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            level: { type: string }
+                            field_name: { type: string }
+                            attribute:
+                              type: string
+                              description: 'May carry a position suffix: ui_lineitem_label[3]'
+                            value: { type: string }
+                            populated:
+                              type: boolean
+                              description: false = slot exists but empty in this language
+        '400': { $ref: '#/components/responses/businessError' }
+
+  /get_translation:
+    post:
+      operationId: getTranslation
+      tags: [read]
+      summary: Read one selector-scoped set of texts
+      parameters: [{ $ref: '#/components/parameters/sapClient' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - type: object
+                  required: [target_type, object_name, language]
+                  properties:
+                    target_type: { $ref: '#/components/schemas/TargetType' }
+                    object_name: { type: string }
+                    language: { $ref: '#/components/schemas/IsoLanguage' }
+                - $ref: '#/components/schemas/Selectors'
+      responses:
+        '200':
+          description: Texts for the selected scope
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, enum: [true] }
+                  data:
+                    type: object
+                    properties:
+                      texts:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            attribute: { type: string }
+                            value: { type: string }
+        '400': { $ref: '#/components/responses/businessError' }
+
+  /set_translation:
+    post:
+      operationId: setTranslation
+      tags: [write]
+      summary: Write/update translations of one object (single lock, transport required)
+      description: >-
+        Batch ALL entries for one object into a single call: each `texts` entry may carry its
+        own `field_name`/`position` (overriding the top-level selectors), and the handler groups
+        entries by field so the object is enqueued/locked only once. Positional attributes are
+        written as the BARE attribute plus a numeric 1-based `position` — not the `name[n]` form
+        that list_texts outputs. Requires a modifiable transport request the caller can record
+        into. For `text_table`, `attribute` is a text COLUMN name (e.g. LANDX).
+      parameters: [{ $ref: '#/components/parameters/sapClient' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - type: object
+                  required: [target_type, object_name, language, transport, texts]
+                  properties:
+                    target_type: { $ref: '#/components/schemas/TargetType' }
+                    object_name: { type: string }
+                    language: { $ref: '#/components/schemas/IsoLanguage' }
+                    transport:
+                      type: string
+                      description: Modifiable workbench transport request (e.g. A4HK900123)
+                    texts:
+                      type: array
+                      minItems: 1
+                      items:
+                        type: object
+                        required: [attribute, value]
+                        properties:
+                          attribute: { type: string, example: ui_lineitem_label }
+                          value: { type: string }
+                          field_name:
+                            type: string
+                            description: Overrides the top-level field for this entry
+                          position:
+                            type: integer
+                            minimum: 1
+                            description: 1-based index for positional attributes
+                - $ref: '#/components/schemas/Selectors'
+      responses:
+        '200':
+          description: Write result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, enum: [true] }
+                  data:
+                    type: object
+                    properties:
+                      transport: { type: string }
+                      success: { type: boolean }
+        '400': { $ref: '#/components/responses/businessError' }
+
+  /compare_translations:
+    post:
+      operationId: compareTranslations
+      tags: [read]
+      summary: Diff one object's texts between two languages
+      parameters: [{ $ref: '#/components/parameters/sapClient' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [target_type, object_name, source_language, target_language]
+              properties:
+                target_type: { $ref: '#/components/schemas/TargetType' }
+                object_name: { type: string }
+                source_language: { $ref: '#/components/schemas/IsoLanguage' }
+                target_language: { $ref: '#/components/schemas/IsoLanguage' }
+      responses:
+        '200':
+          description: Per-slot comparison
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean, enum: [true] }
+                  data:
+                    type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            field_or_key: { type: string }
+                            source_texts: { type: object, additionalProperties: true }
+                            target_texts: { type: object, additionalProperties: true }
+                            has_difference: { type: boolean }
+        '400': { $ref: '#/components/responses/businessError' }
+
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+      description: >-
+        Technical user (on-premise/private cloud) or communication user (BTP ABAP
+        Environment / public cloud, via communication scenario + arrangement). Superseded by
+        the destination's auth when called through a BTP destination.
+
+  parameters:
+    sapClient:
+      name: sap-client
+      in: query
+      required: false
+      schema: { type: string, example: '100' }
+      description: SAP client — REQUIRED on on-premise/private cloud, omit on cloud systems.
+
+  requestBodies:
+    empty:
+      required: true
+      content:
+        application/json:
+          schema: { type: object }
+          example: {}
+
+  responses:
+    businessError:
+      description: Business error (envelope with code + message)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success: { type: boolean, enum: [false] }
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    description: e.g. CLOUD_UNSUPPORTED (target_type not allowed on this stack)
+                  message: { type: string }
+
+  schemas:
+    TargetType:
+      type: string
+      description: >-
+        Physical target types only — the LISA MCP server's virtual `cds_entity` does not exist
+        at this layer. Validity per action is system-specific: probe `capabilities`.
+      enum:
+        - data_element
+        - domain
+        - data_definition
+        - metadata_extension
+        - message_class
+        - text_pool
+        - application_log_object
+        - business_configuration_object
+        - text_table
+
+    IsoLanguage:
+      type: string
+      description: ISO language code (FR, DE, RO, ZH…) — never a 1-char SAP SPRAS code.
+      example: FR
+
+    LanguageKeyFieldName:
+      type: string
+      description: text_table only — the table's single LANG key field (e.g. SPRAS).
+      example: SPRAS
+
+    MasterKeyFields:
+      type: array
+      description: >-
+        text_table only — fixes ALL key fields except the language field, so exactly one
+        record is targeted.
+      items:
+        type: object
+        required: [name, value]
+        properties:
+          name: { type: string, example: LAND1 }
+          value: { type: string, example: DE }
+
+    Selectors:
+      type: object
+      description: >-
+        Optional selectors — only the ones relevant to the target_type are read.
+      properties:
+        field_name: { type: string, description: data_definition / metadata_extension field }
+        fixed_value: { type: string, description: domain fixed value }
+        message_number: { type: string, description: message_class message number }
+        text_symbol_id: { type: string, description: text_pool symbol id }
+        text_pool_owner_type: { type: string, description: text_pool owner (class / function group) }
+        subobject_name: { type: string, description: metadata_extension / application_log_object }
+        position: { type: integer, minimum: 1, description: positional UI-label index (1-based) }
+        language_key_field_name: { $ref: '#/components/schemas/LanguageKeyFieldName' }
+        master_key_fields: { $ref: '#/components/schemas/MasterKeyFields' }
