@@ -69,11 +69,26 @@ For **Joule Studio** specifically: import the OpenAPI spec at
 bind it to the destination, and the action descriptions do the rest. The wire contract below is
 identical either way — only who authenticates changes.
 
+## Resolving instance settings (keep this skill agnostic)
+
+This skill contains **no system-specific values**. Resolve the target system in this order:
+
+1. **`lisa-api.config.yaml`** — next to this skill or in the project root (template:
+   [`config.example.yaml`](./config.example.yaml)). It names the system(s): `base_url`,
+   `service_path`, `landscape` (drives the auth prerequisites and whether `sap-client`
+   applies), auth mode (`basic` with `username_env`/`password_env` — credentials come from the
+   environment, never from the file — or `destination` for BTP callers), and an optional
+   `default_transport`.
+2. **Environment variables** — `LISA_API_BASE_URL`, `LISA_API_SERVICE_PATH`,
+   `LISA_API_USER`, `LISA_API_PASSWORD`, `LISA_API_SAP_CLIENT`.
+3. **Ask the user** — never guess a host, a client, or a transport number.
+
 ## Workflow
 
 1. **Smoke-test + capability probe** (always start here):
 
 ```bash
+# values resolved per the section above — shown inlined for readability
 BASE="https://your-system.example.com"; P="/sap/bc/http/sap/zi18n_service"
 AUTH="TECH_USER:secret"        # communication user on cloud
 CLIENT="?sap-client=100"       # on-premise only — drop on cloud
