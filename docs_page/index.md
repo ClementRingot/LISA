@@ -17,6 +17,7 @@
 - **[Configuration reference](./configuration-reference.md)** — every environment variable.
 - **[Authentication](./authentication.md)** — the auth model and the supported methods.
 - **[Architecture](./architecture.md)** — how the components fit together.
+- **[Direct ABAP API (agent skill)](../skills/lisa-abap-api/SKILL.md)** — call `zi18n_service` over plain HTTPS, no MCP: basic-auth prerequisites per landscape, all six actions, curl examples.
 - **[Wire-contract evolution & platform divergence](./wire-contract-evolution.md)** — why one MCP serves every platform, the per-platform ABAP split, and how to grow the contract / add a `target_type` or parameter as the XCO APIs diverge.
 
 ## Operations
