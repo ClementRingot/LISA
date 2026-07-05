@@ -2,11 +2,13 @@
 
 [![npm](https://img.shields.io/npm/v/@lisa-mcp/server?label=%40lisa-mcp%2Fserver&logo=npm)](https://www.npmjs.com/package/@lisa-mcp/server)
 [![npm](https://img.shields.io/npm/v/@lisa-mcp/arc1-extension?label=%40lisa-mcp%2Farc1-extension&logo=npm)](https://www.npmjs.com/package/@lisa-mcp/arc1-extension)
+[![ghcr.io](https://img.shields.io/badge/ghcr.io-lisa--mcp-blue?logo=docker&logoColor=white)](https://github.com/ClementRingot/LISA/pkgs/container/lisa-mcp)
 [![CI](https://github.com/ClementRingot/LISA/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ClementRingot/LISA/actions/workflows/ci.yml?query=branch%3Amain)
 [![Product release](https://github.com/ClementRingot/LISA/actions/workflows/release-product.yml/badge.svg)](https://github.com/ClementRingot/LISA/actions/workflows/release-product.yml)
 [![Publish extension](https://github.com/ClementRingot/LISA/actions/workflows/publish-extension.yml/badge.svg)](https://github.com/ClementRingot/LISA/actions/workflows/publish-extension.yml)
 [![node](https://img.shields.io/node/v/@lisa-mcp/server?logo=nodedotjs)](https://github.com/ClementRingot/LISA/blob/main/packages/server/package.json)
 [![license](https://img.shields.io/npm/l/%40lisa-mcp%2Fserver?label=license)](./LICENSE)
+[![MCP](https://img.shields.io/badge/MCP-server-8A2BE2)](https://modelcontextprotocol.io)
 
 > Let AI assistants read, write and compare **SAP object translations** through a single, secure MCP server.
 
