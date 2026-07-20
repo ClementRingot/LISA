@@ -32,7 +32,7 @@ jobs:
           ref: ${{ github.ref }}
       # No registry-url here: it would write an .npmrc expecting NODE_AUTH_TOKEN,
       # which no longer exists — OIDC needs no token config at all.
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       # Trusted publishing needs npm ≥ 11.5 (Node 22 bundles npm 10).
