@@ -53,25 +53,25 @@
   },
   "dependencies": {
     "@arc-mcp/xsuaa-auth": "^0.1.8",
-    "@modelcontextprotocol/sdk": "^1.18.2",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",
     "express": "^5.1.0",
     "express-rate-limit": "^7.5.0",
     "helmet": "^8.2.0",
-    "jose": "^6.2.3",
+    "jose": "^6.2.8",
     "undici": "^8.4.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.2",
+    "@biomejs/biome": "^2.5.8",
     "@lisa-mcp/core": "*",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/node": "^26.1.0",
-    "esbuild": "^0.28.1",
-    "tsx": "^4.19.2",
+    "esbuild": "^0.28.2",
+    "tsx": "^4.23.12",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.10"
   }
 }
