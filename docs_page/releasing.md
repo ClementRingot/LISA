@@ -83,7 +83,7 @@ Commit the generated `.changeset/*.md` with your PR. `@lisa-mcp/core` is ignored
    never typed). The pushed tags trigger the publish pipelines
    (`release-product.yml` / `publish-extension.yml`) → npm publish + GitHub release.
 
-> **One-time setup — GitHub App (preferred, never expires):** events created with the
+> **One-time setup — GitHub App (never expires):** events created with the
 > default `GITHUB_TOKEN` don't trigger other workflows (GitHub anti-recursion), so the
 > release train needs its own identity:
 >
@@ -93,12 +93,12 @@ Commit the generated `.changeset/*.md` with your PR. `@lisa-mcp/core` is ignored
 > 3. Set the repository **variable** `RELEASE_APP_ID` (the App's numeric ID) and the
 >    repository **secret** `RELEASE_APP_PRIVATE_KEY` (a generated private key, `.pem`).
 >
-> While those are absent, the workflow falls back to the `CHANGESETS_PAT` secret (a
-> fine-grained PAT, *Contents: RW* + *Pull requests: RW* — expires, so the App is the
-> durable choice), then to `GITHUB_TOKEN` (works, but the Version PR gets no CI runs and
-> the pushed tags don't publish — if a tag ever lands that way, dispatch the publish
-> workflow manually on the tag ref; both have `workflow_dispatch`, and publishing is
-> idempotent — an already-published version is skipped).
+> While those are absent, the workflow falls back to `GITHUB_TOKEN` (works, but the
+> Version PR gets no CI runs and the pushed tags don't publish — if a tag ever lands
+> that way, dispatch the publish workflow manually on the tag ref; both have
+> `workflow_dispatch`, and publishing is idempotent — an already-published version is
+> skipped). No PAT is involved: the App is the only long-lived credential the release
+> train uses.
 
 ### Manual (fallback / offline)
 
@@ -173,7 +173,7 @@ each artifact, never published):
 
 Publication is **fully automated**: pushing the tag triggers the workflow, which validates the
 tag↔version match, builds the bundle, runs `npm publish`, and cuts the GitHub release. npm auth is
-**Trusted Publishing (OIDC)** — no `NPM_TOKEN`, nothing to rotate: each package's npmjs settings
+**Trusted Publishing (OIDC)** — no npm token anywhere, nothing to rotate: each package's npmjs settings
 list this repo + workflow file as a *Trusted Publisher* (`@lisa-mcp/server` ↔
 `release-product.yml`, `@lisa-mcp/arc1-extension` ↔ `publish-extension.yml`), and npm authenticates
 the workflow run itself via OIDC (provenance attested automatically). So the normal flow is simply:
