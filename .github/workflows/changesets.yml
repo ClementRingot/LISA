@@ -58,7 +58,7 @@ jobs:
         with:
           node-version: 22
       - run: npm ci
-      - uses: changesets/action@v1
+      - uses: changesets/action@v2
         with:
           version: npm run changeset:version
           publish: node scripts/tag-missing-releases.mjs
