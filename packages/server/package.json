@@ -1,6 +1,6 @@
 {
   "name": "@lisa-mcp/server",
-  "version": "0.9.2",
+  "version": "0.9.3",
   "description": "LISA — standalone MCP server for SAP object translation (XCO i18n). Deployable on SAP BTP or runnable locally.",
   "keywords": [
     "mcp",
