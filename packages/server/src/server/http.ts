@@ -11,18 +11,18 @@
 
 import { randomUUID } from 'node:crypto';
 import {
-  type OAuthStateCodec,
-  type StatelessDcrClientStore,
   createChainedTokenVerifier,
   createOidcVerifier,
   createXsuaaOAuthProvider,
   createXsuaaTokenVerifier,
+  type OAuthStateCodec,
+  type StatelessDcrClientStore,
 } from '@arc-mcp/xsuaa-auth';
 import { mcpAuthRouter } from '@modelcontextprotocol/sdk/server/auth/router.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import cors from 'cors';
-import express, { type Request, type Response, type NextFunction } from 'express';
+import express, { type NextFunction, type Request, type Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import { registerTranslationTools } from '../handlers/intent.js';

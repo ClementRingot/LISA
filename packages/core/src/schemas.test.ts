@@ -3,9 +3,9 @@ import {
   GetTextsSchema,
   ListLanguagesSchema,
   SetTranslationSchema,
-  TOOLS,
-  TargetTypeSchema,
   supportedTargetTypesNote,
+  TargetTypeSchema,
+  TOOLS,
 } from './schemas.js';
 
 describe('TargetTypeSchema', () => {

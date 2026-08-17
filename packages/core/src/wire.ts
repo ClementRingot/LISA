@@ -409,10 +409,7 @@ export class I18nCore {
    * DDLX labels are included automatically. Rows are NOT deduplicated across owners: a view-owned
    * and a DDLX-owned slot are distinct targets even when field_name/attribute coincide.
    */
-  async getCdsEntityTexts(params: {
-    object_name: string;
-    language?: string;
-  }): Promise<CdsEntityTextsResult> {
+  async getCdsEntityTexts(params: { object_name: string; language?: string }): Promise<CdsEntityTextsResult> {
     // Read each physical object in turn (view/DDLS first, DDLX second) and concatenate, in that
     // order. Sequential, not parallel: the capabilities probe is a process-wide cache, so back-to-back
     // reads share one probe and the merged order is deterministic.

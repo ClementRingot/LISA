@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   type Capabilities,
-  type ListTextEntry,
   isTargetTypeSupported,
+  type ListTextEntry,
   normalizeListTextEntry,
   normalizeSetTextEntry,
   unsupportedTargetMessage,
