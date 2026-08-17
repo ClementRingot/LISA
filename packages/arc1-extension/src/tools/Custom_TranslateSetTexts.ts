@@ -1,6 +1,6 @@
-import { CDS_ENTITY_TARGET, I18nCore, SetTranslationSchema, TOOLS } from '@lisa-mcp/core';
 import type { SetTextEntry } from '@lisa-mcp/core';
-import { OperationType, defineTool } from 'arc-1/public';
+import { CDS_ENTITY_TARGET, I18nCore, SetTranslationSchema, TOOLS } from '@lisa-mcp/core';
+import { defineTool, OperationType } from 'arc-1/public';
 import { ctxHttpTransport } from '../transport.js';
 
 /**

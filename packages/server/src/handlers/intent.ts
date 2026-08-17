@@ -3,10 +3,10 @@ import {
   GetTextsSchema,
   I18nCore,
   ListLanguagesSchema,
-  SetTranslationSchema,
-  TOOLS,
   narrowListTexts,
+  SetTranslationSchema,
   supportedTargetTypesNote,
+  TOOLS,
 } from '@lisa-mcp/core';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { btpTransport } from '../sap/transport.js';

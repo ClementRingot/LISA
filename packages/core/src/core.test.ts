@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  __resetCapabilitiesCache,
   I18nCore,
   type I18nTransport,
   type ListTextEntry,
-  type WireAction,
-  __resetCapabilitiesCache,
   narrowListTexts,
+  type WireAction,
 } from './wire.js';
 
 /**

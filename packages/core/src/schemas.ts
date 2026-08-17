@@ -11,7 +11,7 @@
  */
 
 import { z } from 'zod';
-import { CDS_ENTITY_OWNERS, CDS_ENTITY_TARGET, type Capabilities } from './wire.js';
+import { type Capabilities, CDS_ENTITY_OWNERS, CDS_ENTITY_TARGET } from './wire.js';
 
 // ─── Shared argument schemas ──────────────────────────────────────────────────
 
