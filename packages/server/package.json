@@ -55,7 +55,7 @@
     "@arc-mcp/xsuaa-auth": "^1.1.0",
     "@modelcontextprotocol/sdk": "^1.18.2",
     "cors": "^2.8.5",
-    "dotenv": "^17.4.2",
+    "dotenv": "^18.0.1",
     "express": "^5.1.0",
     "express-rate-limit": "^8.6.2",
     "helmet": "^8.2.0",
