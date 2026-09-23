@@ -87,11 +87,27 @@ describe('closureChanges', () => {
       'node_modules/qs': { version: '6.14.0' },
     });
     assert.deepEqual(closureChanges(lockfile(), head, 'packages/server'), [
-      'express: 5.1.0 → 5.2.0',
       'debug: 4.4.3 → (removed)',
+      'express: 5.1.0 → 5.2.0',
       'peer-thing: 1.0.0 → (removed)',
       'qs: (none) → 6.14.0',
     ]);
+  });
+
+  it('ignores npm re-hoisting a package at the same version', () => {
+    // debug 4.4.3 moves from express's nested node_modules up to the root.
+    const head = lockfile({ 'node_modules/debug': { version: '4.4.3' } });
+    delete head.packages['node_modules/express/node_modules/debug'];
+    assert.deepEqual(closureChanges(lockfile(), head, 'packages/server'), []);
+  });
+
+  it('lists every version of a package installed at several', () => {
+    const head = lockfile({
+      'node_modules/undici': { version: '8.10.0' },
+      'node_modules/body-parser': { version: '2.2.0', dependencies: { undici: '^7.0.0' } },
+      'node_modules/body-parser/node_modules/undici': { version: '7.16.0' },
+    });
+    assert.deepEqual(closureChanges(lockfile(), head, 'packages/server'), ['undici: 8.7.0 → 7.16.0, 8.10.0']);
   });
 });
 

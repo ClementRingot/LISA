@@ -81,18 +81,31 @@ export function runtimeClosure(lock, rootPath) {
   return closure;
 }
 
+// Group a closure by package NAME → its distinct versions, sorted. Grouping by
+// name (not lockfile path) keeps npm's re-hoisting out of the report: a package
+// moving from a nested node_modules to the root is not a change.
+function versionsByName(closure) {
+  const byName = new Map();
+  for (const [path, version] of closure) {
+    const name = path.slice(path.lastIndexOf('node_modules/') + 'node_modules/'.length);
+    if (!byName.has(name)) byName.set(name, new Set());
+    byName.get(name).add(version);
+  }
+  return new Map([...byName].map(([name, set]) => [name, [...set].sort().join(', ')]));
+}
+
 /**
- * Packages whose resolved version in the `rootPath` production closure differs
- * between two lockfiles. Returns human-readable lines, one per package.
+ * Packages whose resolved version(s) in the `rootPath` production closure
+ * differ between two lockfiles. Returns human-readable lines, one per package
+ * name (a package installed at several versions lists them all).
  */
 export function closureChanges(baseLock, headLock, rootPath) {
-  const a = runtimeClosure(baseLock, rootPath);
-  const b = runtimeClosure(headLock, rootPath);
-  const nameOf = (path) => path.slice(path.lastIndexOf('node_modules/') + 'node_modules/'.length);
+  const a = versionsByName(runtimeClosure(baseLock, rootPath));
+  const b = versionsByName(runtimeClosure(headLock, rootPath));
   const changes = [];
-  for (const path of [...new Set([...a.keys(), ...b.keys()])].sort()) {
-    if (a.get(path) === b.get(path)) continue;
-    changes.push(`${nameOf(path)}: ${a.get(path) ?? '(none)'} → ${b.get(path) ?? '(removed)'}`);
+  for (const name of [...new Set([...a.keys(), ...b.keys()])].sort()) {
+    if (a.get(name) === b.get(name)) continue;
+    changes.push(`${name}: ${a.get(name) ?? '(none)'} → ${b.get(name) ?? '(removed)'}`);
   }
   return changes;
 }
