@@ -58,11 +58,18 @@ jobs:
         with:
           node-version: 22
       - run: npm ci
-      - uses: changesets/action@v1
+      - uses: changesets/action@v2
         with:
-          version: npm run changeset:version
-          publish: node scripts/tag-missing-releases.mjs
-          commit: 'chore(release): version packages'
-          title: 'chore(release): version packages'
-        env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+          # v2 takes the token as an input; a GITHUB_TOKEN env var is ignored.
+          github-token: ${{ steps.app-token.outputs.token || github.token }}
+          version-script: npm run changeset:version
+          publish-script: node scripts/tag-missing-releases.mjs
+          commit-message: 'chore(release): version packages'
+          pr-title: 'chore(release): version packages'
+          # Tags and GitHub releases are ours: tag-missing-releases.mjs pushes the
+          # canonical vX.Y.Z / arc1-extension-vX.Y.Z tags and the publish
+          # workflows cut the releases. Keep the action from creating its own
+          # `@lisa-mcp/server@X.Y.Z`-style tags/releases, which the tag ruleset
+          # and release-guard.yml would reject.
+          create-github-releases: false
+          push-git-tags: false
