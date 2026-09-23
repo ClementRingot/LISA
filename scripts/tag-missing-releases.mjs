@@ -12,8 +12,12 @@
 // The pushed tag then triggers the existing publish pipelines
 // (release-product.yml / publish-extension.yml), which npm-publish and cut
 // the GitHub release. NOTE: for that trigger to fire, the tag must be pushed
-// with a PAT (see the workflow) — tags pushed with the default GITHUB_TOKEN
-// do not trigger workflows (GitHub's recursive-workflow prevention).
+// with the release GitHub App's token (see the workflow) — tags pushed with
+// the default GITHUB_TOKEN do not trigger workflows (GitHub's
+// recursive-workflow prevention).
+//
+// There is no dry-run: running it locally with a clean tree WILL create and
+// push tags. It is meant to run only from the workflow.
 //
 // Idempotent: a tag that already exists on origin is skipped, so re-runs and
 // docs-only merges are no-ops.
