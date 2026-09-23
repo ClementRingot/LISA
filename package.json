@@ -40,7 +40,7 @@
     "btp:build-deploy-prod": "npm run btp:build && npm run btp:deploy-prod"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.2",
-    "@changesets/cli": "^3.0.0"
+    "@biomejs/biome": "^2.5.14",
+    "@changesets/cli": "^3.0.3"
   }
 }
