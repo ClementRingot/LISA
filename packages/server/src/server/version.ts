@@ -1,9 +1,17 @@
 /**
  * Single source of truth for the server version.
  *
- * `npm_package_version` is set by npm when the app is started via an npm script
- * (`npm start`, which is how the CF Node.js buildpack launches it). When the
- * compiled entrypoint is run directly (`node dist/index.js`) it is absent, so we
- * fall back to the literal — keep it in sync with package.json on release.
+ * The bundle build (esbuild.config.mjs) injects the version from this
+ * package's own package.json as `__LISA_VERSION__`, so every way of running
+ * dist/index.js reports the real version: `npm start` on BTP, `node …` in the
+ * Docker image, and `npx @lisa-mcp/server`. (Relying on `npm_package_version`
+ * alone reported a stale literal outside npm scripts, and under npx it is the
+ * CALLER's project version, not ours.)
+ *
+ * Unbundled runs (`npm run dev` via tsx, vitest) have no injected value and
+ * fall back to npm's variable, then to an explicit dev marker.
  */
-export const VERSION = process.env.npm_package_version ?? '0.6.2';
+declare const __LISA_VERSION__: string | undefined;
+
+export const VERSION: string =
+  typeof __LISA_VERSION__ === 'string' ? __LISA_VERSION__ : (process.env.npm_package_version ?? '0.0.0-dev');
