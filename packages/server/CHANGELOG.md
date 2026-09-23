@@ -1,5 +1,13 @@
 # @lisa-mcp/server
 
+## 0.9.4
+
+### Patch Changes
+
+- 01f5805: Upgrade `express-rate-limit` from 7.5 to 8.7. The limiter configuration is unchanged and behaves the same for IPv4 clients. One behaviour change comes from v8's defaults: IPv6 clients are now keyed by their /56 subnet, so addresses in the same subnet share one quota. This hardens the limit against clients that rotate IPv6 addresses.
+- d62908c: Upgrade the authentication layer `@arc-mcp/xsuaa-auth` from 0.1.8 to 1.1.0. The 1.0 line is a stabilisation release with no breaking API change; 1.1.0 only adds opt-in features. Transitive runtime updates come with it: `@sap/xssec` 4.15.0, `@sap-cloud-sdk/*` 4.9.1, `undici` 8.11.0, `zod` 4.6.5, `jose` 6.2.12.
+- 6e76553: Report the real server version in `/health` and in the MCP `serverInfo`. When the server was not started through an npm script (the Docker image, `node dist/index.js`, `npx @lisa-mcp/server`), both showed a stale hard-coded `0.6.2`. Under `npx` they could also show the calling project's version. The build now bakes the version from the package's own `package.json` into the bundle.
+
 ## 0.9.3
 
 ### Patch Changes
