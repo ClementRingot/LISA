@@ -55,6 +55,14 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: "chore(docker)"
+    # Node MAJOR upgrades are a deliberate migration, not a weekly bump: the
+    # image must stay on the same LTS line as `engines.node` (22.x) and the SAP
+    # BTP Node.js buildpack, and Dependabot can't tell LTS (even) majors from
+    # short-lived Current (odd) ones — it proposed node 25, already EOL. Patch
+    # and minor updates of node:22-alpine still come through.
+    ignore:
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
 
   # ── GitHub Actions (.github/workflows/) ─────────────────────────────────────
   - package-ecosystem: github-actions

@@ -19,9 +19,16 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check:version
-      - name: Require a changeset when package source changed
+      - name: Require a changeset when shipped content changed
         if: github.event_name == 'pull_request'
         run: node scripts/require-changeset.mjs "origin/${{ github.base_ref }}"
       - run: npm run lint
       - run: npm test
       - run: npm run build
+      - name: Server bundle carries its package version
+        # /health and the MCP serverInfo report the version esbuild bakes in
+        # (src/server/version.ts); a missed define would leave the placeholder.
+        run: |
+          v="$(node -p "require('./packages/server/package.json').version")"
+          grep -q "\"$v\"" packages/server/dist/index.js
+          ! grep -q __LISA_VERSION__ packages/server/dist/index.js
