@@ -46,8 +46,29 @@ so the version number and `CHANGELOG` entry are *derived* from small intent file
 with each PR. This closes the gap that once left the extension frozen at `0.1.0` across several
 `feat`s:
 
-> **Every PR that changes shipped package source must add a changeset.**
+> **Every PR that changes what a package ships must add a changeset.**
 > CI runs `scripts/require-changeset.mjs` and fails the PR otherwise.
+
+"What a package ships" covers more than source code:
+
+| Change | Requires a bump of |
+|--------|--------------------|
+| non-test source under `packages/server/src/**` | `@lisa-mcp/server` |
+| non-test source under `packages/arc1-extension/src/**` | `@lisa-mcp/arc1-extension` |
+| non-test source under `packages/core/src/**` | **both** (core is inlined into each) |
+| `dependencies` / `optionalDependencies` / `peerDependencies` in `packages/server/package.json` or `packages/arc1-extension/package.json` | that package (the ranges ship in the npm tarball) |
+| a version change anywhere in the **server's production closure** in `package-lock.json` — even a transitive one with no range change | `@lisa-mcp/server` (the Docker image and the BTP MTA `npm ci` from this lockfile) |
+| `Dockerfile` | `@lisa-mcp/server` (the ghcr.io image ships with the product) |
+
+`devDependencies` never count. The lockfile rule is what closes the gap that left the 0.9.3
+security patches (an `npm audit fix`, lockfile-only) merged but unreleased until a changeset was
+added by hand.
+
+**Dependabot PRs** hit these rules like any other: a runtime bump fails the guard with the list of
+what changed. Dependabot can't write a changeset, so you decide — push one onto its branch
+(`npx changeset` → pick `@lisa-mcp/server`, usually `patch`), or `npx changeset add --empty` to merge
+it without releasing yet. Dev-only and GitHub-Actions bumps pass untouched. Note that once you push
+to a Dependabot branch, Dependabot stops rebasing that PR on its own.
 
 On each PR, declare what (if anything) should be released:
 
@@ -61,8 +82,9 @@ npx changeset               # pick package(s) + patch/minor/major, write a summa
   `@lisa-mcp/core` is bundled/inlined into both artifacts, so a core change ships inside both — the
   guard fails a core-source change that doesn't cover both dependents. You never write a changeset
   for `@lisa-mcp/core` itself (it's ignored by Changesets); you bump its two dependents.
-- A genuinely release-irrelevant source change (comments, build-only tweak) is recorded with an
-  **empty** changeset so the guard still passes: `npx changeset add --empty`.
+- A genuinely release-irrelevant change (comments, build-only tweak, a bump you don't want to
+  release yet) is recorded with an **empty** changeset so the guard still passes:
+  `npx changeset add --empty`.
 
 Commit the generated `.changeset/*.md` with your PR. `@lisa-mcp/core` is ignored by Changesets
 (`.changeset/config.json`), so never write a changeset for it.

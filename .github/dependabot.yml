@@ -2,6 +2,11 @@
 # breaks lint/test/build/check:version never merges). Weekly to keep noise low;
 # updates are grouped so you review batches, not one PR per package.
 #
+# A bump that SHIPS (a runtime range of a published package, or any version in
+# the server's production closure of package-lock.json) also fails the changeset
+# guard until you add a changeset — or an empty one to merge without releasing.
+# Dev-only and Actions bumps pass. See docs_page/releasing.md.
+#
 # Three ecosystems live in this repo:
 #   - npm     — the workspaces (one lockfile at the root covers core/server/arc1-extension)
 #   - docker  — the runtime base image in ./Dockerfile (node:22-alpine)
