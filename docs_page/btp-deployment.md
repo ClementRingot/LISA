@@ -162,7 +162,7 @@ carries a JWT) is unaffected.
 ## 2. Review `mta.yaml` and `xs-security.json`
 
 - [`mta.yaml`](../mta.yaml) defines the Node.js module, the bound services (XSUAA + Destination required; Connectivity and Application Logs ship `active: false` — see [Optional services](#optional-services-connectivity--application-logs)), and the build commands (`npm ci && npm run build && npm prune --omit=dev`). It sets **no `host:`** — the deploy service assigns a globally-unique `${default-host}` so routes never collide across subaccounts on the shared `cfapps.<region>` domain. Pin a short URL via an extension descriptor (see below).
-- [`xs-security.json`](../xs-security.json) configures XSUAA. It contains **only** `xsappname` and `oauth2-configuration` (redirect URIs) — no scopes or roles, by design (see [Authentication](./authentication.md)). Add your MCP client's callback URL to `redirect-uris` if it isn't covered by the existing wildcards.
+- [`xs-security.json`](../xs-security.json) configures XSUAA. It contains **only** `xsappname` and `oauth2-configuration` (redirect URIs) — no scopes or roles, by design (see [Authentication](./authentication.md)). The MTA supplies the server's exact `${default-url}/oauth/callback`; custom public URLs need a matching resource override. Client return addresses belong to LISA's separate proxy policy. For manual service creation, replace the localhost example with the exact deployed server callback first. See [the OAuth upgrade guide](../docs/XSUAA-AUTH-UPGRADE.md).
 
 ### Pin a public URL with an extension descriptor (`.mtaext`)
 

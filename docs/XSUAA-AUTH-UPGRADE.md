@@ -30,7 +30,9 @@ the service update to finish before testing sign-in. The checked-in localhost UR
 a local-development example; change its port explicitly if needed.
 
 Both the source MTA and the published deployment template are updated. Existing copied templates
-must be updated too. The previous custom callback was replaced with the library callback so
+must be updated too. Bump `@lisa-mcp/server` in the copied `app/package.json` to the published
+release containing this fix and regenerate its lockfile; an existing lock can retain an older
+server even when its range is `^0.9.0`. The previous custom callback was replaced with the library callback so
 upgrading the dependency cannot leave the browser-binding check out of the sign-in flow.
 
 ### Before completing a production rollout

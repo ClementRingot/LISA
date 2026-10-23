@@ -70,12 +70,14 @@ MCP client ──JWT──▶ LISA ──(user JWT)──▶ Destination Service
 For XSUAA, the server runs an OAuth proxy provided by the [`@arc-mcp/xsuaa-auth`](https://www.npmjs.com/package/@arc-mcp/xsuaa-auth) package (the XSUAA/OAuth layer extracted from [ARC-1](https://github.com/arc-mcp/arc-1)) so standard MCP OAuth clients can authenticate against XSUAA, including:
 
 - a **stateless DCR client store** (the `client_id` *is* the signed payload),
-- a redirect-URI allowlist mirrored from `xs-security.json` (LISA passes its own list to the package),
+- a client return-URI policy supplied by LISA, separate from the server callback allowed in XSUAA,
 - a signed `state` codec that works around XSUAA's literal-`+`-in-state behavior.
 
-LISA wires these building blocks in `src/server/http.ts` and keeps its own `/oauth/callback` handler; the package also supplies the chained token verifier (XSUAA → OIDC → API key) and the BTP principal-propagation layer.
+LISA wires these building blocks in `src/server/http.ts` and uses the library's `/oauth/callback` handler, including its approval-cookie check and client-bound authorization codes; the package also supplies the chained token verifier (XSUAA → OIDC → API key) and the BTP principal-propagation layer.
 
-All of these sign with `LISA_DCR_SIGNING_SECRET`. **Set it explicitly** (`cf set-env`) so deploys don't rotate the signing key and invalidate cached registrations — see [Configuration reference](./configuration-reference.md#oauth--dcr-btp).
+New authorization flows require browser approval before XSUAA sign-in, even with an existing SSO session.
+
+These proxy components use `LISA_DCR_SIGNING_SECRET`. **Set it explicitly** (`cf set-env`) so deploys don't rotate the signing key and invalidate cached registrations — see [Configuration reference](./configuration-reference.md#oauth--dcr-btp).
 
 ## See also
 
