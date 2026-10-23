@@ -1,5 +1,7 @@
 # LISA — Localization & Internationalization Service for ABAP
 
+> Upgrading an XSUAA deployment? Read the [OAuth upgrade guide](docs/XSUAA-AUTH-UPGRADE.md) before redeploying.
+
 [![npm](https://img.shields.io/npm/v/@lisa-mcp/server?label=%40lisa-mcp%2Fserver&logo=npm)](https://www.npmjs.com/package/@lisa-mcp/server)
 [![npm](https://img.shields.io/npm/v/@lisa-mcp/arc1-extension?label=%40lisa-mcp%2Farc1-extension&logo=npm)](https://www.npmjs.com/package/@lisa-mcp/arc1-extension)
 [![ghcr.io](https://img.shields.io/badge/ghcr.io-lisa--mcp-blue?logo=docker&logoColor=white)](https://github.com/ClementRingot/LISA/pkgs/container/lisa-mcp)
