@@ -53,6 +53,10 @@ modules:
       SAP_BTP_PP_DESTINATION: CHANGE_ME_SSO_DESTINATION
       # ICF path of the zi18n_service handler registered in the SAP system.
       SAP_I18N_SERVICE_PATH: /sap/bc/http/sap/zi18n_service
+    provides:
+      - name: oauth-api
+        properties:
+          url: ${default-url}
     requires:
       - name: lisa-xsuaa
       - name: lisa-destination
@@ -71,6 +75,8 @@ modules:
 resources:
   - name: lisa-xsuaa
     type: org.cloudfoundry.managed-service
+    requires:
+      - name: oauth-api
     parameters:
       service: xsuaa
       service-plan: application
@@ -78,6 +84,10 @@ resources:
       # xsappname `lisa` is unique per subaccount: a SECOND instance in the same
       # subaccount must override it via an .mtaext.
       path: ./xs-security.json
+      config:
+        oauth2-configuration:
+          redirect-uris:
+            - ~{oauth-api/url}/oauth/callback
 
   - name: lisa-destination
     type: org.cloudfoundry.managed-service

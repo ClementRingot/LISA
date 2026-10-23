@@ -29,6 +29,10 @@ modules:
       # ── Landscape-specific properties ──────────────────────────────────────
       # SAP_I18N_SERVICE_PATH and the SAP_BTP_*_DESTINATION names are set per
       # landscape in your `mta-overrides.mtaext` (see packages/server/templates/mta/mta-overrides.mtaext.example).
+    provides:
+      - name: oauth-api
+        properties:
+          url: ${default-url}
     requires:
       - name: lisa-xsuaa
       - name: lisa-destination
@@ -59,6 +63,8 @@ modules:
 resources:
   - name: lisa-xsuaa
     type: org.cloudfoundry.managed-service
+    requires:
+      - name: oauth-api
     parameters:
       service: xsuaa
       service-plan: application
@@ -67,6 +73,10 @@ resources:
       # alongside dev) MUST override it in mta-overrides.mtaext — see the
       # "XSUAA xsappname" block in packages/server/templates/mta/mta-overrides.mtaext.example.
       path: ./xs-security.json
+      config:
+        oauth2-configuration:
+          redirect-uris:
+            - ~{oauth-api/url}/oauth/callback
 
   - name: lisa-destination
     type: org.cloudfoundry.managed-service
