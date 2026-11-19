@@ -12,11 +12,10 @@
 import { randomUUID } from 'node:crypto';
 import {
   createChainedTokenVerifier,
+  createOAuthCallbackHandler,
   createOidcVerifier,
   createXsuaaOAuthProvider,
   createXsuaaTokenVerifier,
-  type OAuthStateCodec,
-  type StatelessDcrClientStore,
 } from '@arc-mcp/xsuaa-auth';
 import { mcpAuthRouter } from '@modelcontextprotocol/sdk/server/auth/router.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -31,11 +30,8 @@ import type { Config } from './types.js';
 import { VERSION } from './version.js';
 
 /**
- * Mirror of `oauth2-configuration.redirect-uris` in `xs-security.json`. The
- * `@arc-mcp/xsuaa-auth` defaults carry extra patterns (mistral, azure-apim) that
- * LISA's XSUAA service does not register, so we pass LISA's own list to keep the
- * callback-proxy allowlist in lock-step with the service binding. MUST stay in
- * sync with `xs-security.json`.
+ * Client return addresses for the pre-registered client. These are separate
+ * from XSUAA's redirect-uris, which contain only this server's callback.
  */
 const XSUAA_REDIRECT_URI_PATTERNS = [
   'http://localhost:*/**',
@@ -55,148 +51,6 @@ const XSUAA_DEFAULT_REDIRECT_URIS = [
   'cursor://anysphere.cursor-retrieval/oauth/callback', // Cursor
   'vscode://vscode.microsoft-authentication/callback', // VS Code
 ] as const;
-
-const HTML_ESCAPES: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-function escapeHtml(s: string): string {
-  return s.replace(/[&<>"']/g, (c) => HTML_ESCAPES[c] ?? c);
-}
-
-/**
- * Native loopback callbacks (MCP Inspector, GitHub Copilot) tear down their
- * ephemeral listener on failure, so a 302 to a dead port shows a blank
- * ERR_CONNECTION_REFUSED. For those we render a self-hosted error page instead.
- */
-function isLoopbackHttpRedirect(url: URL): boolean {
-  if (url.protocol !== 'http:') return false;
-  const host = url.hostname.toLowerCase();
-  return host === 'localhost' || host === '127.0.0.1' || host === '::1' || host === '[::1]';
-}
-
-function renderOAuthErrorPage(error: string, errorDescription: string, clientReturnUrl: string): string {
-  const hint = 'Retry the sign-in from your MCP client. If it keeps failing, share this error with your administrator.';
-  const descBlock = errorDescription ? `<p><code>${escapeHtml(errorDescription)}</code></p>` : '';
-  return [
-    '<!doctype html><html><head><meta charset="utf-8"><title>SAP Translator sign-in failed</title></head>',
-    '<body style="font-family:sans-serif;max-width:42rem;margin:3rem auto;padding:0 1rem;line-height:1.5">',
-    '<h1>SAP Translator sign-in failed</h1>',
-    `<p><strong>Error:</strong> <code>${escapeHtml(error)}</code></p>`,
-    descBlock,
-    `<p>${escapeHtml(hint)}</p>`,
-    `<p><a href="${escapeHtml(clientReturnUrl)}">Return to your application</a></p>`,
-    '</body></html>',
-  ].join('');
-}
-
-/**
- * Express handler for `/oauth/callback`, the second half of the XSUAA callback
- * proxy that fixes the `+`-in-state bug. XSUAA redirects here (not to the
- * client) with an opaque base64url `state` token that `authorize()` minted. We
- * verify + decode it to recover the client's ORIGINAL `redirect_uri` and
- * `state`, then 302 to the client re-emitting the state via `URL.searchParams`
- * (which encodes `+` as `%2B`).
- *
- * SECURITY (authorization-code interception): the signed state carries the
- * originating DCR `client_id`. Before forwarding the code (or error) to the
- * recovered `redirect_uri`, we verify that redirect_uri is actually registered
- * for that client (`clientStore.checkRedirectUri`). Fails CLOSED on any error.
- */
-export function createOAuthCallbackHandler(stateCodec: OAuthStateCodec, clientStore?: StatelessDcrClientStore) {
-  return async (req: Request, res: Response): Promise<void> => {
-    const log = getLogger();
-    const stateToken = typeof req.query.state === 'string' ? req.query.state : '';
-    const decoded = stateCodec.decode(stateToken);
-    if (decoded.kind !== 'ok') {
-      log.warn('OAuth callback: invalid state token', { reason: decoded.reason });
-      res
-        .status(400)
-        .type('html')
-        .send(
-          '<!doctype html><html><body style="font-family:sans-serif;padding:2rem">' +
-            '<h1>Authentication failed</h1>' +
-            '<p>The OAuth state token was invalid or expired. Please retry the sign-in from your MCP client.</p>' +
-            '</body></html>',
-        );
-      return;
-    }
-
-    // ── Client-binding validation (authorization-code interception defense) ──
-    if (clientStore && decoded.clientId) {
-      let verdict: 'ok' | 'unknown_client' | 'unregistered';
-      try {
-        verdict = await clientStore.checkRedirectUri(decoded.clientId, decoded.clientRedirectUri);
-      } catch (err) {
-        log.warn('OAuth callback: redirect_uri check threw — failing closed', {
-          clientId: decoded.clientId,
-          error: err instanceof Error ? err.message : String(err),
-        });
-        verdict = 'unknown_client';
-      }
-      if (verdict !== 'ok') {
-        log.warn('OAuth callback: redirect_uri rejected for client', {
-          clientId: decoded.clientId,
-          verdict,
-        });
-        res
-          .status(400)
-          .type('html')
-          .send(
-            '<!doctype html><html><body style="font-family:sans-serif;padding:2rem">' +
-              '<h1>Authentication failed</h1>' +
-              '<p>The redirect URI in the state token is not valid for this client. Please retry the sign-in.</p>' +
-              '</body></html>',
-          );
-        return;
-      }
-    }
-
-    let target: URL;
-    try {
-      target = new URL(decoded.clientRedirectUri);
-    } catch {
-      log.warn('OAuth callback: stored redirect_uri is not a valid URL');
-      res.status(400).type('html').send('<!doctype html><html><body>Invalid redirect target.</body></html>');
-      return;
-    }
-
-    // On error there is no code. Forward to the client per spec — except for
-    // loopback HTTP callbacks (render a self-hosted page instead).
-    const error = typeof req.query.error === 'string' ? req.query.error : undefined;
-    if (error) {
-      const errorDescription = typeof req.query.error_description === 'string' ? req.query.error_description : '';
-      if (decoded.clientState !== undefined) target.searchParams.set('state', decoded.clientState);
-      target.searchParams.set('error', error);
-      if (errorDescription) target.searchParams.set('error_description', errorDescription);
-      const loopback = isLoopbackHttpRedirect(target);
-      log.warn('OAuth callback: identity provider returned an error', {
-        error,
-        errorDescriptionPreview: errorDescription.slice(0, 200),
-        clientRedirectUriHost: target.host,
-        loopback,
-      });
-      if (loopback) {
-        res
-          .status(400)
-          .type('html')
-          .send(renderOAuthErrorPage(error, errorDescription, target.toString()));
-      } else {
-        res.redirect(302, target.toString());
-      }
-      return;
-    }
-
-    // Success: forward the code, re-attaching the client's ORIGINAL state.
-    // URLSearchParams serialization encodes `+` as `%2B`, fixing the round-trip.
-    const code = typeof req.query.code === 'string' ? req.query.code : '';
-    target.searchParams.set('code', code);
-    if (decoded.clientState !== undefined) target.searchParams.set('state', decoded.clientState);
-
-    log.debug('OAuth callback: redirecting to client', {
-      clientRedirectUriHost: target.host,
-      hasState: decoded.clientState !== undefined,
-    });
-    res.redirect(302, target.toString());
-  };
-}
 
 // CF injects VCAP_APPLICATION with the app's public routes.
 // Falls back to localhost for local dev.
@@ -331,7 +185,11 @@ export function createHttpServer(config: Config): express.Application {
     // Callback proxy (issue #214): XSUAA redirects HERE with our opaque state
     // token; we decode it, validate the client binding, and forward to the real
     // client redirect_uri re-emitting the original state with correct encoding.
-    app.get('/oauth/callback', oauthLimiter, createOAuthCallbackHandler(stateCodec, clientStore));
+    app.get(
+      '/oauth/callback',
+      oauthLimiter,
+      createOAuthCallbackHandler(stateCodec, clientStore, { logger: authLogger }),
+    );
 
     app.use(
       oauthLimiter,
