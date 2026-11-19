@@ -1,5 +1,13 @@
 # @lisa-mcp/server
 
+## 0.9.6
+
+### Patch Changes
+
+- 3856185: Refresh runtime dependencies to their latest minor/patch releases: `@modelcontextprotocol/sdk` 1.32, `express` 5.3, `express-rate-limit` 8.7.4, `dotenv` 18.0.10, `jose` 6.2.17, `undici` 8.12.4 and `zod` 4.6.7. The ARC-1 extension's `zod` peer range is raised to `^4.6.7` to match. No API or behavior change in LISA.
+- 43f5c89: Upgrade `@arc-mcp/xsuaa-auth` to 1.2.1 and refresh the server's transitive runtime dependencies (SAP Cloud SDK 4.10, `@sap/xssec` 4.16, `axios` 1.21.1, `follow-redirects` 1.16.3). The ARC-1 extension's dev dependency `arc-1` moves to 1.10 for its tests; the extension's published package is unchanged.
+- 1cc6602: Upgrade @arc-mcp/xsuaa-auth to 1.2.0 for browser-bound OAuth client approval (GHSA-6935-r3wv-f646). Upgrade all instances together and restart in-flight sign-ins. Existing tokens are not revoked.
+
 ## 0.9.5
 
 ### Patch Changes

@@ -20,7 +20,7 @@ import setTexts from './tools/Custom_TranslateSetTexts.js';
  */
 const plugin: Plugin = {
   name: 'lisa-arc1-extension',
-  version: '0.3.2',
+  version: '0.3.3',
   apiVersion: 1,
   tools: [listLanguages, getTexts, setTexts],
 };
